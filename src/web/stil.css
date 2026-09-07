@@ -1,0 +1,532 @@
+/*
+ * Gestaltungsraster der Fotobox.
+ *
+ * Der Touchscreen hat 1920x1080 auf 14 Zoll, also rund 157 Pixel pro Zoll und
+ * eine nutzbare Flaeche von etwa 310 x 174 mm. Ein Standard-Webknopf von 44
+ * Pixeln waere darauf nur 7 mm hoch - zu klein fuer einen Finger. Deshalb wird
+ * hier in Millimetern entworfen, nicht in Bildschirmpixeln.
+ *
+ * Eine einzige Stellschraube: die Grundgroesse. Bei einem anderen Bildschirm
+ * aendert sich genau diese Zahl und die ganze Oberflaeche passt sich mit.
+ *
+ * Voraussetzung: Windows-Anzeigeskalierung auf 100 %. Bei 150 % meldet der
+ * Browser nur 1280x720 und alle Masse verschieben sich.
+ */
+
+:root {
+  /* 1 mm entspricht auf diesem Geraet rund 6,2 px. */
+  --px-je-mm: 6.2;
+  --mm: calc(1px * var(--px-je-mm));
+
+  --knopf-haupt: calc(25 * var(--mm));
+  --knopf-neben: calc(16 * var(--mm));
+  --ziel-min: calc(12 * var(--mm));
+  --abstand: calc(4 * var(--mm));
+  --abstand-gross: calc(8 * var(--mm));
+  --rand-sicher: calc(5 * var(--mm));
+
+  --grund: #14161a;
+  --flaeche: #1e2128;
+  --flaeche-hell: #2a2e37;
+  --schrift: #f4f5f7;
+  --schrift-leise: #a8adb8;
+  --akzent: #c8963e;
+  --warnung: #d9793f;
+  --fehler: #cf5555;
+  --gut: #5fa463;
+
+  --radius: calc(2.5 * var(--mm));
+  color-scheme: dark;
+}
+
+/* Gaesteoberflaeche: Grundgroesse 26 px statt der ueblichen 16. */
+html {
+  font-size: 26px;
+}
+
+/* Der Admin wird mit Maus und Tastatur bedient und soll mehr auf den Schirm
+   bringen - aber eben auch nicht in 2,6-Millimeter-Schrift. */
+html.admin {
+  font-size: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--schrift);
+  font-family: 'Segoe UI', system-ui, -apple-system, 'DejaVu Sans', sans-serif;
+  overflow: hidden;
+}
+
+/* Fuer Gaeste: keine Hover-Effekte, keine Tooltips, kein Textcursor,
+   kein Doppeltippen zum Zoomen. */
+.kiosk,
+.kiosk * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: default;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------- Bausteine */
+
+.seite {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* Nichts in den aeussersten 5 mm: Dort loest Windows Wischgesten aus. */
+  padding: var(--rand-sicher);
+  gap: var(--abstand);
+}
+
+.knopf {
+  min-height: var(--knopf-haupt);
+  min-width: var(--ziel-min);
+  padding: 0 var(--abstand-gross);
+  border-radius: var(--radius);
+  background: var(--flaeche-hell);
+  color: var(--schrift);
+  font-size: 1rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(2 * var(--mm));
+  transition: transform 80ms ease;
+}
+
+.knopf:active {
+  transform: scale(0.97);
+}
+
+.knopf--haupt {
+  background: var(--akzent);
+  color: #191307;
+  font-size: 1.25rem;
+}
+
+.knopf--neben {
+  min-height: var(--knopf-neben);
+  font-size: 0.85rem;
+  background: transparent;
+  border: 2px solid var(--flaeche-hell);
+}
+
+.knopf:disabled {
+  opacity: 0.4;
+}
+
+.knopf--riesig {
+  min-height: calc(38 * var(--mm));
+  font-size: 1.6rem;
+}
+
+.titel {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.untertitel {
+  font-size: 1rem;
+  color: var(--schrift-leise);
+  margin: 0;
+}
+
+.mitte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand-gross);
+  text-align: center;
+}
+
+.reihe {
+  display: flex;
+  gap: var(--abstand);
+  align-items: center;
+}
+
+.reihe--ende {
+  justify-content: flex-end;
+}
+
+.raster {
+  display: grid;
+  gap: var(--abstand);
+}
+
+/* ------------------------------------------------------------------ Kiosk */
+
+.kachel {
+  background: var(--flaeche);
+  border: 3px solid transparent;
+  border-radius: var(--radius);
+  padding: var(--abstand);
+  min-height: calc(30 * var(--mm));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(2 * var(--mm));
+}
+
+.kachel--gewaehlt {
+  border-color: var(--akzent);
+}
+
+.kachel__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.kachel__info {
+  font-size: 0.7rem;
+  color: var(--schrift-leise);
+}
+
+/* Aufnahmebildschirm: Live-Bild als Vollbild, Countdown direkt darueber. */
+.aufnahme {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.aufnahme__bild {
+  display: block;
+}
+
+/* Der Rahmen begrenzt das Live-Bild im Seitenverhaeltnis der aktuellen
+   Foto-Ebene. Was darin zu sehen ist, landet auch auf dem Ausdruck. */
+.aufnahme__rahmen {
+  position: relative;
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  border-radius: calc(1 * var(--mm));
+  box-shadow: 0 0 calc(6 * var(--mm)) rgba(0, 0, 0, 0.8);
+}
+
+.countdown {
+  position: absolute;
+  font-size: calc(60 * var(--mm));
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 calc(4 * var(--mm)) rgba(0, 0, 0, 0.85);
+  padding: calc(3 * var(--mm)) calc(8 * var(--mm));
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.hinweis-oben {
+  position: absolute;
+  top: var(--abstand);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 0 calc(2 * var(--mm)) rgba(0, 0, 0, 0.9);
+}
+
+.bereitmachen {
+  position: absolute;
+  bottom: calc(10 * var(--mm));
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.55);
+  padding: calc(3 * var(--mm)) calc(6 * var(--mm));
+  border-radius: var(--radius);
+}
+
+/* Ergebnisseite: Bild oben, darunter die Knopfreihe. Bei 174 mm Bauhoehe
+   braucht sie rund 45 mm, fuer das Layout bleiben also etwa 125 mm. */
+.ergebnis__bild {
+  flex: 1;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: var(--radius);
+  background: #000;
+}
+
+.ergebnis__leiste {
+  min-height: calc(45 * var(--mm));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand);
+}
+
+.menge {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand);
+  background: var(--flaeche);
+  border-radius: var(--radius);
+  padding: 0 var(--abstand);
+}
+
+.menge__zahl {
+  font-size: 1.6rem;
+  font-weight: 700;
+  min-width: calc(10 * var(--mm));
+  text-align: center;
+}
+
+/* Kaum sichtbares Schloss oben rechts, rund 10 x 10 mm. */
+.schloss {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: calc(10 * var(--mm));
+  height: calc(10 * var(--mm));
+  opacity: 0.08;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  z-index: 50;
+}
+
+.pinfeld {
+  display: grid;
+  grid-template-columns: repeat(3, calc(20 * var(--mm)));
+  gap: var(--abstand);
+  justify-content: center;
+}
+
+.pinfeld button {
+  height: calc(20 * var(--mm));
+  border-radius: var(--radius);
+  background: var(--flaeche-hell);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.pin-punkte {
+  font-size: 2rem;
+  letter-spacing: calc(2 * var(--mm));
+  min-height: 2.4rem;
+}
+
+/* Stoerungshinweise: kein Fehlercode, kein Geraetename. Drei Saetze in
+   Alltagssprache - was ist los, was passiert mit meinem Foto, was kann ich tun. */
+.stoerung {
+  background: var(--flaeche);
+  border-left: calc(2 * var(--mm)) solid var(--warnung);
+  border-radius: var(--radius);
+  padding: var(--abstand-gross);
+  max-width: calc(200 * var(--mm));
+  text-align: left;
+}
+
+.stoerung__titel {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 var(--abstand) 0;
+}
+
+.stoerung__folge {
+  font-size: 0.95rem;
+  margin: 0 0 var(--abstand) 0;
+}
+
+.stoerung__tun {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--akzent);
+  margin: 0;
+}
+
+.qr-ecke {
+  position: fixed;
+  bottom: var(--rand-sicher);
+  right: var(--rand-sicher);
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--schrift-leise);
+}
+
+.qr-ecke img {
+  width: calc(22 * var(--mm));
+  height: calc(22 * var(--mm));
+  border-radius: calc(1 * var(--mm));
+  background: #fff;
+  padding: calc(1 * var(--mm));
+  display: block;
+}
+
+/* ------------------------------------------------------------------ Admin */
+
+.admin-huelle {
+  display: grid;
+  grid-template-columns: 13rem 1fr;
+  height: 100vh;
+}
+
+.admin-nav {
+  background: var(--flaeche);
+  padding: 1rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow-y: auto;
+}
+
+.admin-nav a {
+  color: var(--schrift-leise);
+  text-decoration: none;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.admin-nav a.aktiv {
+  background: var(--flaeche-hell);
+  color: var(--schrift);
+}
+
+.admin-inhalt {
+  padding: 1.2rem 1.6rem;
+  overflow-y: auto;
+}
+
+.karte {
+  background: var(--flaeche);
+  border-radius: 0.6rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.karte h2 {
+  margin: 0 0 0.8rem 0;
+  font-size: 1.1rem;
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.8rem;
+}
+
+.feld label {
+  font-size: 0.78rem;
+  color: var(--schrift-leise);
+}
+
+.feld input,
+.feld select,
+.feld textarea {
+  background: var(--grund);
+  border: 1px solid var(--flaeche-hell);
+  border-radius: 0.35rem;
+  color: var(--schrift);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  min-height: 2rem;
+}
+
+.feld--klein {
+  max-width: 9rem;
+}
+
+.zeile {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+table.liste {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+table.liste th,
+table.liste td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--flaeche-hell);
+}
+
+.marke {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.8rem;
+  font-size: 0.7rem;
+  background: var(--flaeche-hell);
+}
+
+.marke--aktiv { background: var(--gut); color: #08210a; }
+.marke--pausiert { background: var(--warnung); color: #2a1405; }
+.marke--abgeschlossen { background: var(--flaeche-hell); }
+
+.pruef {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--flaeche-hell);
+  align-items: flex-start;
+}
+
+.pruef__zeichen { font-size: 1rem; line-height: 1.2; }
+.pruef__ok { color: var(--gut); }
+.pruef__warnung { color: var(--warnung); }
+.pruef__fehler { color: var(--fehler); }
+.pruef__hinweis { font-size: 0.78rem; color: var(--schrift-leise); }
+
+.kennzahl {
+  display: flex;
+  flex-direction: column;
+  background: var(--flaeche-hell);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  min-width: 8rem;
+}
+
+.kennzahl__wert { font-size: 1.5rem; font-weight: 700; }
+.kennzahl__name { font-size: 0.72rem; color: var(--schrift-leise); }
+
+/* ------------------------------------------------------- Handy-Galerie */
+
+.handy {
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1rem;
+  font-size: 16px;
+}
+
+.handy__raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.6rem;
+}
+
+.handy__bild {
+  width: 100%;
+  border-radius: 0.5rem;
+  display: block;
+  background: var(--flaeche);
+}
