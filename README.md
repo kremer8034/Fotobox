@@ -41,7 +41,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 25 Tests, alle ohne Hardware
+npm test             # 37 Tests, alle ohne Hardware
 npm run typecheck
 ```
 
@@ -56,8 +56,15 @@ Umgebungsvariablen:
 
 ## Installation auf der Fotobox
 
-Rechtsklick auf `windows\Installieren.ps1` → **Mit PowerShell ausführen**
-(beim ersten Mal am besten als Administrator).
+**Ohne IT-Vorkenntnisse:
+[docs/Anleitung-Schritt-fuer-Schritt.md](docs/Anleitung-Schritt-fuer-Schritt.md)**
+— 22 nummerierte Schritte vom Herunterladen bis zum ersten Ausdruck, jeder
+Klick einzeln beschrieben, mit den Windows-Warnmeldungen, die unterwegs
+auftauchen, und was dann zu tun ist. Das ist der empfohlene Weg.
+
+Die Kurzfassung für alle, die Windows kennen: Doppelklick auf
+`windows\Installieren.bat`. Die Datei holt sich selbst die nötigen Rechte und
+startet `Installieren.ps1` — kein Rechtsklick, keine Ausführungsrichtlinie.
 
 Das Skript erledigt alles in einem Zug: Node.js prüfen und bei Bedarf über
 winget installieren, Abhängigkeiten holen, Oberfläche bauen, Tests laufen
@@ -72,12 +79,12 @@ Dafür braucht der PC **einmalig Internet**. Danach nie wieder.
 Anschließend:
 
 ```
-windows\Fotobox starten.bat      Server starten
-windows\Fotobox oeffnen.bat      Verwaltung im Browser öffnen
-windows\Kiosk starten.bat        Browser im Kiosk-Vollbild
+windows\Fotobox starten.bat        Server starten
+windows\Verwaltung oeffnen.bat     Verwaltung im Browser öffnen
+windows\Kiosk starten.bat          Browser im Kiosk-Vollbild
 ```
 
-**Der vollständige Weg von der leeren Festplatte bis zur einsatzbereiten Box
+**Der technische Weg von der leeren Festplatte bis zur einsatzbereiten Box
 steht in [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md)** — mit Kamera- und
 Druckertest einzeln, Kalibrierung und dem Störungstest.
 
@@ -90,7 +97,9 @@ Druckertest einzeln, Kalibrierung und dem Störungstest.
    spürbar daneben.
 3. **digiCamControl** installieren, dessen Webserver auf Port 5513 einschalten
    und das Programm einmal starten.
-4. **SumatraPDF** ablegen und den Pfad unter *Gerät → Drucker* eintragen.
+4. **SumatraPDF** installieren oder als `SumatraPDF.exe` in den Ordner
+   `windows\` legen — der Server findet es beim Start selbst und trägt den
+   Pfad unter *Gerät → Drucker* ein.
 5. **Besitzer-PIN vergeben.** Ohne sie lässt sich keine Veranstaltung starten;
    eine ausgelieferte Standard-PIN gibt es bewusst nicht.
 6. **Kamera**: Netzteil mit Dummy-Akku verwenden, LED-Dauerlicht aufstellen,
