@@ -15,6 +15,7 @@ import {
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
 import { reiheEin } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
+import { drosselGreift, istOnline, leseMailzugang, pruefeAdresse, tageslimitErreicht, versende } from '../fach/email.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
 import { anzahlFotos, STOERUNGSTEXTE } from '../../shared/typen.js';
@@ -62,7 +63,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       toene: event.einstellungen.toene,
       ausgabe: {
         druckAktiv: event.einstellungen.druckAktiv,
-        emailAktiv: event.einstellungen.emailAktiv,
+        emailAktiv: event.einstellungen.emailAktiv && leseMailzugang() !== null && (await istOnline()),
         kopienVorgabe: event.einstellungen.kopienVorgabe,
         kopienMax: event.einstellungen.kopienMax,
         druckLimitErreicht: druckLimitErreicht(event.id),
@@ -222,6 +223,53 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
     betrieb.letzteBeruehrung = Date.now();
     return { auftragId, wartend: true };
+  });
+
+  /**
+   * E-Mail-Versand. Der Knopf erscheint in der Oberflaeche nur, wenn die Box
+   * tatsaechlich online ist; hier wird das noch einmal geprueft, damit die
+   * Route nicht ohne Verbindung haengen bleibt.
+   */
+  app.post<{ Body: unknown }>('/api/kiosk/email', async (anfrage, antwort) => {
+    const koerper = z
+      .object({
+        ausgabeId: z.string(),
+        adresse: z.string().max(254),
+        einwilligung: z.literal(true),
+      })
+      .parse(anfrage.body);
+
+    const event = holeAktivesEvent();
+    if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
+    if (!event.einstellungen.emailAktiv) {
+      return antwort.code(403).send({ fehler: 'E-Mail ist fuer diese Veranstaltung aus.' });
+    }
+    if (!pruefeAdresse(koerper.adresse)) {
+      return antwort.code(400).send({ fehler: 'Diese Adresse sieht nicht richtig aus.' });
+    }
+    // Ein offenes Mailformular im Fremd-WLAN ist ein klassisches Missbrauchsziel.
+    const kennung = anfrage.ip;
+    if (drosselGreift(kennung) || tageslimitErreicht(event.id)) {
+      return antwort.code(429).send({ fehler: 'Gerade zu viele Anfragen. Bitte kurz warten.' });
+    }
+
+    const ausgabe = holeAusgabe(koerper.ausgabeId);
+    if (!ausgabe || ausgabe.eventId !== event.id) {
+      return antwort.code(404).send({ fehler: 'Ausgabe nicht gefunden.' });
+    }
+
+    const zugang = leseMailzugang();
+    if (!zugang || !(await istOnline())) {
+      return antwort.code(503).send({ fehler: 'Die Box ist gerade nicht online.' });
+    }
+
+    try {
+      await versende(event, koerper.adresse, ausgabe.pfadLayout, ausgabe.id, zugang);
+      return { ok: true };
+    } catch (fehler) {
+      protokolliere('warnung', 'email', (fehler as Error).message);
+      return antwort.code(502).send({ fehler: 'Versand hat nicht geklappt.' });
+    }
   });
 
   /** Galerie am Touchscreen: die fertigen Layouts der laufenden Veranstaltung. */

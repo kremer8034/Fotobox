@@ -69,6 +69,10 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [pruefung, setzePruefung] = useState<{ bestanden: boolean; punkte: Pruefpunkt[] } | null>(null);
   const [meldung, setzeMeldung] = useState<string | null>(null);
   const [pin, setzePin] = useState('');
+  const [zielPfad, setzeZielPfad] = useState('');
+  const [telefon, setzeTelefon] = useState('');
+  const [wlanName, setzeWlanName] = useState('');
+  const [wlanPasswort, setzeWlanPasswort] = useState('');
 
   const lade = useCallback(async () => {
     setzeEvent(await api.hole<EventVoll>(`/api/admin/events/${id}`));
@@ -328,6 +332,57 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
       </div>
 
       <div className="karte">
+        <h2>Unterlagen für die Veranstaltung</h2>
+        <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+          Zwei Zettel mit unterschiedlichen Lesern: Die Kurzanleitung mit der Betreuer-PIN kommt in
+          die Box, der QR-Aushang wird außen angeklebt. Auf dem Aushang steht bewusst keine PIN.
+        </p>
+        <div className="zeile">
+          <div className="feld feld--klein">
+            <label>Telefon für den Notfall</label>
+            <input value={telefon} onChange={(ev) => setzeTelefon(ev.target.value)} />
+          </div>
+          <div className="feld feld--klein">
+            <label>WLAN-Name (für den QR-Code)</label>
+            <input value={wlanName} onChange={(ev) => setzeWlanName(ev.target.value)} />
+          </div>
+          <div className="feld feld--klein">
+            <label>WLAN-Passwort</label>
+            <input value={wlanPasswort} onChange={(ev) => setzeWlanPasswort(ev.target.value)} />
+          </div>
+          <button className="knopf knopf--neben" onClick={() => void unterlagen()}>
+            Zettel erzeugen
+          </button>
+        </div>
+      </div>
+
+      <div className="karte">
+        <h2>Übergabe an den Gastgeber</h2>
+        <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+          Kopiert den kompletten Event-Ordner samt Originalen, bearbeiteten Fotos, Layouts,
+          Auslagen-CSV und einer eigenständigen <code>galerie.html</code>, die der Gastgeber per
+          Doppelklick öffnen kann. Erst wenn eine Markerdatei drüben ankommt und die Dateizahl
+          stimmt, gilt die Kopie als vollständig.
+        </p>
+        <div className="zeile">
+          <div className="feld" style={{ flex: 1 }}>
+            <label>Ziel (USB-Stick oder Ordner)</label>
+            <input
+              value={zielPfad}
+              onChange={(ev) => setzeZielPfad(ev.target.value)}
+              placeholder="E:\\ oder D:\\Fotobox-Uebergabe"
+            />
+          </div>
+          <button className="knopf knopf--neben" disabled={zielPfad.length < 2} onClick={() => void uebergeben()}>
+            Jetzt übergeben
+          </button>
+          <button className="knopf knopf--neben" onClick={() => void vorbereiten()}>
+            Nur Ordner vorbereiten
+          </button>
+        </div>
+      </div>
+
+      <div className="karte">
         <h2>Aussehen und PIN</h2>
         <div className="zeile">
           <div className="feld" style={{ flex: 1 }}>
@@ -390,6 +445,38 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     await api.sende(`/api/admin/events/${id}/galerie-token`, {});
     await lade();
     setzeMeldung('Der alte Link ist jetzt tot.');
+  }
+
+  async function unterlagen() {
+    const antwort = await api.sende<{ kurzanleitung: string; aushang: string | null }>(
+      `/api/admin/events/${id}/unterlagen`,
+      { betreuerPin: pin || '(im Admin gesetzt)', telefon, wlanName, wlanPasswort },
+    );
+    setzeMeldung(
+      `Kurzanleitung: ${antwort.kurzanleitung}` +
+        (antwort.aushang ? ` · Aushang: ${antwort.aushang}` : ' · Aushang nur bei aktiver Galerie'),
+    );
+  }
+
+  async function uebergeben() {
+    setzeMeldung('Kopiere…');
+    try {
+      const ergebnis = await api.sende<{ meldung: string; geprueft: boolean; ziel: string }>(
+        `/api/admin/events/${id}/uebergabe`,
+        { ziel: zielPfad },
+      );
+      setzeMeldung(`${ergebnis.meldung} Ziel: ${ergebnis.ziel}`);
+    } catch (u) {
+      setzeMeldung(u instanceof Error ? u.message : 'Übergabe fehlgeschlagen.');
+    }
+  }
+
+  async function vorbereiten() {
+    const antwort = await api.sende<{ ordner: string }>(
+      `/api/admin/events/${id}/uebergabe-vorbereiten`,
+      {},
+    );
+    setzeMeldung(`Ordner ist übergabefertig: ${antwort.ordner}`);
   }
 
   async function setzePinAb() {

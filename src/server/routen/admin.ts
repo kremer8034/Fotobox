@@ -24,6 +24,9 @@ import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
 import { kalibrierTestbild, platzhalterFoto } from '../bild/testbilder.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
+import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
+import { loescheAlteAdressen } from '../fach/email.js';
 import { lanAdresse } from '../netzwerk.js';
 import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
@@ -338,6 +341,88 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const koerper = z.object({ berechnen: z.boolean() }).parse(anfrage.body);
       setzeBerechnen(anfrage.params.id, koerper.berechnen);
       return { ok: true };
+    },
+  );
+
+  // ------------------------------------------------------- Uebergabe
+  /**
+   * Uebergabe an den Gastgeber. Erst nach verifizierter Kopie wird Vollzug
+   * gemeldet - eine Markerdatei muss drueben ankommen und die Dateizahl
+   * stimmen.
+   */
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    '/api/admin/events/:id/uebergabe',
+    async (anfrage, antwort) => {
+      const koerper = z.object({ ziel: z.string().min(2) }).parse(anfrage.body);
+      const event = holeEvent(anfrage.params.id);
+      if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+      try {
+        const ergebnis = await uebergebeAufDatentraeger(event, koerper.ziel);
+        protokolliere(
+          ergebnis.geprueft ? 'info' : 'warnung',
+          'uebergabe',
+          `${event.name}: ${ergebnis.meldung}`,
+        );
+        return ergebnis;
+      } catch (fehler) {
+        return antwort.code(500).send({ fehler: (fehler as Error).message });
+      }
+    },
+  );
+
+  /** Ordner uebergabefertig machen, ohne zu kopieren. */
+  app.post<{ Params: { id: string } }>(
+    '/api/admin/events/:id/uebergabe-vorbereiten',
+    async (anfrage, antwort) => {
+      const event = holeEvent(anfrage.params.id);
+      if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+      await bereiteUebergabeVor(event);
+      return { ok: true, ordner: event.ordner };
+    },
+  );
+
+  // ------------------------------------------------------ Unterlagen
+  /**
+   * Zwei Zettel mit unterschiedlichen Lesern: Die Kurzanleitung mit der PIN
+   * kommt in die Box, der QR-Aushang aussen dran.
+   */
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    '/api/admin/events/:id/unterlagen',
+    async (anfrage, antwort) => {
+      const koerper = z
+        .object({
+          betreuerPin: z.string().default(''),
+          telefon: z.string().default(''),
+          wlanName: z.string().optional(),
+          wlanPasswort: z.string().optional(),
+        })
+        .parse(anfrage.body ?? {});
+      const event = holeEvent(anfrage.params.id);
+      if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+
+      const adresse = lanAdresse();
+      const galerieUrl =
+        event.einstellungen.galerieAktiv && adresse
+          ? `http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}`
+          : undefined;
+
+      const angaben = { ...koerper, galerieUrl };
+      const kurzanleitung = await schreibeKurzanleitung(event, angaben);
+      const aushang = event.einstellungen.galerieAktiv
+        ? await schreibeAushang(event, angaben)
+        : null;
+      return { kurzanleitung, aushang };
+    },
+  );
+
+  /** Erfasste E-Mail-Adressen nach der eingestellten Frist loeschen. */
+  app.post<{ Params: { id: string } }>(
+    '/api/admin/events/:id/adressen-aufraeumen',
+    async (anfrage, antwort) => {
+      const event = holeEvent(anfrage.params.id);
+      if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+      const anzahl = loescheAlteAdressen(event);
+      return { geloescht: anzahl };
     },
   );
 
