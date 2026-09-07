@@ -54,17 +54,32 @@ Umgebungsvariablen:
 | `FOTOBOX_PORT` | Port für Kiosk und Verwaltung auf 127.0.0.1 | `8787` |
 | `FOTOBOX_WEB` | Ordner der gebauten Oberfläche | `dist/web` |
 
-## Einrichtung auf der Fotobox
+## Installation auf der Fotobox
 
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\Einrichtung.ps1
-```
+Rechtsklick auf `windows\Installieren.ps1` → **Mit PowerShell ausführen**
+(beim ersten Mal am besten als Administrator).
 
-Das Skript richtet den Autostart ein (zwei Aufgaben „bei Anmeldung", ohne
-Adminrechte), schaltet Bildschirmabschaltung und Standby ab und prüft die
-Anzeigeskalierung. Einmalig als Administrator ausgeführt, legt es zusätzlich die
+Das Skript erledigt alles in einem Zug: Node.js prüfen und bei Bedarf über
+winget installieren, Abhängigkeiten holen, Oberfläche bauen, Tests laufen
+lassen, Datenordner anlegen, digiCamControl, SumatraPDF und den DNP-Drucker
+suchen, Autostart einrichten, Bildschirmabschaltung und Standby abschalten und
+die Anzeigeskalierung prüfen. Als Administrator legt es zusätzlich die
 Firewall-Freigabe an — eng begrenzt auf den einen Port und das private
 Netzwerkprofil.
+
+Dafür braucht der PC **einmalig Internet**. Danach nie wieder.
+
+Anschließend:
+
+```
+windows\Fotobox starten.bat      Server starten
+windows\Fotobox oeffnen.bat      Verwaltung im Browser öffnen
+windows\Kiosk starten.bat        Browser im Kiosk-Vollbild
+```
+
+**Der vollständige Weg von der leeren Festplatte bis zur einsatzbereiten Box
+steht in [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md)** — mit Kamera- und
+Druckertest einzeln, Kalibrierung und dem Störungstest.
 
 ### Checkliste von Hand
 
