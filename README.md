@@ -41,7 +41,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 25 Tests, alle ohne Hardware
+npm test             # 37 Tests, alle ohne Hardware
 npm run typecheck
 ```
 
@@ -54,17 +54,39 @@ Umgebungsvariablen:
 | `FOTOBOX_PORT` | Port für Kiosk und Verwaltung auf 127.0.0.1 | `8787` |
 | `FOTOBOX_WEB` | Ordner der gebauten Oberfläche | `dist/web` |
 
-## Einrichtung auf der Fotobox
+## Installation auf der Fotobox
 
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\Einrichtung.ps1
-```
+**Ohne IT-Vorkenntnisse:
+[docs/Anleitung-Schritt-fuer-Schritt.md](docs/Anleitung-Schritt-fuer-Schritt.md)**
+— 22 nummerierte Schritte vom Herunterladen bis zum ersten Ausdruck, jeder
+Klick einzeln beschrieben, mit den Windows-Warnmeldungen, die unterwegs
+auftauchen, und was dann zu tun ist. Das ist der empfohlene Weg.
 
-Das Skript richtet den Autostart ein (zwei Aufgaben „bei Anmeldung", ohne
-Adminrechte), schaltet Bildschirmabschaltung und Standby ab und prüft die
-Anzeigeskalierung. Einmalig als Administrator ausgeführt, legt es zusätzlich die
+Die Kurzfassung für alle, die Windows kennen: Doppelklick auf
+`windows\Installieren.bat`. Die Datei holt sich selbst die nötigen Rechte und
+startet `Installieren.ps1` — kein Rechtsklick, keine Ausführungsrichtlinie.
+
+Das Skript erledigt alles in einem Zug: Node.js prüfen und bei Bedarf über
+winget installieren, Abhängigkeiten holen, Oberfläche bauen, Tests laufen
+lassen, Datenordner anlegen, digiCamControl, SumatraPDF und den DNP-Drucker
+suchen, Autostart einrichten, Bildschirmabschaltung und Standby abschalten und
+die Anzeigeskalierung prüfen. Als Administrator legt es zusätzlich die
 Firewall-Freigabe an — eng begrenzt auf den einen Port und das private
 Netzwerkprofil.
+
+Dafür braucht der PC **einmalig Internet**. Danach nie wieder.
+
+Anschließend:
+
+```
+windows\Fotobox starten.bat        Server starten
+windows\Verwaltung oeffnen.bat     Verwaltung im Browser öffnen
+windows\Kiosk starten.bat          Browser im Kiosk-Vollbild
+```
+
+**Der technische Weg von der leeren Festplatte bis zur einsatzbereiten Box
+steht in [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md)** — mit Kamera- und
+Druckertest einzeln, Kalibrierung und dem Störungstest.
 
 ### Checkliste von Hand
 
@@ -75,7 +97,9 @@ Netzwerkprofil.
    spürbar daneben.
 3. **digiCamControl** installieren, dessen Webserver auf Port 5513 einschalten
    und das Programm einmal starten.
-4. **SumatraPDF** ablegen und den Pfad unter *Gerät → Drucker* eintragen.
+4. **SumatraPDF** installieren oder als `SumatraPDF.exe` in den Ordner
+   `windows\` legen — der Server findet es beim Start selbst und trägt den
+   Pfad unter *Gerät → Drucker* ein.
 5. **Besitzer-PIN vergeben.** Ohne sie lässt sich keine Veranstaltung starten;
    eine ausgelieferte Standard-PIN gibt es bewusst nicht.
 6. **Kamera**: Netzteil mit Dummy-Akku verwenden, LED-Dauerlicht aufstellen,

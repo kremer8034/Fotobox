@@ -20,7 +20,19 @@ export function oeffneDb(pfad: string): DB {
   verbindung.pragma('foreign_keys = ON');
   // Beim gebauten Server liegt das Schema neben der JS-Datei, im Entwicklungs-
   // modus neben der TS-Datei - in beiden Faellen also im selben Verzeichnis.
-  const schema = readFileSync(join(hier, 'schema.sql'), 'utf8');
+  // Im Build landet es dort nur durch skripte/anlagen-kopieren.mjs, weil
+  // TypeScript ausschliesslich .ts-Dateien uebersetzt.
+  const schemaPfad = join(hier, 'schema.sql');
+  let schema: string;
+  try {
+    schema = readFileSync(schemaPfad, 'utf8');
+  } catch {
+    verbindung.close();
+    throw new Error(
+      `Das Datenbankschema fehlt (${schemaPfad}). ` +
+        'Bitte "npm run build" ausfuehren - der Build kopiert es in den Ausgabeordner.',
+    );
+  }
   verbindung.exec(schema);
   db = verbindung;
   return verbindung;
