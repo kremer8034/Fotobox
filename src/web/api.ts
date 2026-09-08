@@ -26,6 +26,26 @@ export const api = {
   aendere: <T>(pfad: string, koerper: unknown) =>
     anfrage<T>(pfad, { method: 'PUT', body: JSON.stringify(koerper) }),
   loesche: <T>(pfad: string) => anfrage<T>(pfad, { method: 'DELETE' }),
+  /**
+   * Datei-Upload. Bewusst ohne den JSON-Kopf von "anfrage": Bei FormData muss
+   * der Browser den content-type samt boundary selbst setzen.
+   */
+  sendeDatei: async <T>(pfad: string, datei: File): Promise<T> => {
+    const formular = new FormData();
+    formular.append('datei', datei);
+    const antwort = await fetch(pfad, { method: 'POST', body: formular });
+    if (!antwort.ok) {
+      let text = `HTTP ${antwort.status}`;
+      try {
+        const daten = (await antwort.json()) as { fehler?: string };
+        if (daten.fehler) text = daten.fehler;
+      } catch {
+        // Keine JSON-Antwort.
+      }
+      throw new Error(text);
+    }
+    return (await antwort.json()) as T;
+  },
 };
 
 // --------------------------------------------------------------------- Typen

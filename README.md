@@ -14,7 +14,9 @@ Der reine Fotobox-Betrieb läuft **vollständig ohne Internet**. Online-Funktion
 - **Vorlagen als freier Ebenenstapel** aus Bild-, Foto- und Textebenen. Ein
   Zierrahmen kann über einem Foto und gleichzeitig unter dem Logo liegen.
   Textebenen kennen die Platzhalter `{veranstaltung}`, `{datum}`, `{uhrzeit}`
-  und `{nummer}` — dieselbe Vorlage passt damit auf jede Feier.
+  und `{nummer}` — dieselbe Vorlage passt damit auf jede Feier. Die Schriftart
+  ist je Textebene wählbar; eigene TTF- oder OTF-Dateien lassen sich
+  hinzufügen und gelten dann auch für den Ausdruck.
 - **Filter** als Presets, dazu Import eigener `.cube`-LUTs. Angewendet wird
   ausschließlich auf die Fotos, nie auf Bild- und Textebenen der Vorlage.
 - **Druckweg mit exakter Größe**: Layout als JPEG in 1800 × 1200 px, verpackt
@@ -41,7 +43,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 37 Tests, alle ohne Hardware
+npm test             # 41 Tests, alle ohne Hardware
 npm run typecheck
 ```
 
@@ -123,6 +125,7 @@ Druckertest einzeln, Kalibrierung und dem Störungstest.
 Fotobox-Daten/
   fotobox.db
   vorlagen/                     Vorlagen-Definitionen und ihre Bilddateien
+  schriften/                    eigene Schriftdateien (TTF/OTF)
   luts/                         eigene .cube-Dateien
   events/
     2026-05-16_Hochzeit-Mueller/

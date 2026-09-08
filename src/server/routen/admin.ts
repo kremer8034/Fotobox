@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -24,6 +25,7 @@ import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
 import { kalibrierTestbild, platzhalterFoto } from '../bild/testbilder.js';
 import { leereVorschauLager, vorlagenVorschau } from '../bild/vorschau.js';
+import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
@@ -169,6 +171,75 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     await writeFile(join(wurzel.vorlagen, name), await datei.toBuffer());
     return { datei: name };
   });
+
+  // --------------------------------------------------------------- Schriften
+
+  /**
+   * Die eigenen Schriften. Die feste Auswahlliste steht in den geteilten Typen;
+   * hier kommt nur dazu, was der Nutzer selbst hinzugefuegt hat.
+   */
+  app.get('/api/admin/schriften', async () => listeSchriften(konfig.datenpfad));
+
+  /**
+   * Eine Schriftdatei hinzufuegen.
+   *
+   * Der Dateiname wird nicht uebernommen, sondern neu vergeben: Ein Name aus
+   * der Anfrage darf nie einen Pfad bestimmen. Verworfen wird die Datei, wenn
+   * sich kein Familienname aus ihr lesen laesst - dann ist es keine Schrift,
+   * die der Renderer spaeter finden koennte.
+   */
+  app.post('/api/admin/schriften', async (anfrage, antwort) => {
+    const datei = await anfrage.file?.();
+    if (!datei) return antwort.code(400).send({ fehler: 'Keine Datei empfangen.' });
+    const endung = extname(datei.filename).toLowerCase();
+    if (!['.ttf', '.otf'].includes(endung)) {
+      return antwort.code(400).send({ fehler: 'Nur TTF- oder OTF-Dateien.' });
+    }
+
+    const ordner = schriftenOrdner(konfig.datenpfad);
+    await mkdir(ordner, { recursive: true });
+    const name = `${randomUUID()}${endung}`;
+    const pfad = join(ordner, name);
+    await writeFile(pfad, await datei.toBuffer());
+
+    const familie = familieAus(pfad);
+    if (!familie) {
+      await rm(pfad, { force: true });
+      return antwort.code(400).send({ fehler: 'Aus der Datei liess sich kein Schriftname lesen.' });
+    }
+
+    protokolliere('info', 'schriften', `Schrift "${familie}" hinzugefuegt.`);
+    return { datei: name, familie };
+  });
+
+  /** Die Schriftdatei selbst - der Browser braucht sie fuer die Editor-Vorschau. */
+  app.get<{ Params: { datei: string } }>(
+    '/api/admin/schriften/:datei',
+    async (anfrage, antwort) => {
+      // Nur die Kennungen, die wir selbst vergeben haben. Damit kann aus der
+      // Adresse nie ein Pfad werden.
+      const bekannt = listeSchriften(konfig.datenpfad).find(
+        (s) => s.datei === anfrage.params.datei,
+      );
+      if (!bekannt) return antwort.code(404).send({ fehler: 'Schrift nicht gefunden.' });
+      const pfad = join(schriftenOrdner(konfig.datenpfad), bekannt.datei);
+      return antwort
+        .type(bekannt.datei.endsWith('.otf') ? 'font/otf' : 'font/ttf')
+        .send(createReadStream(pfad));
+    },
+  );
+
+  app.delete<{ Params: { datei: string } }>(
+    '/api/admin/schriften/:datei',
+    async (anfrage, antwort) => {
+      const bekannt = listeSchriften(konfig.datenpfad).find(
+        (s) => s.datei === anfrage.params.datei,
+      );
+      if (!bekannt) return antwort.code(404).send({ fehler: 'Schrift nicht gefunden.' });
+      await rm(join(schriftenOrdner(konfig.datenpfad), bekannt.datei), { force: true });
+      return { ok: true };
+    },
+  );
 
   /**
    * Vorschaubild einer Vorlage fuer die Bibliothek.

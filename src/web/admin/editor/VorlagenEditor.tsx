@@ -3,6 +3,7 @@ import { api } from '../../api.js';
 import { Leinwand } from './Leinwand.js';
 import { richteAus, verteile, type Ausrichtung } from './einrasten.js';
 import type { Ebene, Vorlage } from './typen.js';
+import { SCHRIFTEN } from '../../../shared/typen.js';
 
 /**
  * Vorlagen-Editor.
@@ -110,6 +111,40 @@ export function VorlagenEditor({
   });
 
   const quer = entwurf.canvas.breiteMm >= entwurf.canvas.hoeheMm;
+
+  /*
+   * Eigene Schriften. Die feste Auswahl kommt aus den geteilten Typen; hier
+   * kommt dazu, was der Nutzer selbst hinzugefuegt hat. Damit die Vorschau sie
+   * auch zeigt, werden sie als @font-face in die Seite gehaengt - der Renderer
+   * findet dieselben Dateien ueber fontconfig.
+   */
+  const [eigeneSchriften, setzeEigeneSchriften] = useState<
+    { datei: string; familie: string }[]
+  >([]);
+
+  const ladeSchriften = useCallback(async () => {
+    setzeEigeneSchriften(
+      await api.hole<{ datei: string; familie: string }[]>('/api/admin/schriften').catch(() => []),
+    );
+  }, []);
+
+  useEffect(() => {
+    void ladeSchriften();
+  }, [ladeSchriften]);
+
+  useEffect(() => {
+    if (eigeneSchriften.length === 0) return;
+    const stil = document.createElement('style');
+    stil.textContent = eigeneSchriften
+      .map(
+        (s) =>
+          `@font-face { font-family: ${JSON.stringify(s.familie)};` +
+          ` src: url("/api/admin/schriften/${encodeURIComponent(s.datei)}"); font-display: block; }`,
+      )
+      .join('\n');
+    document.head.appendChild(stil);
+    return () => stil.remove();
+  }, [eigeneSchriften]);
 
   const fotoAnzahl = entwurf.ebenen.filter((e) => e.typ === 'foto').length;
 
@@ -233,6 +268,21 @@ export function VorlagenEditor({
             <EbenenFelder
               ebene={ebene}
               canvas={entwurf.canvas}
+              eigeneSchriften={eigeneSchriften}
+              beiSchriftDatei={async (datei) => {
+                try {
+                  const neu = await api.sendeDatei<{ datei: string; familie: string }>(
+                    '/api/admin/schriften',
+                    datei,
+                  );
+                  await ladeSchriften();
+                  aendere(ebene.id, { schrift: neu.familie, schriftDatei: neu.datei });
+                  schliesseZugAb();
+                  beiMeldung(`Schrift "${neu.familie}" hinzugefügt.`);
+                } catch (fehler) {
+                  beiMeldung(fehler instanceof Error ? fehler.message : 'Schrift ging nicht.');
+                }
+              }}
               beiAendern={(teil) => {
                 aendere(ebene.id, teil);
                 schliesseZugAb();
@@ -289,14 +339,16 @@ export function VorlagenEditor({
   }
 
   async function bildHochladen(datei: File) {
-    const formular = new FormData();
-    formular.append('datei', datei);
-    const antwort = await fetch('/api/admin/vorlagen/bild', { method: 'POST', body: formular });
-    if (!antwort.ok) {
-      beiMeldung('Bild konnte nicht hochgeladen werden.');
+    let name: string;
+    try {
+      ({ datei: name } = await api.sendeDatei<{ datei: string }>(
+        '/api/admin/vorlagen/bild',
+        datei,
+      ));
+    } catch (fehler) {
+      beiMeldung(fehler instanceof Error ? fehler.message : 'Bild konnte nicht hochgeladen werden.');
       return;
     }
-    const { datei: name } = (await antwort.json()) as { datei: string };
     merkeVorZug();
     // Neue Bilder kommen ganz nach unten in den Stapel - das ist fast immer
     // ein Hintergrund. Nach oben schieben geht mit einem Klick.
@@ -583,10 +635,14 @@ function Ebenenliste({
 function EbenenFelder({
   ebene,
   canvas,
+  eigeneSchriften,
+  beiSchriftDatei,
   beiAendern,
 }: {
   ebene: Ebene;
   canvas: { breiteMm: number; hoeheMm: number };
+  eigeneSchriften: { datei: string; familie: string }[];
+  beiSchriftDatei: (datei: File) => void;
   beiAendern: (teil: Partial<Ebene>) => void;
 }) {
   const feldMm = (
@@ -661,6 +717,66 @@ function EbenenFelder({
               <option value="rechts">rechts</option>
             </select>
           </div>
+        </div>
+      )}
+
+      {ebene.typ === 'text' && (
+        <div className="zeile">
+          <div className="feld" style={{ flex: 1, maxWidth: '18rem' }}>
+            <label htmlFor="schriftwahl">Schriftart</label>
+            {/*
+              Jeder Eintrag wird in seiner eigenen Schrift angezeigt - eine
+              Liste aus Namen in Einheitsschrift zwingt sonst zum Durchprobieren.
+            */}
+            <select
+              id="schriftwahl"
+              value={ebene.schrift ?? ''}
+              style={{ fontFamily: ebene.schrift || undefined, fontSize: '1rem' }}
+              onChange={(e) => {
+                const familie = e.target.value;
+                const eigene = eigeneSchriften.find((s) => s.familie === familie);
+                beiAendern({
+                  schrift: familie || undefined,
+                  // Nur eigene Schriften haengen an einer Datei; der
+                  // Startbereit-Check prueft damit, ob sie noch da ist.
+                  schriftDatei: eigene ? eigene.datei : undefined,
+                });
+              }}
+            >
+              <option value="">Vorgabe</option>
+              {SCHRIFTEN.map((s) => (
+                <option key={s.name} value={s.familie} style={{ fontFamily: s.familie }}>
+                  {s.name}
+                </option>
+              ))}
+              {eigeneSchriften.length > 0 && (
+                <optgroup label="Eigene Schriften">
+                  {eigeneSchriften.map((s) => (
+                    <option key={s.datei} value={s.familie} style={{ fontFamily: s.familie }}>
+                      {s.familie}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </div>
+          <label className="knopf knopf--neben" style={{ cursor: 'pointer' }}>
+            Schriftdatei hinzufügen
+            <input
+              type="file"
+              accept=".ttf,.otf,font/ttf,font/otf"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const datei = e.target.files?.[0];
+                if (datei) void beiSchriftDatei(datei);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <span style={{ fontSize: '0.74rem', color: 'var(--schrift-leise)', maxWidth: '20rem' }}>
+            TTF oder OTF. Die Schrift landet in <code>Fotobox-Daten/schriften</code> und steht
+            danach in allen Vorlagen zur Verfügung — auch im Ausdruck.
+          </span>
         </div>
       )}
 

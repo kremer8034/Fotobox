@@ -17,6 +17,8 @@ export interface Ebene {
   groesse?: number;
   farbe?: string;
   ausrichtung?: string;
+  schrift?: string;
+  schriftDatei?: string;
 }
 
 export interface Vorlage {

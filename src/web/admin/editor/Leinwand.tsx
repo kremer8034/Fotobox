@@ -286,6 +286,9 @@ function Inhalt({ ebene, hoehePx }: { ebene: Ebene; hoehePx: number }) {
           alignItems: 'center',
           justifyContent: ausrichtung,
           color: ebene.farbe ?? '#333',
+          // Dieselbe Familienangabe, die spaeter ins Druck-SVG geht - damit die
+          // Vorschau zeigt, was gedruckt wird.
+          fontFamily: ebene.schrift || undefined,
           fontSize: (ebene.groesse ?? 0.06) * hoehePx,
           lineHeight: 1.15,
           whiteSpace: 'pre',

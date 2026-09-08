@@ -84,10 +84,62 @@ export interface TextEbene extends EbeneBasis {
   groesse: number;
   farbe: string;
   ausrichtung?: TextAusrichtung;
+  /**
+   * Schriftfamilie, wie sie an den Renderer und den Browser geht. Leer heisst
+   * die Vorgabe. Bei einer selbst hinzugefuegten Schrift steht hier der Name
+   * aus der Datei, nicht der Dateiname.
+   */
+  schrift?: string;
+  /**
+   * Nur bei selbst hinzugefuegten Schriften: die Datei in Fotobox-Daten/schriften.
+   * Der Startbereit-Check prueft damit, ob sie noch da ist - eine Vorlage mit
+   * verschwundener Schrift faellt sonst erst beim Druck auf.
+   */
   schriftDatei?: string;
 }
 
 export type Ebene = BildEbene | FotoEbene | TextEbene;
+
+/**
+ * Auswahlschriften fuer Textebenen.
+ *
+ * Alles Schriften, die Windows seit Jahren mitbringt - der Editor und der
+ * Renderer laufen auf demselben Rechner, also sieht der Ausdruck aus wie die
+ * Vorschau. Die Ersatzangaben dahinter sind fuer die Entwicklung unter Linux,
+ * wo die Windows-Schriften fehlen.
+ *
+ * Reicht die Liste nicht, laesst sich unter Vorlagen eine eigene Schriftdatei
+ * hinzufuegen; sie erscheint dann zusaetzlich in dieser Auswahl.
+ */
+export interface Schriftwahl {
+  /** Was in der Auswahl steht. */
+  name: string;
+  /** Was an SVG und CSS geht, mit Ersatzangaben. */
+  familie: string;
+}
+
+export const SCHRIFT_VORGABE = 'Segoe UI, DejaVu Sans, sans-serif';
+
+export const SCHRIFTEN: Schriftwahl[] = [
+  { name: 'Segoe UI (Vorgabe)', familie: SCHRIFT_VORGABE },
+  { name: 'Arial', familie: 'Arial, Liberation Sans, DejaVu Sans, sans-serif' },
+  { name: 'Verdana', familie: 'Verdana, DejaVu Sans, sans-serif' },
+  { name: 'Tahoma', familie: 'Tahoma, DejaVu Sans, sans-serif' },
+  { name: 'Trebuchet MS', familie: 'Trebuchet MS, DejaVu Sans, sans-serif' },
+  { name: 'Century Gothic', familie: 'Century Gothic, URW Gothic, DejaVu Sans, sans-serif' },
+  { name: 'Franklin Gothic', familie: 'Franklin Gothic Medium, DejaVu Sans, sans-serif' },
+  { name: 'Georgia', familie: 'Georgia, DejaVu Serif, serif' },
+  { name: 'Times New Roman', familie: 'Times New Roman, Liberation Serif, DejaVu Serif, serif' },
+  { name: 'Garamond', familie: 'Garamond, EB Garamond, DejaVu Serif, serif' },
+  { name: 'Palatino', familie: 'Palatino Linotype, Book Antiqua, DejaVu Serif, serif' },
+  { name: 'Courier New', familie: 'Courier New, Liberation Mono, DejaVu Sans Mono, monospace' },
+  { name: 'Impact', familie: 'Impact, DejaVu Sans, sans-serif' },
+  { name: 'Comic Sans MS', familie: 'Comic Sans MS, DejaVu Sans, sans-serif' },
+  { name: 'Brush Script', familie: 'Brush Script MT, DejaVu Serif, cursive' },
+  { name: 'Segoe Script', familie: 'Segoe Script, DejaVu Serif, cursive' },
+  { name: 'Segoe Print', familie: 'Segoe Print, DejaVu Sans, cursive' },
+  { name: 'Lucida Handwriting', familie: 'Lucida Handwriting, DejaVu Serif, cursive' },
+];
 
 export interface Vorlage {
   id: string;

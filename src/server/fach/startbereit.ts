@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { leseGeraet } from '../db/geraet.js';
 import { holeVorlage } from './vorlagen.js';
 import { wurzelpfade } from './pfade.js';
+import { schriftenOrdner } from './schriften.js';
 import { lanAdresse } from '../netzwerk.js';
 import type { Veranstaltung } from '../../shared/typen.js';
 import type { Betrieb } from '../betrieb.js';
@@ -94,9 +95,12 @@ export async function startbereitPruefung(
       if (ebene.typ === 'bild' && !existsSync(join(wurzel.vorlagen, ebene.datei))) {
         fehlendeDateien.push(`${vorlage.name}: ${ebene.datei}`);
       }
+      // Eigene Schriften liegen in Fotobox-Daten/schriften, nicht bei den
+      // Vorlagen-Bildern. Eine geloeschte Schrift faellt sonst erst beim
+      // Ausdruck auf - dann steht der Text in irgendeiner Ersatzschrift.
       if (ebene.typ === 'text' && ebene.schriftDatei) {
-        if (!existsSync(join(wurzel.vorlagen, ebene.schriftDatei))) {
-          fehlendeDateien.push(`${vorlage.name}: ${ebene.schriftDatei}`);
+        if (!existsSync(join(schriftenOrdner(konfig.datenpfad), ebene.schriftDatei))) {
+          fehlendeDateien.push(`${vorlage.name}: Schrift ${ebene.schrift ?? ebene.schriftDatei}`);
         }
       }
     }

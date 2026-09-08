@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import { join } from 'node:path';
 import {
   DRUCK_DPI,
+  SCHRIFT_VORGABE,
   type BildEbene,
   type Ebene,
   type FotoEbene,
@@ -165,8 +166,13 @@ async function rendereText(
     )
     .join('');
 
+  // Die Schrift der Ebene, sonst die Vorgabe. Eine selbst hinzugefuegte Schrift
+  // steht hier mit ihrem Familiennamen; gefunden wird sie ueber fontconfig,
+  // dem der Schriftenordner beim Start bekannt gemacht wurde.
+  const schrift = ebene.schrift?.trim() || SCHRIFT_VORGABE;
+
   const svg = `<svg width="${breite}" height="${hoehe}" xmlns="http://www.w3.org/2000/svg">
-    <text font-family="Segoe UI, DejaVu Sans, sans-serif" font-size="${schriftPx}"
+    <text font-family="${maskiereXml(schrift)}" font-size="${schriftPx}"
           fill="${maskiereXml(ebene.farbe)}" text-anchor="${anker}">${tspans}</text>
   </svg>`;
 

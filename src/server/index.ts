@@ -1,3 +1,6 @@
+// Ganz oben mit Absicht: Der Schriftenordner muss fontconfig bekannt sein,
+// bevor sharp geladen wird. Siehe schriften-start.ts.
+import './schriften-start.js';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
