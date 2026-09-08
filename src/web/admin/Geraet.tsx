@@ -19,6 +19,12 @@ interface Geraet {
   };
 }
 
+const KAMERA_BESCHRIFTUNG = {
+  iso: 'ISO',
+  blende: 'Blende',
+  verschlusszeit: 'Verschlusszeit',
+} as const;
+
 /**
  * Geraeteeinstellungen.
  *
@@ -154,7 +160,9 @@ export function GeraetSeite() {
         <div className="zeile">
           {(['iso', 'blende', 'verschlusszeit'] as const).map((feld) => (
             <div className="feld feld--klein" key={feld}>
-              <label>{feld}</label>
+              {/* Die Schluesselnamen standen vorher unveraendert als Beschriftung
+                  auf dem Schirm - "iso" und "verschlusszeit" klein geschrieben. */}
+              <label>{KAMERA_BESCHRIFTUNG[feld]}</label>
               <input
                 value={geraet.kamera[feld]}
                 onChange={(e) => setzeGeraet({ ...geraet, kamera: { ...geraet.kamera, [feld]: e.target.value } })}

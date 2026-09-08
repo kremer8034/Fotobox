@@ -23,7 +23,7 @@ import { hashePin } from '../fach/pin.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
 import { kalibrierTestbild, platzhalterFoto } from '../bild/testbilder.js';
-import { leereVorschauLager } from '../bild/vorschau.js';
+import { leereVorschauLager, vorlagenVorschau } from '../bild/vorschau.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
@@ -169,6 +169,23 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     await writeFile(join(wurzel.vorlagen, name), await datei.toBuffer());
     return { datei: name };
   });
+
+  /**
+   * Vorschaubild einer Vorlage fuer die Bibliothek.
+   *
+   * Anders als die Kiosk-Route haengt diese nicht an einer laufenden
+   * Veranstaltung: Vorlagen werden am Schreibtisch gebaut, lange bevor ein
+   * Event sie freigibt.
+   */
+  app.get<{ Params: { id: string } }>(
+    '/api/admin/vorlagen/:id/vorschau.jpg',
+    async (anfrage, antwort) => {
+      const vorlage = holeVorlage(anfrage.params.id);
+      if (!vorlage) return antwort.code(404).send({ fehler: 'Vorlage nicht gefunden.' });
+      const bild = await vorlagenVorschau(vorlage, wurzel.vorlagen);
+      return antwort.type('image/jpeg').header('Cache-Control', 'no-cache').send(bild);
+    },
+  );
 
   /** Layout-Testdruck mit Platzhaltern statt echter Fotos. */
   app.post<{ Params: { id: string } }>(

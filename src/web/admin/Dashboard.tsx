@@ -29,12 +29,37 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
 
       <div className="karte">
         <h2>Zustand</h2>
+        {/*
+          Der Zustand als Farbe, nicht nur als Wort. Eine Uebersicht, deren
+          Zahlen man erst lesen muss, um zu merken, dass der Drucker steht,
+          ist keine Uebersicht.
+        */}
         <div className="zeile">
-          <Kennzahl name="Kamera" wert={status.kamera === 'bereit' ? 'bereit' : 'gestört'} />
-          <Kennzahl name="Drucker" wert={status.drucker === 'bereit' ? 'bereit' : 'gestört'} />
-          <Kennzahl name="Wartend im Druck" wert={String(status.warteschlangeOffen)} />
-          <Kennzahl name="Material (Blatt)" wert={String(status.materialRest)} />
-          <Kennzahl name="Speicher frei" wert={`${status.speicherFreiGb} GB`} />
+          <Kennzahl
+            name="Kamera"
+            wert={status.kamera === 'bereit' ? 'bereit' : 'gestört'}
+            ton={status.kamera === 'bereit' ? 'gut' : 'fehler'}
+          />
+          <Kennzahl
+            name="Drucker"
+            wert={status.drucker === 'bereit' ? 'bereit' : 'gestört'}
+            ton={status.drucker === 'bereit' ? 'gut' : 'fehler'}
+          />
+          <Kennzahl
+            name="Wartend im Druck"
+            wert={String(status.warteschlangeOffen)}
+            ton={status.warteschlangeOffen > 5 ? 'warnung' : undefined}
+          />
+          <Kennzahl
+            name="Material (Blatt)"
+            wert={String(status.materialRest)}
+            ton={status.materialRest < 50 ? 'warnung' : 'gut'}
+          />
+          <Kennzahl
+            name="Speicher frei"
+            wert={`${status.speicherFreiGb} GB`}
+            ton={status.speicherFreiGb < 10 ? 'warnung' : 'gut'}
+          />
         </div>
         {status.stoerung && (
           <p style={{ color: 'var(--warnung)', marginBottom: 0 }}>
@@ -72,9 +97,17 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
   );
 }
 
-function Kennzahl({ name, wert }: { name: string; wert: string }) {
+function Kennzahl({
+  name,
+  wert,
+  ton,
+}: {
+  name: string;
+  wert: string;
+  ton?: 'gut' | 'warnung' | 'fehler';
+}) {
   return (
-    <div className="kennzahl">
+    <div className={`kennzahl${ton ? ` kennzahl--${ton}` : ''}`}>
       <span className="kennzahl__wert">{wert}</span>
       <span className="kennzahl__name">{name}</span>
     </div>

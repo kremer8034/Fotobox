@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { STATUS_NAME, type EventStatus } from '../../shared/typen.js';
 
 interface EventZeile {
   id: string;
   name: string;
   datum: string;
-  status: string;
+  status: EventStatus;
   probelauf: boolean;
   auslagen: { druckeGesamt: number; betrag: number; materialRest: number };
 }
@@ -54,27 +55,27 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
               <th>Datum</th>
               <th>Name</th>
               <th>Status</th>
-              <th>Drucke</th>
-              <th>Betrag</th>
-              <th>Material</th>
+              <th className="zahl">Drucke</th>
+              <th className="zahl">Betrag</th>
+              <th className="zahl">Material</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {events.map((e) => (
               <tr key={e.id}>
-                <td>{e.datum}</td>
+                <td>{datumDeutsch(e.datum)}</td>
                 <td>
                   {e.name}
                   {e.probelauf && <span className="marke" style={{ marginLeft: '0.4rem' }}>Probelauf</span>}
                 </td>
                 <td>
-                  <span className={`marke marke--${e.status}`}>{e.status}</span>
+                  <span className={`marke marke--${e.status}`}>{STATUS_NAME[e.status]}</span>
                 </td>
-                <td>{e.auslagen.druckeGesamt}</td>
-                <td>{e.auslagen.betrag.toFixed(2).replace('.', ',')} €</td>
-                <td>{e.auslagen.materialRest}</td>
-                <td>
+                <td className="zahl">{e.auslagen.druckeGesamt}</td>
+                <td className="zahl">{e.auslagen.betrag.toFixed(2).replace('.', ',')} €</td>
+                <td className="zahl">{e.auslagen.materialRest}</td>
+                <td style={{ textAlign: 'right' }}>
                   <button className="knopf knopf--neben" onClick={() => navigiere(`/admin/events/${e.id}`)}>
                     Öffnen
                   </button>
@@ -108,4 +109,10 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
       setzeFehler(u instanceof Error ? u.message : 'Hat nicht geklappt.');
     }
   }
+}
+
+/** 2026-10-03 ist ein Datenbankwert. Auf dem Schirm steht 03.10.2026. */
+function datumDeutsch(iso: string): string {
+  const teile = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return teile ? `${teile[3]}.${teile[2]}.${teile[1]}` : iso;
 }

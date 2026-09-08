@@ -713,9 +713,18 @@ table.liste td {
   background: var(--flaeche-hell);
 }
 
+/*
+ * Jeder Zustand bekommt seine Farbe. Vorher hatten nur drei von sechs eine -
+ * "entwurf" und "startbereit" sahen in der Liste gleich aus wie
+ * "abgeschlossen", obwohl das der Unterschied zwischen "noch nichts fertig"
+ * und "der Abend ist gelaufen" ist.
+ */
+.marke--entwurf { background: transparent; border: 1px solid var(--kante); color: var(--schrift-leise); }
+.marke--startbereit { background: rgba(95, 164, 99, 0.18); color: #9fd3a2; border: 1px solid rgba(95, 164, 99, 0.5); }
 .marke--aktiv { background: var(--gut); color: #08210a; }
 .marke--pausiert { background: var(--warnung); color: #2a1405; }
-.marke--abgeschlossen { background: var(--flaeche-hell); }
+.marke--abgeschlossen { background: var(--flaeche-hell); color: var(--schrift); }
+.marke--archiviert { background: transparent; border: 1px dashed var(--kante); color: var(--schrift-leise); }
 
 .pruef {
   display: flex;
@@ -742,6 +751,289 @@ table.liste td {
 
 .kennzahl__wert { font-size: 1.5rem; font-weight: 700; }
 .kennzahl__name { font-size: 0.72rem; color: var(--schrift-leise); }
+
+/* -------------------------------------------------------- Admin: Reiter */
+
+/*
+ * Das Event-Detail war ein Stapel aus neun Karten und 2645 px Hoehe - man
+ * scrollte an allem vorbei, um an eine Zahl zu kommen. Reiter trennen das in
+ * die Bereiche, die der Plan vorsieht.
+ */
+.reiter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  border-bottom: 1px solid var(--kante);
+  margin-bottom: 1rem;
+}
+
+.reiter button {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--schrift-leise);
+  border-bottom: 2px solid transparent;
+  border-radius: 0.35rem 0.35rem 0 0;
+  white-space: nowrap;
+}
+
+.reiter button:hover {
+  color: var(--schrift);
+  background: var(--flaeche);
+}
+
+.reiter button.aktiv {
+  color: var(--schrift);
+  border-bottom-color: var(--akzent);
+}
+
+/* Ein Reiter, der noch Arbeit enthaelt, sagt das - sonst muesste man ihn
+   aufmachen, um es zu merken. */
+.reiter__hinweis {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--warnung);
+  margin-left: 0.35rem;
+  vertical-align: 0.1rem;
+}
+
+/*
+ * Die acht Zeitfelder standen in einer flex-Zeile aus 9-rem-Kaestchen: Die
+ * langen Beschriftungen brachen auf drei Zeilen um und die Felder sassen auf
+ * unterschiedlicher Hoehe. Ein Raster mit fester Spaltenbreite gibt jedem
+ * Feld denselben Platz.
+ */
+.zeitraster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.4rem 1rem;
+}
+
+.zeitraster .feld {
+  margin-bottom: 0.4rem;
+}
+
+.zeitraster label {
+  min-height: 2.2em;
+}
+
+/* ------------------------------------------------- Admin: Bedienelemente */
+
+/*
+ * Native Kontrollkaestchen sind bei 20 px Grundgroesse rund 13 px gross. Der
+ * Admin wird zwar mit der Maus bedient, aber im Notfall auch mal vor Ort mit
+ * dem Finger - und ein 13-px-Ziel trifft niemand.
+ */
+html.admin input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--akzent);
+  margin: 0;
+  flex: none;
+}
+
+html.admin input[type='color'] {
+  width: 3rem;
+  height: 2.2rem;
+  padding: 0.15rem;
+  background: var(--grund);
+  border: 1px solid var(--kante);
+  border-radius: 0.35rem;
+}
+
+.feld input,
+.feld select,
+.feld textarea {
+  border-color: var(--kante);
+}
+
+.feld input:focus,
+.feld select:focus,
+.feld textarea:focus {
+  outline: none;
+  border-color: var(--akzent);
+}
+
+/* Zahlen gehoeren rechtsbuendig und gleich breit, damit man Spalten
+   uebereinander vergleichen kann statt sie zu lesen. */
+.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kennzahl__wert {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Der Zustand einer Kennzahl - gut, Warnung, Fehler - als Farbe statt als
+   blosses Wort. Eine Uebersicht, die man lesen muss, ist keine. */
+.kennzahl--gut { border-left: 3px solid var(--gut); }
+.kennzahl--warnung { border-left: 3px solid var(--warnung); }
+.kennzahl--fehler { border-left: 3px solid var(--fehler); }
+
+.kennzahl--gut .kennzahl__wert { color: #9fd3a2; }
+.kennzahl--warnung .kennzahl__wert { color: #e8a878; }
+.kennzahl--fehler .kennzahl__wert { color: #e88a8a; }
+
+/*
+ * Die Bestaetigung "Gespeichert." stand ganz oben auf der Seite. Wer unten die
+ * PIN eintippt, sieht sie nie. Jetzt liegt sie fest in der Ecke.
+ */
+.hinweis-fest {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  z-index: 60;
+  background: var(--flaeche-hell);
+  border: 1px solid var(--kante);
+  border-left: 3px solid var(--akzent);
+  border-radius: 0.4rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  max-width: 26rem;
+  box-shadow: 0 0.4rem 1.4rem rgba(0, 0, 0, 0.5);
+}
+
+/* -------------------------------------------------- Admin: Vorlagenliste */
+
+.vorlagen-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+
+.vorlagen-kachel {
+  background: var(--flaeche-hell);
+  border: 1px solid var(--kante);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Die Bibliothek war eine Tabelle aus Namen und Zahlen. Eine Vorlage ist aber
+   etwas, das man ansieht - das Vorschaubild sagt mehr als "4 Ebenen". */
+.vorlagen-kachel__bild {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
+  background: var(--grund);
+  display: block;
+}
+
+.vorlagen-kachel__leiste {
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: space-between;
+}
+
+/* Drei Knoepfe in einer Zeile statt umgebrochen: In der Kachel zaehlt jede
+   Zeile, und "Loeschen" allein in der zweiten sah aus wie ein eigener Bereich. */
+.vorlagen-kachel .knopf {
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.vorlagen-kachel__name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.vorlagen-kachel__info {
+  font-size: 0.74rem;
+  color: var(--schrift-leise);
+}
+
+/* ------------------------------------------------ Admin: Vorlagen-Editor */
+
+/*
+ * Der Editor war als Zweispalter gedacht, kippte aber immer in eine Spalte:
+ * Die Leinwandkarte stand auf "inline-block" und wuchs damit auf die
+ * Maximalbreite ihres Hilfetextes - rund 1200 px, womit fuer die rechte Spalte
+ * nichts mehr uebrig war. Ein Raster mit fester Spaltenbreite kann das nicht
+ * passieren.
+ */
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Die Werkzeuge des Gestaltens bleiben stehen, waehrend die Eigenschaften
+   darunter scrollen - sonst verliert man beim Blaettern die Leinwand aus dem
+   Blick, an der man gerade arbeitet. */
+.editor__leinwand {
+  position: sticky;
+  top: 0;
+}
+
+.editor__spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.editor__spalte .karte {
+  margin-bottom: 0;
+}
+
+/*
+ * Die Ebenenzeile hatte fuenf normale Knoepfe nebeneinander - zusammen breiter
+ * als die Spalte, sodass der Loeschknopf rechts abgeschnitten wurde. Quadratische
+ * Symbolknoepfe passen; die Trefferflaeche bleibt mit 1,9 rem fuer die Maus
+ * reichlich.
+ */
+.ebenen-knopf {
+  width: 1.9rem;
+  height: 1.9rem;
+  min-height: 0;
+  padding: 0;
+  font-size: 0.82rem;
+  border-radius: 0.3rem;
+  background: transparent;
+  border: 1px solid var(--kante);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.2rem;
+}
+
+.ebenen-knopf:hover {
+  background: var(--flaeche-hell);
+}
+
+/* Ein langer Text als Ebenenname darf die Knoepfe nicht aus der Zeile
+   schieben - er wird abgekuerzt statt die Spalte zu sprengen. */
+.ebenen-name {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor__hilfe {
+  font-size: 0.72rem;
+  color: var(--schrift-leise);
+  margin: 0.6rem 0 0;
+  /* Der Hilfetext darf die Spalte nicht auseinanderdruecken. */
+  max-width: 100%;
+}
+
+@media (max-width: 1150px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor__leinwand {
+    position: static;
+  }
+}
 
 /* ------------------------------------------------------- Handy-Galerie */
 

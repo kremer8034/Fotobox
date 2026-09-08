@@ -6,6 +6,7 @@ import { legeEventordnerAn, eventpfade, ordnernameFuer } from './pfade.js';
 import { neuesToken } from './pin.js';
 import {
   EINSTELLUNGEN_VORGABE,
+  UEBERGAENGE,
   type EventEinstellungen,
   type EventStatus,
   type Veranstaltung,
@@ -152,16 +153,6 @@ export function aktualisiereEvent(
   schreibeEventJson(nachher);
   return nachher;
 }
-
-/** Erlaubte Statuswechsel. Alles andere wird abgewiesen. */
-const UEBERGAENGE: Record<EventStatus, EventStatus[]> = {
-  entwurf: ['startbereit', 'archiviert'],
-  startbereit: ['aktiv', 'entwurf', 'archiviert'],
-  aktiv: ['pausiert', 'abgeschlossen'],
-  pausiert: ['aktiv', 'abgeschlossen'],
-  abgeschlossen: ['archiviert', 'aktiv'],
-  archiviert: ['entwurf'],
-};
 
 export function setzeStatus(id: string, neu: EventStatus): Veranstaltung {
   const event = holeEvent(id);

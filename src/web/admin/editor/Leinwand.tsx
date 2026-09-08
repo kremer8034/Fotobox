@@ -57,10 +57,42 @@ export function Leinwand({
     frei: boolean;
   } | null>(null);
 
-  // Anzeigegroesse: breite Seite auf 620 px, damit auch Hochformat passt.
-  const langeKante = 620;
-  const breite = breiteMm >= hoeheMm ? langeKante : (langeKante * breiteMm) / hoeheMm;
-  const hoehe = (breite * hoeheMm) / breiteMm;
+  /*
+   * Anzeigegroesse. Vorher stand die lange Kante fest auf 620 px - auf einem
+   * Bildschirm mit Platz blieb daneben und darunter eine leere Flaeche, obwohl
+   * man beim Gestalten jeden Pixel gebrauchen kann. Jetzt fuellt die Leinwand,
+   * was die Spalte hergibt, ohne dabei aus dem Fenster zu laufen.
+   */
+  const huelle = useRef<HTMLDivElement>(null);
+  const [platz, setzePlatz] = useState({ breite: 620, hoehe: 900 });
+
+  useEffect(() => {
+    const messe = () => {
+      const kasten = huelle.current?.getBoundingClientRect();
+      if (!kasten) return;
+      setzePlatz({
+        breite: Math.max(280, kasten.width),
+        // Was unter der Leinwand noch fuer Werkzeugleiste und Hilfetext bleibt.
+        hoehe: Math.max(220, window.innerHeight - kasten.top - 120),
+      });
+    };
+    messe();
+    const beobachter = new ResizeObserver(messe);
+    if (huelle.current) beobachter.observe(huelle.current);
+    window.addEventListener('resize', messe);
+    return () => {
+      beobachter.disconnect();
+      window.removeEventListener('resize', messe);
+    };
+  }, []);
+
+  const verhaeltnis = breiteMm / hoeheMm;
+  let breite = platz.breite;
+  let hoehe = breite / verhaeltnis;
+  if (hoehe > platz.hoehe) {
+    hoehe = platz.hoehe;
+    breite = hoehe * verhaeltnis;
+  }
 
   useEffect(() => {
     const beiBewegung = (e: PointerEvent) => {
@@ -110,6 +142,7 @@ export function Leinwand({
   }, [ebenen, gewaehlt, beiAenderung, beiAbschluss]);
 
   return (
+    <div ref={huelle} style={{ width: '100%' }}>
     <div
       ref={flaeche}
       onPointerDown={(e) => {
@@ -223,6 +256,7 @@ export function Leinwand({
           }}
         />
       ))}
+    </div>
     </div>
   );
 }

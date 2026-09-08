@@ -111,6 +111,8 @@ export function VorlagenEditor({
 
   const quer = entwurf.canvas.breiteMm >= entwurf.canvas.hoeheMm;
 
+  const fotoAnzahl = entwurf.ebenen.filter((e) => e.typ === 'foto').length;
+
   return (
     <>
       <div className="zeile" style={{ justifyContent: 'space-between' }}>
@@ -119,7 +121,7 @@ export function VorlagenEditor({
           {!gespeichert && <span className="marke">ungespeichert</span>}
         </h1>
         <div className="zeile">
-          <button className="knopf knopf--neben" onClick={() => void speichern()}>
+          <button className="knopf knopf--haupt" onClick={() => void speichern()}>
             Speichern
           </button>
           <button className="knopf knopf--neben" onClick={() => void testdruck()} disabled={!entwurf.id}>
@@ -130,14 +132,22 @@ export function VorlagenEditor({
           </button>
         </div>
       </div>
-      {meldung && <p style={{ color: 'var(--akzent)' }}>{meldung}</p>}
+      {meldung && <div className="hinweis-fest">{meldung}</div>}
 
-      <div className="zeile" style={{ alignItems: 'flex-start', gap: '1.2rem' }}>
-        <div>
-          <div className="karte" style={{ display: 'inline-block' }}>
+      {/*
+        Zweispalter: Leinwand links, Ebenen und Eigenschaften rechts.
+        Vorher stand die Leinwandkarte auf "inline-block" und wuchs damit auf
+        die Maximalbreite ihres Hilfetextes - rund 1200 px. Fuer die rechte
+        Spalte blieb nichts uebrig, sie rutschte unter die Leinwand, und man
+        scrollte zwischen Bild und Eigenschaften hin und her. Ein Raster mit
+        fester Spaltenbreite kann das nicht passieren.
+      */}
+      <div className="editor">
+        <div className="editor__leinwand">
+          <div className="karte">
             <Werkzeugleiste
               aktiv={ebene !== null}
-              mehrereFotos={entwurf.ebenen.filter((e) => e.typ === 'foto').length >= 3}
+              mehrereFotos={fotoAnzahl >= 3}
               beiAusrichten={ausrichten}
               beiVerteilen={verteilen}
               beiDuplizieren={dupliziere}
@@ -155,10 +165,11 @@ export function VorlagenEditor({
               beiAenderung={aendere}
               beiAbschluss={schliesseZugAb}
             />
-            <p style={{ fontSize: '0.72rem', color: 'var(--schrift-leise)', margin: '0.6rem 0 0' }}>
+            <p className="editor__hilfe">
               {entwurf.canvas.breiteMm} × {entwurf.canvas.hoeheMm} mm ·{' '}
-              {entwurf.ebenen.filter((e) => e.typ === 'foto').length} Foto-Ebenen bestimmen, wie viele
-              Fotos aufgenommen werden.
+              {fotoAnzahl === 1
+                ? 'Eine Foto-Ebene, also ein Foto.'
+                : `${fotoAnzahl} Foto-Ebenen bestimmen, dass ${fotoAnzahl} Fotos aufgenommen werden.`}
               <br />
               Ziehen zum Verschieben, Griffe für die Größe, Pfeiltasten fein (mit Umschalt gröber).
               Alt hält das Einrasten an. Strg+D dupliziert, Entf löscht, Strg+Z macht rückgängig.
@@ -166,7 +177,7 @@ export function VorlagenEditor({
           </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: '20rem' }}>
+        <div className="editor__spalte">
           <div className="karte">
             <h2>Grunddaten</h2>
             <div className="zeile">
@@ -493,15 +504,17 @@ function Ebenenliste({
                 {ebene.typ === 'foto' ? '📷' : ebene.typ === 'text' ? 'T' : '🖼'}
               </td>
               <td>
-                {ebene.typ === 'foto'
-                  ? `Foto ${ebene.index}`
-                  : ebene.typ === 'text'
-                    ? (ebene.text ?? '')
-                    : (ebene.datei ?? '')}
+                <div className="ebenen-name">
+                  {ebene.typ === 'foto'
+                    ? `Foto ${ebene.index}`
+                    : ebene.typ === 'text'
+                      ? (ebene.text ?? '')
+                      : (ebene.datei ?? '')}
+                </div>
               </td>
               <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title="nach vorne"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -511,7 +524,7 @@ function Ebenenliste({
                   ↑
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title="nach hinten"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -521,7 +534,7 @@ function Ebenenliste({
                   ↓
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title={ebene.sichtbar === false ? 'einblenden' : 'ausblenden'}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -531,7 +544,7 @@ function Ebenenliste({
                   {ebene.sichtbar === false ? '🚫' : '👁'}
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title={ebene.gesperrt ? 'entsperren' : 'sperren'}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -541,7 +554,7 @@ function Ebenenliste({
                   {ebene.gesperrt ? '🔒' : '🔓'}
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title="löschen"
                   onClick={(e) => {
                     e.stopPropagation();

@@ -47,45 +47,57 @@ export function VorlagenSeite() {
           </button>
         </div>
 
-        <table className="liste" style={{ marginTop: '0.8rem' }}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Format</th>
-              <th>Fotos</th>
-              <th>Ebenen</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {vorlagen.map((v) => (
-              <tr key={v.id}>
-                <td>{v.name}</td>
-                <td>{v.canvas.preset === '10x15-quer' ? '10 × 15 quer' : '10 × 15 hoch'}</td>
-                <td>{v.ebenen.filter((e) => e.typ === 'foto').length}</td>
-                <td>{v.ebenen.length}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <button className="knopf knopf--neben" onClick={() => setzeOffen(v)}>
-                    Bearbeiten
-                  </button>
-                  <button className="knopf knopf--neben" onClick={() => void dupliziere(v)}>
-                    Duplizieren
-                  </button>
-                  <button className="knopf knopf--neben" onClick={() => void loesche(v)}>
-                    Löschen
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {vorlagen.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ color: 'var(--schrift-leise)' }}>
-                  Noch keine Vorlage.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        {/*
+          Vorher eine Tabelle aus Namen und Zahlen: "4 Ebenen" sagt nichts
+          darueber, wie die Vorlage aussieht. Eine Vorlage ist etwas, das man
+          ansieht - also zeigt die Bibliothek sie auch.
+        */}
+        <div className="vorlagen-raster" style={{ marginTop: '0.9rem' }}>
+          {vorlagen.map((v) => {
+            const fotos = v.ebenen.filter((e) => e.typ === 'foto').length;
+            return (
+              <div className="vorlagen-kachel" key={v.id}>
+                {/*
+                  Jede Kachel bekommt denselben Bildkasten. Bekam das Hochformat
+                  seinen eigenen, wurde die ganze Rasterzeile so hoch wie es -
+                  und neben ihm standen die Querformate mit leerer Flaeche.
+                */}
+                <img
+                  className="vorlagen-kachel__bild"
+                  src={`/api/admin/vorlagen/${v.id}/vorschau.jpg`}
+                  alt=""
+                />
+                <div className="vorlagen-kachel__leiste">
+                  <div>
+                    <div className="vorlagen-kachel__name">{v.name}</div>
+                    <div className="vorlagen-kachel__info">
+                      {v.canvas.preset === '10x15-quer' ? '10 × 15 quer' : '10 × 15 hoch'} ·{' '}
+                      {fotos} {fotos === 1 ? 'Foto' : 'Fotos'} · {v.ebenen.length}{' '}
+                      {v.ebenen.length === 1 ? 'Ebene' : 'Ebenen'}
+                    </div>
+                  </div>
+                  <div className="zeile" style={{ gap: '0.4rem' }}>
+                    <button className="knopf knopf--neben" onClick={() => setzeOffen(v)}>
+                      Bearbeiten
+                    </button>
+                    <button className="knopf knopf--neben" onClick={() => void dupliziere(v)}>
+                      Duplizieren
+                    </button>
+                    <button className="knopf knopf--neben" onClick={() => void loesche(v)}>
+                      Löschen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {vorlagen.length === 0 && (
+          <p style={{ color: 'var(--schrift-leise)' }}>
+            Noch keine Vorlage. Mit „Neue Vorlage“ fängt eine leere Fläche an — oder in Canva
+            gestalten, als PNG ausgeben und im Editor als Bildebene einsetzen.
+          </p>
+        )}
       </div>
     </>
   );

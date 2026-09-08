@@ -200,6 +200,42 @@ export type EventStatus =
   | 'abgeschlossen'
   | 'archiviert';
 
+/**
+ * Erlaubte Statuswechsel. Alles andere wird abgewiesen.
+ *
+ * Steht hier und nicht im Server, damit die Verwaltung dieselben Regeln kennt:
+ * Sie kann damit nur die Wechsel anbieten, die auch durchgehen, statt den
+ * Nutzer in eine Fehlermeldung laufen zu lassen.
+ */
+export const UEBERGAENGE: Record<EventStatus, EventStatus[]> = {
+  entwurf: ['startbereit', 'archiviert'],
+  startbereit: ['aktiv', 'entwurf', 'archiviert'],
+  aktiv: ['pausiert', 'abgeschlossen'],
+  pausiert: ['aktiv', 'abgeschlossen'],
+  abgeschlossen: ['archiviert', 'aktiv'],
+  archiviert: ['entwurf'],
+};
+
+/** Was der Status im Klartext heisst - "entwurf" ist ein Datenbankwert, kein Wort fuer eine Oberflaeche. */
+export const STATUS_NAME: Record<EventStatus, string> = {
+  entwurf: 'Entwurf',
+  startbereit: 'Startbereit',
+  aktiv: 'Aktiv',
+  pausiert: 'Pausiert',
+  abgeschlossen: 'Abgeschlossen',
+  archiviert: 'Archiviert',
+};
+
+/** Die Beschriftung des Knopfes, der dorthin fuehrt - ein Wechsel ist eine Handlung, kein Zustand. */
+export const STATUS_WECHSEL: Record<EventStatus, string> = {
+  entwurf: 'Zurück in den Entwurf',
+  startbereit: 'Als startbereit markieren',
+  aktiv: 'Veranstaltung starten',
+  pausiert: 'Pause einlegen',
+  abgeschlossen: 'Veranstaltung abschließen',
+  archiviert: 'Archivieren',
+};
+
 export type Fokusverhalten = 'fest' | 'vor-jedem-foto';
 
 export interface EventEinstellungen {
