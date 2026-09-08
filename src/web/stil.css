@@ -25,17 +25,35 @@
   --abstand-gross: calc(8 * var(--mm));
   --rand-sicher: calc(5 * var(--mm));
 
-  --grund: #14161a;
-  --flaeche: #1e2128;
-  --flaeche-hell: #2a2e37;
+  /*
+   * Vier Grautoene statt drei: Die Kacheln standen vorher fast auf demselben
+   * Wert wie der Grund und sahen aus wie aufgemalt statt wie etwas, das man
+   * antippen kann. Mit einer eigenen Kante darum liest sich jede Kachel als
+   * Gegenstand - das ist auf einem Touchscreen der Unterschied zwischen
+   * "Da steht etwas" und "Da kann ich draufdruecken".
+   */
+  --grund: #101216;
+  --flaeche: #191c22;
+  --flaeche-hell: #252932;
+  --kante: #333844;
   --schrift: #f4f5f7;
-  --schrift-leise: #a8adb8;
-  --akzent: #c8963e;
+  --schrift-leise: #9aa1ae;
+
+  /*
+   * Der Akzent kommt aus der Veranstaltung: Die Farbe steht im Admin und wird
+   * beim Start als Variable gesetzt. Die Schriftfarbe darauf wird mitgerechnet,
+   * damit ein dunkler Akzent nicht dunkle Schrift bekommt.
+   */
+  --akzent: #d0a04a;
+  --akzent-schrift: #191307;
+  --akzent-schimmer: rgba(208, 160, 74, 0.28);
+
   --warnung: #d9793f;
   --fehler: #cf5555;
   --gut: #5fa463;
 
   --radius: calc(2.5 * var(--mm));
+  --radius-klein: calc(1.5 * var(--mm));
   color-scheme: dark;
 }
 
@@ -81,6 +99,17 @@ button {
   cursor: pointer;
 }
 
+/* Tastaturbedienung gehoert dem Admin - im Kiosk stoert der Fokusring nur,
+   weil dort ohnehin nur Finger unterwegs sind. */
+:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+.kiosk :focus-visible {
+  outline: none;
+}
+
 /* --------------------------------------------------------------- Bausteine */
 
 .seite {
@@ -105,28 +134,35 @@ button {
   align-items: center;
   justify-content: center;
   gap: calc(2 * var(--mm));
-  transition: transform 80ms ease;
+  border: 2px solid var(--kante);
+  transition: transform 80ms ease, filter 120ms ease;
 }
 
 .knopf:active {
   transform: scale(0.97);
+  filter: brightness(1.15);
 }
 
 .knopf--haupt {
   background: var(--akzent);
-  color: #191307;
+  color: var(--akzent-schrift);
+  border-color: transparent;
   font-size: 1.25rem;
+  /* Der Hauptknopf ist der einzige, der leuchtet - damit ist auf jedem
+     Bildschirm ohne Nachdenken klar, wo es weitergeht. */
+  box-shadow: 0 0 calc(6 * var(--mm)) var(--akzent-schimmer);
 }
 
 .knopf--neben {
   min-height: var(--knopf-neben);
   font-size: 0.85rem;
   background: transparent;
-  border: 2px solid var(--flaeche-hell);
 }
 
 .knopf:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
+  box-shadow: none;
+  filter: grayscale(0.6);
 }
 
 .knopf--riesig {
@@ -137,6 +173,7 @@ button {
 .titel {
   font-size: 2rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -173,26 +210,72 @@ button {
 
 /* ------------------------------------------------------------------ Kiosk */
 
+/*
+ * Der Kopf einer Auswahlseite. Ueberschrift und Erklaerzeile stehen zusammen
+ * oben links statt mittig - so beginnt der Blick immer an derselben Stelle und
+ * springt von dort in die Kacheln.
+ */
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1 * var(--mm));
+  padding-bottom: calc(1 * var(--mm));
+}
+
+/*
+ * Auswahlkacheln fuer Vorlagen und Filter.
+ *
+ * Die Kachel zeigt jetzt ein Bild statt nur einen Namen. "Hochzeit 3er" sagt
+ * einem Gast, der zum ersten Mal vor der Box steht, nichts - das Bild schon.
+ */
 .kachel {
   background: var(--flaeche);
-  border: 3px solid transparent;
+  border: 3px solid var(--kante);
   border-radius: var(--radius);
-  padding: var(--abstand);
-  min-height: calc(30 * var(--mm));
+  padding: calc(2 * var(--mm));
+  min-height: var(--ziel-min);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: calc(2 * var(--mm));
+  overflow: hidden;
+  transition: transform 90ms ease, border-color 120ms ease;
+}
+
+.kachel:active {
+  transform: scale(0.98);
+  border-color: var(--akzent);
 }
 
 .kachel--gewaehlt {
   border-color: var(--akzent);
+  box-shadow: 0 0 calc(4 * var(--mm)) var(--akzent-schimmer);
+}
+
+/* Das Vorschaubild traegt die Kachel und bekommt deshalb den Platz. */
+.kachel__bild {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-klein);
+  /* Durchsichtig statt schwarz: Eine hochformatige Vorlage bekam sonst breite
+     schwarze Balken in einer querformatigen Kachel. Jetzt sitzt sie einfach
+     auf dem Kachelgrund. */
+  background: transparent;
+}
+
+/* Beim Filter zaehlt der Farbeindruck, nicht der Bildausschnitt - deshalb
+   fuellend statt eingepasst. */
+.kachel__bild--fuellend {
+  object-fit: cover;
 }
 
 .kachel__name {
   font-size: 0.95rem;
   font-weight: 600;
+  text-align: center;
 }
 
 .kachel__info {
@@ -226,16 +309,53 @@ button {
   box-shadow: 0 0 calc(6 * var(--mm)) rgba(0, 0, 0, 0.8);
 }
 
+/*
+ * Die Countdown-Zahl. Feste Groesse statt Innenabstand, sonst wird aus dem
+ * Kreis eine Ellipse, sobald die Zahl schmaler wird. Gleichbreite Ziffern,
+ * damit die 1 nicht schmaler steht als die 3, und ein Puls je Sekunde - auf
+ * einer lauten Feier sieht man den Takt eher, als man ihn hoert.
+ */
 .countdown {
   position: absolute;
-  font-size: calc(60 * var(--mm));
+  width: calc(72 * var(--mm));
+  height: calc(72 * var(--mm));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(46 * var(--mm));
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   color: #fff;
   text-shadow: 0 0 calc(4 * var(--mm)) rgba(0, 0, 0, 0.85);
-  padding: calc(3 * var(--mm)) calc(8 * var(--mm));
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.32);
+  border: calc(0.6 * var(--mm)) solid rgba(255, 255, 255, 0.25);
+  animation: countdown-puls 1s ease-out;
+}
+
+@keyframes countdown-puls {
+  0% { transform: scale(1.14); opacity: 0.75; }
+  35% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/*
+ * Der Auslöseblitz. Kostet nichts und ist das Signal, das jeder aus jeder
+ * Fotobox kennt: Jetzt war es soweit. Ohne ihn ist der Moment der Aufnahme
+ * auf dem Bildschirm gar nicht zu erkennen.
+ */
+.blitz {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: blitz-ab 420ms ease-out forwards;
+}
+
+@keyframes blitz-ab {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
 }
 
 .hinweis-oben {
@@ -243,10 +363,35 @@ button {
   top: var(--abstand);
   left: 0;
   right: 0;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(3 * var(--mm));
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 0 calc(2 * var(--mm)) rgba(0, 0, 0, 0.9);
+}
+
+/* Fortschritt als Punkte: auf einen Blick lesbar, ohne Zahlen zu vergleichen. */
+.fortschritt {
+  display: flex;
+  gap: calc(1.5 * var(--mm));
+}
+
+.fortschritt__punkt {
+  width: calc(2.5 * var(--mm));
+  height: calc(2.5 * var(--mm));
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.fortschritt__punkt--fertig {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.fortschritt__punkt--jetzt {
+  background: var(--akzent);
+  box-shadow: 0 0 calc(2 * var(--mm)) var(--akzent);
 }
 
 .bereitmachen {
@@ -257,6 +402,14 @@ button {
   background: rgba(0, 0, 0, 0.55);
   padding: calc(3 * var(--mm)) calc(6 * var(--mm));
   border-radius: var(--radius);
+  text-align: center;
+}
+
+/* Die Bestaetigung ist eine Feststellung, kein Aufruf - deshalb ruhiger. */
+.bereitmachen--ruhig {
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.45);
 }
 
 /* Ergebnisseite: Bild oben, darunter die Knopfreihe. Bei 174 mm Bauhoehe
@@ -282,6 +435,7 @@ button {
   align-items: center;
   gap: var(--abstand);
   background: var(--flaeche);
+  border: 2px solid var(--kante);
   border-radius: var(--radius);
   padding: 0 var(--abstand);
 }
@@ -289,8 +443,57 @@ button {
 .menge__zahl {
   font-size: 1.6rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   min-width: calc(10 * var(--mm));
   text-align: center;
+}
+
+/*
+ * Die Rueckmeldung nach dem Drucken lag vorher als Textzeile unter der
+ * Knopfreihe und hat beim Erscheinen das ganze Layout verschoben - genau in dem
+ * Moment, in dem der Gast noch die Finger auf dem Schirm hat. Jetzt legt sie
+ * sich darueber und laesst darunter alles stehen.
+ */
+.quittung {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 18, 22, 0.82);
+  backdrop-filter: blur(calc(1.5 * var(--mm)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rand-sicher);
+  z-index: 20;
+}
+
+/* Eine richtige Karte statt Text quer ueber dem Bild: Vorher lagen die Zeilen
+   auf dem Layout und dessen eigener Schrift, und die Knopfreihe schimmerte
+   halb lesbar durch - was zum Danebentippen einlaedt. */
+.quittung__karte {
+  background: var(--flaeche);
+  border: 2px solid var(--kante);
+  border-radius: var(--radius);
+  padding: var(--abstand-gross);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--abstand);
+  text-align: center;
+  max-width: calc(150 * var(--mm));
+  box-shadow: 0 calc(2 * var(--mm)) calc(10 * var(--mm)) rgba(0, 0, 0, 0.55);
+}
+
+/* Gezeichnet statt als Emoji: Ein Emoji haengt an der Schriftart des Systems
+   und kommt auf einem nackten Windows als leeres Kaestchen heraus. */
+.quittung__zeichen {
+  width: calc(20 * var(--mm));
+  height: calc(20 * var(--mm));
+  color: var(--akzent);
+}
+
+.quittung__text {
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
 /* Kaum sichtbares Schloss oben rechts, rund 10 x 10 mm. */
@@ -319,8 +522,14 @@ button {
   height: calc(20 * var(--mm));
   border-radius: var(--radius);
   background: var(--flaeche-hell);
+  border: 2px solid var(--kante);
   font-size: 1.3rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pinfeld button:active {
+  background: var(--kante);
 }
 
 .pin-punkte {
@@ -333,6 +542,7 @@ button {
    Alltagssprache - was ist los, was passiert mit meinem Foto, was kann ich tun. */
 .stoerung {
   background: var(--flaeche);
+  border: 2px solid var(--kante);
   border-left: calc(2 * var(--mm)) solid var(--warnung);
   border-radius: var(--radius);
   padding: var(--abstand-gross);
@@ -377,6 +587,30 @@ button {
 }
 
 /* ------------------------------------------------------------------ Admin */
+
+/*
+ * Die Millimeter-Masse gelten fuer Finger auf dem 14-Zoll-Touchscreen. Der
+ * Admin wird mit der Maus bedient - dort war ein Knopf dadurch 155 px hoch und
+ * verschob die halbe Karte. Hier zaehlt wieder die Schriftgroesse.
+ */
+html.admin .knopf {
+  min-height: 2.2rem;
+  min-width: 0;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+  border-radius: 0.4rem;
+  box-shadow: none;
+}
+
+html.admin .knopf--haupt {
+  font-size: 0.9rem;
+}
+
+html.admin .knopf--riesig {
+  min-height: 2.6rem;
+  font-size: 1rem;
+}
+
 
 .admin-huelle {
   display: grid;

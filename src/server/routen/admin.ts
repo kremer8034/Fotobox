@@ -23,6 +23,7 @@ import { hashePin } from '../fach/pin.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
 import { kalibrierTestbild, platzhalterFoto } from '../bild/testbilder.js';
+import { leereVorschauLager } from '../bild/vorschau.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
@@ -224,15 +225,19 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     const koerper = z
       .object({ id: z.string().optional(), name: z.string().min(1), operationen: z.array(z.any()) })
       .parse(anfrage.body);
-    return speichereFilter({
+    const gespeichert = speichereFilter({
       id: koerper.id ?? randomUUID(),
       name: koerper.name,
       operationen: koerper.operationen as never,
     });
+    // Die Vorschaukachel im Kiosk zeigt sonst weiter den alten Look.
+    leereVorschauLager();
+    return gespeichert;
   });
 
   app.delete<{ Params: { id: string } }>('/api/admin/filter/:id', async (anfrage) => {
     loescheFilter(anfrage.params.id);
+    leereVorschauLager();
     return { ok: true };
   });
 

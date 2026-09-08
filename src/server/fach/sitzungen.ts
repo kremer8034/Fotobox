@@ -262,3 +262,19 @@ function extension(pfad: string): string {
   const punkt = name.lastIndexOf('.');
   return punkt >= 0 ? name.slice(punkt) : '.jpg';
 }
+
+/**
+ * Pfad des ersten aufgenommenen Fotos einer Sitzung.
+ *
+ * Damit kann die Filterauswahl das eigene Bild des Gastes zeigen statt eines
+ * abstrakten Musters - an einem fremden Farbfeld sieht niemand, was ein Filter
+ * mit seinem Gesicht macht.
+ */
+export function erstesFoto(sitzungId: string): string | null {
+  const zeile = holeDb()
+    .prepare(
+      'SELECT pfad_original FROM fotos WHERE sitzung_id = ? ORDER BY ebene_index LIMIT 1',
+    )
+    .get(sitzungId) as { pfad_original: string } | undefined;
+  return zeile?.pfad_original ?? null;
+}

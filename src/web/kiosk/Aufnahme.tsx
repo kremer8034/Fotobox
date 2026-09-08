@@ -30,6 +30,9 @@ export function Aufnahme({
   const [phase, setzePhase] = useState<Phase>('bereitmachen');
   const [restSekunden, setzeRest] = useState(zeiten.bereitmachenErstes);
   const [letztesFoto, setzeLetztesFoto] = useState<string | null>(null);
+  // Der Auslöseblitz ist das Signal, das jeder aus jeder Fotobox kennt. Ohne
+  // ihn ist auf dem Bildschirm gar nicht zu sehen, wann es soweit war.
+  const [blitzt, setzeBlitzt] = useState(false);
   const abgebrochen = useRef(false);
 
   useEffect(() => () => { abgebrochen.current = true; }, []);
@@ -53,6 +56,8 @@ export function Aufnahme({
 
         setzePhase('ausloesen');
         if (klaenge.ausloeser) toene.ausloeser();
+        setzeBlitzt(true);
+        setTimeout(() => setzeBlitzt(false), 420);
 
         try {
           await api.sende(`/api/kiosk/sitzung/${sitzung.sitzungId}/foto`, { index: i });
@@ -114,11 +119,31 @@ export function Aufnahme({
         </Ausschnitt>
 
         <div className="hinweis-oben">
-          Foto {index} von {sitzung.benoetigteFotos}
+          <span>
+            Foto {index} von {sitzung.benoetigteFotos}
+          </span>
+          {/* Dieselbe Aussage als Punkte: auf einen Blick erfassbar, ohne
+              zwei Zahlen miteinander zu vergleichen. */}
+          <span className="fortschritt">
+            {Array.from({ length: sitzung.benoetigteFotos }, (_, i) => (
+              <span
+                key={i}
+                className={
+                  'fortschritt__punkt' +
+                  (i + 1 < index ? ' fortschritt__punkt--fertig' : '') +
+                  (i + 1 === index ? ' fortschritt__punkt--jetzt' : '')
+                }
+              />
+            ))}
+          </span>
         </div>
 
         {phase === 'countdown' && restSekunden > 0 && (
-          <div className="countdown">{restSekunden}</div>
+          // Der Schluessel wechselt mit der Sekunde: Damit startet die
+          // Puls-Animation bei jeder Zahl neu statt nur einmal am Anfang.
+          <div className="countdown" key={restSekunden}>
+            {restSekunden}
+          </div>
         )}
         {phase === 'bereitmachen' && (
           <div className="bereitmachen">
@@ -126,7 +151,10 @@ export function Aufnahme({
           </div>
         )}
         {phase === 'ausloesen' && <div className="bereitmachen">Bitte lächeln!</div>}
-        {phase === 'bestaetigung' && <div className="bereitmachen">So sieht es aus!</div>}
+        {phase === 'bestaetigung' && (
+          <div className="bereitmachen bereitmachen--ruhig">So sieht es aus!</div>
+        )}
+        {blitzt && <div className="blitz" />}
       </div>
     </div>
   );

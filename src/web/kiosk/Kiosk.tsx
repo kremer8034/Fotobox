@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import type React from 'react';
 import { api, type KioskStart, type SitzungStart, type Stoerungstext } from '../api.js';
 import { Aufnahme } from './Aufnahme.js';
 import { Ergebnis } from './Ergebnis.js';
 import { Galerie } from './Galerie.js';
 import { PinAbfrage, Schloss, Servicemenue } from './Sperre.js';
 import { Stoerungshinweis } from './Stoerung.js';
+import { schimmerAus, schriftAuf } from './farbe.js';
 
 type Schirm =
   | { art: 'start' }
@@ -51,6 +53,18 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
     const uhr = setInterval(() => void ladeStart(), 5000);
     return () => clearInterval(uhr);
   }, [ladeStart]);
+
+  // Die Akzentfarbe der Veranstaltung stand bisher im Admin, ohne dass sie im
+  // Kiosk je angekommen waere. Jetzt setzt sie die Variablen, aus denen sich
+  // Hauptknopf, Kachelrand und Countdown-Punkt bedienen.
+  useEffect(() => {
+    const akzent = start?.darstellung?.akzent;
+    if (!akzent) return;
+    const wurzel = document.documentElement;
+    wurzel.style.setProperty('--akzent', akzent);
+    wurzel.style.setProperty('--akzent-schrift', schriftAuf(akzent));
+    wurzel.style.setProperty('--akzent-schimmer', schimmerAus(akzent));
+  }, [start?.darstellung?.akzent]);
 
   // Tastenkuerzel abfangen, damit Gaeste den Kiosk nicht verlassen.
   useEffect(() => {
@@ -150,18 +164,24 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       <>
         {schloss}
         <div className="seite kiosk">
-          <h1 className="titel">Wie soll es aussehen?</h1>
-          <p className="untertitel">Nimm dir Zeit — hier läuft keine Uhr.</p>
-          <div
-            className="raster"
-            style={{ gridTemplateColumns: `repeat(${Math.min(start.filter?.length ?? 1, 4)}, 1fr)`, flex: 1, alignContent: 'center' }}
-          >
+          <div className="kopf">
+            <h1 className="titel">Wie soll es aussehen?</h1>
+            <p className="untertitel">Nimm dir Zeit — hier läuft keine Uhr.</p>
+          </div>
+          <div className="raster" style={spalten(start.filter?.length ?? 1)}>
             {start.filter?.map((f) => (
               <button
                 key={f.id}
                 className="kachel"
                 onClick={() => void waehleFilter(schirm.sitzungId, f.id)}
               >
+                {/* Am Muster sieht der Gast, was der Filter tut - bei blossen
+                    Namen sehen Sepia und Schwarzweiss gleich aus. */}
+                <img
+                  className="kachel__bild kachel__bild--fuellend"
+                  src={`/api/kiosk/filter/${f.id}/vorschau.jpg?sitzung=${schirm.sitzungId}`}
+                  alt=""
+                />
                 <span className="kachel__name">{f.name}</span>
               </button>
             ))}
@@ -194,14 +214,20 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       <>
         {schloss}
         <div className="seite kiosk">
-          <h1 className="titel">Welches Layout?</h1>
-          <p className="untertitel">Die Auswahl bestimmt, wie viele Fotos gemacht werden.</p>
-          <div
-            className="raster"
-            style={{ gridTemplateColumns: `repeat(${Math.min(start.vorlagen?.length ?? 1, 4)}, 1fr)`, flex: 1, alignContent: 'center' }}
-          >
+          <div className="kopf">
+            <h1 className="titel">Welches Layout?</h1>
+            <p className="untertitel">Die Auswahl bestimmt, wie viele Fotos gemacht werden.</p>
+          </div>
+          <div className="raster" style={spalten(start.vorlagen?.length ?? 1)}>
             {start.vorlagen?.map((v) => (
               <button key={v.id} className="kachel" onClick={() => void starteSitzung(v.id)}>
+                {/* Die Vorlage mit nummerierten Platzhaltern: Der Gast sieht
+                    vor der Wahl, wie viele Bilder wo sitzen. */}
+                <img
+                  className="kachel__bild"
+                  src={`/api/kiosk/vorlage/${v.id}/vorschau.jpg`}
+                  alt=""
+                />
                 <span className="kachel__name">{v.name}</span>
                 <span className="kachel__info">
                   {v.fotos} {v.fotos === 1 ? 'Foto' : 'Fotos'}
@@ -289,4 +315,23 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       setzeSchirm({ art: 'start' });
     }
   }
+}
+
+/**
+ * Spaltenaufteilung der Auswahlraster.
+ *
+ * Bis zu vier Kacheln stehen nebeneinander, danach wird umgebrochen. Die Zeilen
+ * strecken sich auf die volle Hoehe, damit die Vorschaubilder gross werden -
+ * vorher standen die Kacheln als schmaler Streifen in der Bildschirmmitte.
+ */
+function spalten(anzahl: number): React.CSSProperties {
+  return {
+    gridTemplateColumns: `repeat(${Math.min(Math.max(anzahl, 1), 4)}, 1fr)`,
+    // Gleich hohe Zeilen: Sonst wird die letzte, halb gefuellte Zeile hoeher
+    // als die darueber, weil sie sich den uebrigen Platz nimmt.
+    gridAutoRows: '1fr',
+    flex: 1,
+    minHeight: 0,
+    alignContent: 'stretch',
+  };
 }

@@ -8,6 +8,7 @@ import {
   brichSitzungAb,
   galerieEintraege,
   holeAusgabe,
+  erstesFoto,
   starteSitzung,
   stelleFertig,
   verbucheFoto,
@@ -18,6 +19,7 @@ import { berechneAuslagen } from '../fach/auslagen.js';
 import { drosselGreift, istOnline, leseMailzugang, pruefeAdresse, tageslimitErreicht, versende } from '../fach/email.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
+import { filterVorschau, vorlagenVorschau } from '../bild/vorschau.js';
 import { anzahlFotos, STOERUNGSTEXTE } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
@@ -77,6 +79,56 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       filter: filter.map((f) => ({ id: f.id, name: f.name })),
     };
   });
+
+  /**
+   * Vorschaubild einer Vorlage: die Vorlage mit nummerierten Platzhaltern
+   * statt echter Fotos. Der Gast sieht damit vor der Wahl, was er bekommt.
+   *
+   * Angefordert wird ueber die ID, nie ueber einen Pfad - der Server setzt den
+   * Ordner selbst zusammen, und ausgeliefert wird nur, was in der laufenden
+   * Veranstaltung auch freigegeben ist.
+   */
+  app.get<{ Params: { id: string } }>(
+    '/api/kiosk/vorlage/:id/vorschau.jpg',
+    async (anfrage, antwort) => {
+      const event = holeAktivesEvent();
+      if (!event || !event.einstellungen.vorlagen.includes(anfrage.params.id)) {
+        return antwort.code(404).send({ fehler: 'Nicht freigegeben.' });
+      }
+      const vorlage = holeVorlage(anfrage.params.id);
+      if (!vorlage) return antwort.code(404).send({ fehler: 'Vorlage nicht gefunden.' });
+
+      const bild = await vorlagenVorschau(vorlage, wurzel.vorlagen);
+      return antwort.type('image/jpeg').header('Cache-Control', 'no-cache').send(bild);
+    },
+  );
+
+  /**
+   * Vorschaubild eines Filters.
+   *
+   * Mit einer Sitzung im Ruecken zeigt die Kachel das erste eigene Foto des
+   * Gastes durch den Filter - an einem fremden Farbmuster sieht niemand, was
+   * ein Look mit seinem Gesicht anstellt. Ohne Sitzung (oder wenn das Foto noch
+   * nicht lesbar ist) bleibt das allgemeine Muster.
+   */
+  app.get<{ Params: { id: string }; Querystring: { sitzung?: string } }>(
+    '/api/kiosk/filter/:id/vorschau.jpg',
+    async (anfrage, antwort) => {
+      const event = holeAktivesEvent();
+      if (!event || !event.einstellungen.filter.includes(anfrage.params.id)) {
+        return antwort.code(404).send({ fehler: 'Nicht freigegeben.' });
+      }
+      const preset = listeFilter().find((f) => f.id === anfrage.params.id);
+      if (!preset) return antwort.code(404).send({ fehler: 'Filter nicht gefunden.' });
+
+      // Der Pfad kommt aus der Datenbank, nie aus der Anfrage - aus der URL
+      // stammt nur die Sitzungskennung.
+      const eigenes = anfrage.query.sitzung ? erstesFoto(anfrage.query.sitzung) : null;
+
+      const bild = await filterVorschau(preset, wurzel.luts, eigenes);
+      return antwort.type('image/jpeg').header('Cache-Control', 'no-cache').send(bild);
+    },
+  );
 
   /** Sitzung starten. Die gewaehlte Vorlage bestimmt die Zahl der Fotos. */
   app.post<{ Body: unknown }>('/api/kiosk/sitzung', async (anfrage, antwort) => {

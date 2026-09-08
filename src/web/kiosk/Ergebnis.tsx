@@ -32,6 +32,7 @@ export function Ergebnis({
 }) {
   const [kopien, setzeKopien] = useState(ausgabe.kopienVorgabe);
   const [meldung, setzeMeldung] = useState<string | null>(null);
+  const [fehlgeschlagen, setzeFehlgeschlagen] = useState(false);
   const [beschaeftigt, setzeBeschaeftigt] = useState(false);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function Ergebnis({
   const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht;
 
   return (
-    <div className="seite kiosk">
+    <div className="seite kiosk" style={{ position: 'relative' }}>
       <img className="ergebnis__bild" src={`/medien/ausgabe/${ausgabeId}.jpg`} alt="Dein Foto" />
 
       <div className="ergebnis__leiste">
@@ -89,7 +90,24 @@ export function Ergebnis({
         </button>
       </div>
 
-      {meldung && <p className="untertitel" style={{ textAlign: 'center' }}>{meldung}</p>}
+      {/*
+        Die Rueckmeldung legt sich ueber die Seite, statt als Zeile darunter zu
+        erscheinen: Vorher ist beim Drucken das ganze Layout gesprungen, genau
+        in dem Moment, in dem der Gast noch die Finger auf dem Schirm hatte.
+      */}
+      {meldung && (
+        <div className="quittung">
+          <div className="quittung__karte">
+            <Zeichen art={fehlgeschlagen ? 'warnung' : 'drucker'} />
+            <p className="quittung__text">{meldung}</p>
+            {fehlgeschlagen && (
+              <button className="knopf" onClick={() => setzeMeldung(null)}>
+                Zurück
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -99,11 +117,48 @@ export function Ergebnis({
       await api.sende('/api/kiosk/drucken', { ausgabeId, kopien, quelle: 'kiosk' });
       // Der Gast bekommt sofort Rueckmeldung und macht Platz - der Druck
       // laeuft im Hintergrund weiter.
+      setzeFehlgeschlagen(false);
       setzeMeldung('Dein Bild wird gedruckt. Du kannst es gleich am Drucker abholen.');
       setTimeout(beiFertig, 3500);
     } catch (fehler) {
+      setzeFehlgeschlagen(true);
       setzeMeldung(fehler instanceof Error ? fehler.message : 'Drucken hat nicht geklappt.');
       setzeBeschaeftigt(false);
     }
   }
+}
+
+/**
+ * Die beiden Zeichen der Quittung, gezeichnet statt als Emoji: Ein Emoji haengt
+ * an der Schriftart des Systems und kommt auf einem frisch aufgesetzten Windows
+ * als leeres Kaestchen heraus - ausgerechnet in dem Moment, in dem der Gast
+ * wissen will, ob sein Bild jetzt gedruckt wird.
+ */
+function Zeichen({ art }: { art: 'drucker' | 'warnung' }) {
+  return (
+    <svg
+      className="quittung__zeichen"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {art === 'drucker' ? (
+        <>
+          <path d="M7 9V3h10v6" />
+          <path d="M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
+          <rect x="7" y="15" width="10" height="6" rx="1" />
+        </>
+      ) : (
+        <>
+          <path d="M12 3 2.5 20h19L12 3Z" />
+          <path d="M12 9v5" />
+          <path d="M12 17.5v.5" />
+        </>
+      )}
+    </svg>
+  );
 }
