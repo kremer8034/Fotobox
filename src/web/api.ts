@@ -91,13 +91,14 @@ export interface KioskStart {
     untertitel: string;
     akzent: string;
     qrAufStartseite: boolean;
-    galerieToken: string | null;
+    galerieUrl: string | null;
   };
   zeiten?: Zeiten;
   toene?: Toene;
   ausgabe?: {
     druckAktiv: boolean;
     emailAktiv: boolean;
+    einwilligungstext: string;
     kopienVorgabe: number;
     kopienMax: number;
     druckLimitErreicht: boolean;

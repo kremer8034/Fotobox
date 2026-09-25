@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { mehrzahl, Statusliste } from '../Statusliste.js';
+import { STOERUNGSTEXTE } from '../../shared/typen.js';
 
 interface GalerieDaten {
   veranstaltung: string;
@@ -18,6 +20,9 @@ interface StatusDaten {
   };
   zahlen: { sitzungen: number; drucke: number; materialRest: number };
 }
+
+/** Wie oft die Galerie nach neuen Fotos schaut - der Abend geht weiter. */
+const NACHLADEN_MS = 30_000;
 
 /**
  * Handy-Ansicht im WLAN.
@@ -45,11 +50,17 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
       const uhr = setInterval(laden, 10_000);
       return () => clearInterval(uhr);
     }
-    void api
-      .hole<GalerieDaten>(`/api/galerie/${token}`)
-      .then(setzeGalerie)
-      .catch((u: Error) => setzeFehler(u.message));
-    return undefined;
+    // Die Galerie lud einmal und nie wieder. Ein Gast, der sie offen hat,
+    // sah die Fotos des restlichen Abends nicht - und am Handy "nach unten
+    // ziehen" ging auch nicht, weil ein innerer Rollbereich es abfing.
+    const laden = () =>
+      api
+        .hole<GalerieDaten>(`/api/galerie/${token}`)
+        .then(setzeGalerie)
+        .catch((u: Error) => setzeFehler(u.message));
+    void laden();
+    const uhr = setInterval(laden, NACHLADEN_MS);
+    return () => clearInterval(uhr);
   }, [token, nurStatus]);
 
   if (fehler) {
@@ -67,21 +78,27 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
     if (!status) return <div className="handy">Einen Moment…</div>;
     return (
       <div className="handy">
-        <h1 style={{ marginBottom: '0.2rem' }}>{status.veranstaltung}</h1>
-        <p style={{ color: 'var(--schrift-leise)', marginTop: 0 }}>Status der Fotobox</p>
-        <div className="karte" style={{ lineHeight: 2 }}>
-          <div>Kamera: {status.zustand.kamera === 'bereit' ? 'in Ordnung' : 'meldet sich nicht'}</div>
-          <div>Drucker: {status.zustand.drucker === 'bereit' ? 'in Ordnung' : 'meldet einen Fehler'}</div>
-          <div>{status.zustand.warteschlangeOffen} Foto(s) warten auf den Druck</div>
-          <div>Noch {status.zahlen.materialRest} Blatt Papier</div>
-          <div>{status.zustand.speicherFreiGb} GB Speicher frei</div>
-          <div>
-            {status.zahlen.sitzungen} Durchgänge, {status.zahlen.drucke} Ausdrucke
-          </div>
-        </div>
-        <p style={{ color: 'var(--schrift-leise)', fontSize: '0.85rem' }}>
-          Diese Seite zeigt nur an — verstellen kann man hier nichts.
-        </p>
+        <h1>{status.veranstaltung}</h1>
+        <p className="handy__unterzeile">Status der Fotobox — aktualisiert sich von selbst.</p>
+        <Statusliste
+          zustand={{
+            kamera: status.zustand.kamera,
+            drucker: status.zustand.drucker,
+            druckerStoerung:
+              status.zustand.drucker === 'bereit'
+                ? null
+                : (STOERUNGSTEXTE[status.zustand.stoerung as keyof typeof STOERUNGSTEXTE]?.titel ??
+                  'Drucker meldet einen Fehler'),
+            stoerungArt: status.zustand.stoerung,
+            warteschlangeOffen: status.zustand.warteschlangeOffen,
+            materialRest: status.zahlen.materialRest,
+            speicherFreiGb: status.zustand.speicherFreiGb,
+            sitzungen: status.zahlen.sitzungen,
+            drucke: status.zahlen.drucke,
+          }}
+          stand={new Date().toISOString()}
+        />
+        <p className="handy__tipp">Hier lässt sich nichts verstellen — die Seite zeigt nur an.</p>
       </div>
     );
   }
@@ -91,34 +108,32 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   if (gross) {
     return (
       <div className="handy">
+        <button className="handy__zurueck" onClick={() => setzeGross(null)}>
+          ‹ Alle Fotos
+        </button>
         <img className="handy__bild" src={`/medien/galerie/${token}/${gross}.jpg?gross=1`} alt="" />
-        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem' }}>
-          <a
-            className="knopf knopf--haupt"
-            style={{ flex: 1, minHeight: '3rem', fontSize: '1rem', textDecoration: 'none' }}
-            href={`/medien/download/${token}/${gross}.jpg`}
-            download
-          >
-            Aufs Handy laden
-          </a>
-          <button className="knopf" style={{ minHeight: '3rem' }} onClick={() => setzeGross(null)}>
-            Zurück
-          </button>
-        </div>
+        <a className="knopf knopf--haupt handy__laden" href={`/medien/download/${token}/${gross}.jpg`} download>
+          Aufs Handy laden
+        </a>
+        <p className="handy__tipp">
+          Am iPhone geht es auch so: Bild gedrückt halten und „Zu Fotos hinzufügen" wählen.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="handy">
-      <h1 style={{ marginBottom: '0.2rem' }}>{galerie.veranstaltung}</h1>
-      <p style={{ color: 'var(--schrift-leise)', marginTop: 0 }}>
-        {galerie.bilder.length} Foto(s) — tippe eines an, um es zu laden.
+      <h1>{galerie.veranstaltung}</h1>
+      <p className="handy__unterzeile">
+        {galerie.bilder.length === 0
+          ? 'Noch keine Fotos — die ersten kommen bestimmt gleich.'
+          : `${mehrzahl(galerie.bilder.length, 'Foto', 'Fotos')} — tippe eines an, um es zu laden.`}
       </p>
       <div className="handy__raster">
         {galerie.bilder.map((bild) => (
-          <button key={bild.id} onClick={() => setzeGross(bild.id)} style={{ padding: 0 }}>
-            <img className="handy__bild" src={`/medien/galerie/${token}/${bild.id}.jpg`} alt="" />
+          <button key={bild.id} className="handy__kachel" onClick={() => setzeGross(bild.id)}>
+            <img src={`/medien/galerie/${token}/${bild.id}.jpg`} alt="" loading="lazy" />
           </button>
         ))}
       </div>

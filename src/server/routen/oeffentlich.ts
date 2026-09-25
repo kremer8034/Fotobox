@@ -1,12 +1,12 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import sharp from 'sharp';
 import QRCode from 'qrcode';
 import type { FastifyInstance } from 'fastify';
 import { findeEventNachGalerieToken, findeEventNachStatusToken } from '../fach/events.js';
 import { galerieEintraege, holeAusgabe } from '../fach/sitzungen.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import { eventpfade } from '../fach/pfade.js';
+import { abgeleitet, FASSUNGEN } from '../bild/abgeleitet.js';
 import type { Betrieb } from '../betrieb.js';
 
 /**
@@ -50,16 +50,16 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
       const layoutsOrdner = eventpfade(event.ordner).layouts;
       if (!ausgabe.pfadLayout.startsWith(layoutsOrdner)) return antwort.code(404).send();
 
-      const gross = anfrage.query.gross === '1';
-      const bild = sharp(ausgabe.pfadLayout).rotate();
-      const daten = await (gross ? bild : bild.resize(600, 600, { fit: 'inside' }))
-        .jpeg({ quality: gross ? 92 : 80, mozjpeg: false })
-        .toBuffer();
-
+      const pfad = await abgeleitet(
+        ausgabe.pfadLayout,
+        eventpfade(event.ordner).cache,
+        ausgabe.id,
+        anfrage.query.gross === '1' ? FASSUNGEN.handyVoll : FASSUNGEN.handyKlein,
+      );
       return antwort
         .header('Content-Type', 'image/jpeg')
-        .header('Cache-Control', 'private, max-age=300')
-        .send(daten);
+        .header('Cache-Control', 'private, max-age=86400, immutable')
+        .send(createReadStream(pfad));
     },
   );
 
@@ -73,12 +73,18 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
       const ausgabe = holeAusgabe(anfrage.params.id);
       if (!ausgabe || ausgabe.eventId !== event.id) return antwort.code(404).send();
 
-      const daten = await sharp(ausgabe.pfadLayout).rotate().jpeg({ quality: 95 }).toBuffer();
+      // Dieselbe bereinigte Fassung wie die Grossansicht - einmal gerechnet.
+      const pfad = await abgeleitet(
+        ausgabe.pfadLayout,
+        eventpfade(event.ordner).cache,
+        ausgabe.id,
+        FASSUNGEN.handyVoll,
+      );
       const name = `${event.name.replace(/[^\w-]+/g, '_')}_${ausgabe.id.slice(0, 8)}.jpg`;
       return antwort
         .header('Content-Type', 'image/jpeg')
         .header('Content-Disposition', `attachment; filename="${name}"`)
-        .send(daten);
+        .send(createReadStream(pfad));
     },
   );
 

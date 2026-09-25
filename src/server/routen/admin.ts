@@ -30,7 +30,7 @@ import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
 import { loescheAlteAdressen } from '../fach/email.js';
-import { lanAdresse } from '../netzwerk.js';
+import { galerieUrl as galerieAdresse, lanAdresse } from '../netzwerk.js';
 import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
@@ -493,11 +493,9 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const event = holeEvent(anfrage.params.id);
       if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
 
-      const adresse = lanAdresse();
-      const galerieUrl =
-        event.einstellungen.galerieAktiv && adresse
-          ? `http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}`
-          : undefined;
+      const galerieUrl = event.einstellungen.galerieAktiv
+        ? (galerieAdresse(event.galerieToken, konfig.portOeffentlich) ?? undefined)
+        : undefined;
 
       const angaben = { ...koerper, galerieUrl };
       const kurzanleitung = await schreibeKurzanleitung(event, angaben);

@@ -84,6 +84,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
 
   const schloss = <Schloss beiOeffnen={() => setzeSchirm({ art: 'pin' })} />;
 
+
   if (schirm.art === 'pin') {
     return (
       <PinAbfrage
@@ -135,7 +136,10 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
     return (
       <>
         {schloss}
-        <Galerie beiZurueck={() => setzeSchirm({ art: 'start' })} />
+        <Galerie
+          leerlaufSekunden={start.zeiten?.galerieLeerlauf ?? 60}
+          beiZurueck={() => setzeSchirm({ art: 'start' })}
+        />
       </>
     );
   }
@@ -279,10 +283,10 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
         </div>
 
         {/* Klein in der Ecke, fuer alle, die den Aushang uebersehen. */}
-        {start.darstellung?.qrAufStartseite && start.darstellung.galerieToken && (
+        {start.darstellung?.qrAufStartseite && start.darstellung.galerieUrl && (
           <div className="qr-ecke">
             <img
-              src={`/api/qr?text=${encodeURIComponent(`http://${window.location.hostname}:8787/g/${start.darstellung.galerieToken}`)}`}
+              src={`/api/qr?text=${encodeURIComponent(start.darstellung.galerieUrl)}`}
               alt=""
             />
             <div>Alle Fotos aufs Handy</div>

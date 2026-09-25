@@ -1,6 +1,7 @@
+import { spawn } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { holeAktivesEvent, holeEvent, verbucheMaterial } from '../fach/events.js';
+import { holeAktivesEvent, holeEvent, setzeStatus, verbucheMaterial } from '../fach/events.js';
 import { holeVorlage, listeVorlagen } from '../fach/vorlagen.js';
 import { listeFilter } from '../fach/filter.js';
 import { leseGeraet } from '../db/geraet.js';
@@ -20,7 +21,8 @@ import { drosselGreift, istOnline, leseMailzugang, pruefeAdresse, tageslimitErre
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
 import { filterVorschau, vorlagenVorschau } from '../bild/vorschau.js';
-import { anzahlFotos, STOERUNGSTEXTE } from '../../shared/typen.js';
+import { anzahlFotos, BETREUER_HINWEISE, STOERUNGSTEXTE } from '../../shared/typen.js';
+import { galerieUrl } from '../netzwerk.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
 
@@ -59,13 +61,21 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         untertitel: event.einstellungen.startUntertitel,
         akzent: event.einstellungen.farbeAkzent,
         qrAufStartseite: event.einstellungen.qrAufStartseite && event.einstellungen.galerieAktiv,
-        galerieToken: event.einstellungen.galerieAktiv ? event.galerieToken : null,
+        // Fertige Adresse vom Server, nie im Browser zusammengesetzt - siehe
+        // galerieUrl(). null, wenn die Box keine Netzwerkadresse hat.
+        galerieUrl: event.einstellungen.galerieAktiv
+          ? galerieUrl(event.galerieToken, konfig.portOeffentlich)
+          : null,
       },
       zeiten: event.einstellungen.zeiten,
       toene: event.einstellungen.toene,
       ausgabe: {
         druckAktiv: event.einstellungen.druckAktiv,
         emailAktiv: event.einstellungen.emailAktiv && leseMailzugang() !== null && (await istOnline()),
+        einwilligungstext: event.einstellungen.einwilligungstext.replace(
+          /\{loeschfrist\}/g,
+          String(event.einstellungen.emailLoeschfristTage),
+        ),
         kopienVorgabe: event.einstellungen.kopienVorgabe,
         kopienMax: event.einstellungen.kopienMax,
         druckLimitErreicht: druckLimitErreicht(event.id),
@@ -135,10 +145,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     const koerper = z.object({ vorlageId: z.string() }).parse(anfrage.body);
     const event = holeAktivesEvent();
     if (!event || event.status !== 'aktiv') {
-      return antwort.code(409).send({ fehler: 'Es laeuft gerade keine Veranstaltung.' });
+      return antwort.code(409).send({ fehler: 'Es läuft gerade keine Veranstaltung.' });
     }
     if (betrieb.aktiveSitzung) {
-      return antwort.code(409).send({ fehler: 'Es laeuft bereits eine Sitzung.' });
+      return antwort.code(409).send({ fehler: 'Es läuft schon eine Aufnahme.' });
     }
 
     const sitzung = starteSitzung(event, koerper.vorlageId);
@@ -249,13 +259,13 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     const event = holeAktivesEvent();
     if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
     if (!event.einstellungen.druckAktiv) {
-      return antwort.code(403).send({ fehler: 'Drucken ist fuer diese Veranstaltung aus.' });
+      return antwort.code(403).send({ fehler: 'Drucken ist bei dieser Feier ausgeschaltet.' });
     }
     if (koerper.kopien > event.einstellungen.kopienMax) {
       return antwort.code(400).send({ fehler: 'Mehr Kopien als erlaubt.' });
     }
     if (druckLimitErreicht(event.id)) {
-      return antwort.code(403).send({ fehler: 'Das Druck-Limit dieser Veranstaltung ist erreicht.' });
+      return antwort.code(403).send({ fehler: 'Für diese Feier sind alle Ausdrucke aufgebraucht. Dein Foto ist trotzdem gespeichert.' });
     }
 
     const ausgabe = holeAusgabe(koerper.ausgabeId);
@@ -294,7 +304,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     const event = holeAktivesEvent();
     if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
     if (!event.einstellungen.emailAktiv) {
-      return antwort.code(403).send({ fehler: 'E-Mail ist fuer diese Veranstaltung aus.' });
+      return antwort.code(403).send({ fehler: 'E-Mail ist bei dieser Feier ausgeschaltet.' });
     }
     if (!pruefeAdresse(koerper.adresse)) {
       return antwort.code(400).send({ fehler: 'Diese Adresse sieht nicht richtig aus.' });
@@ -345,10 +355,15 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     const event = holeAktivesEvent();
     const auslagen = event ? berechneAuslagen(event) : null;
     return {
+      // Der Stand gehoert dazu: Wer ein Foto dieser Seite verschickt, soll
+      // sehen koennen, wann es entstanden ist.
+      stand: new Date().toISOString(),
+      veranstaltung: event ? { id: event.id, name: event.name, status: event.status } : null,
       kamera: status.kamera,
       drucker: status.drucker,
       stoerung: status.stoerung,
       stoerungstext: status.stoerung ? STOERUNGSTEXTE[status.stoerung] : null,
+      betreuerHinweis: status.stoerung ? BETREUER_HINWEISE[status.stoerung] : null,
       warteschlangeOffen: status.warteschlangeOffen,
       materialRest: auslagen?.materialRest ?? 0,
       speicherFreiGb: status.speicherFreiGb,
@@ -367,9 +382,12 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
     const sperreMs = drossel.gesperrtFuerMs();
     if (sperreMs > 0) {
+      const sekunden = Math.ceil(sperreMs / 1000);
+      // Mit Zahl: "Zu viele Fehlversuche." allein laesst offen, ob man gleich
+      // weitermachen kann oder den Besitzer anrufen muss.
       return antwort
         .code(429)
-        .send({ fehler: 'Zu viele Fehlversuche.', wartenSekunden: Math.ceil(sperreMs / 1000) });
+        .send({ fehler: `Zu viele Fehlversuche. Bitte ${sekunden} Sekunden warten.`, wartenSekunden: sekunden });
     }
 
     const geraet = leseGeraet();
@@ -402,6 +420,45 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     verbucheMaterial(event.id, -event.materialVerbraucht);
     protokolliere('info', 'material', `Neue Rolle fuer "${event.name}" eingelegt.`);
     return { ok: true };
+  });
+
+  /**
+   * Servicemenue: Pause ein/aus. Der Kiosk zeigt waehrend der Pause einen
+   * freundlichen Hinweis statt der Startseite - etwa waehrend des Essens.
+   */
+  app.post<{ Body: unknown }>('/api/kiosk/service/pause', async (anfrage, antwort) => {
+    const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
+    const event = holeAktivesEvent();
+    if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
+    try {
+      setzeStatus(event.id, an ? 'pausiert' : 'aktiv');
+    } catch (fehler) {
+      return antwort.code(409).send({ fehler: (fehler as Error).message });
+    }
+    protokolliere('info', 'event', `"${event.name}" ${an ? 'pausiert' : 'laeuft weiter'} (Servicemenue).`);
+    return { ok: true, pausiert: an };
+  });
+
+  /**
+   * Servicemenue (Besitzer): PC herunterfahren.
+   *
+   * Nur mit echter Hardware unter Windows - im Entwicklungsbetrieb wuerde das
+   * sonst den Rechner des Entwicklers abschalten. 15 Sekunden Vorlauf, damit
+   * der Server die Datenbank sauber schliessen kann; "shutdown /a" bricht ab.
+   * Laeuft ohne Adminrechte: Das Herunterfahren des eigenen Rechners darf unter
+   * Windows jeder angemeldete Benutzer.
+   */
+  app.post('/api/kiosk/service/herunterfahren', async () => {
+    if (process.platform !== 'win32' || !konfig.echteHardware) {
+      protokolliere('info', 'system', 'Herunterfahren angefordert (Entwicklungsbetrieb - nur protokolliert).');
+      return { ok: true, simuliert: true };
+    }
+    protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenue).');
+    spawn('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+    return { ok: true, simuliert: false };
   });
 
   function druckLimitErreicht(eventId: string): boolean {

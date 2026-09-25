@@ -1,17 +1,37 @@
 import { useEffect, useState } from 'react';
+import { useZeitgeber } from './zeitgeber.js';
+import { Statusliste, type Boxzustand } from '../Statusliste.js';
 import { api } from '../api.js';
 
 type Ebene = 'betreuer' | 'besitzer';
 
 interface WasIstLos {
+  stand: string;
+  veranstaltung: { id: string; name: string; status: string } | null;
   kamera: string;
   drucker: string;
+  stoerung: string | null;
   stoerungstext: { titel: string; folge: string; tun: string } | null;
+  betreuerHinweis: string | null;
   warteschlangeOffen: number;
   materialRest: number;
   speicherFreiGb: number;
   drucke: number;
   sitzungen: number;
+}
+
+function alsZustand(w: WasIstLos): Boxzustand {
+  return {
+    kamera: w.kamera,
+    drucker: w.drucker,
+    druckerStoerung: w.drucker === 'bereit' ? null : (w.stoerungstext?.titel ?? null),
+    stoerungArt: w.stoerung,
+    warteschlangeOffen: w.warteschlangeOffen,
+    materialRest: w.materialRest,
+    speicherFreiGb: w.speicherFreiGb,
+    sitzungen: w.sitzungen,
+    drucke: w.drucke,
+  };
 }
 
 /**
@@ -28,11 +48,9 @@ interface WasIstLos {
 export function Schloss({ beiOeffnen }: { beiOeffnen: () => void }) {
   const [gedruecktSeit, setzeGedruecktSeit] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (gedruecktSeit === null) return;
-    const uhr = setTimeout(beiOeffnen, 2000);
-    return () => clearTimeout(uhr);
-  }, [gedruecktSeit, beiOeffnen]);
+  // Fiel die Statusabfrage des Kiosks in die zwei Sekunden, begann die
+  // Zaehlung vorher von vorn - das Schloss ging "manchmal nicht auf".
+  useZeitgeber(beiOeffnen, gedruecktSeit === null ? null : 2000, [gedruecktSeit]);
 
   return (
     <div
@@ -58,32 +76,26 @@ export function PinAbfrage({
   const [meldung, setzeMeldung] = useState<string | null>(null);
   const [wasIstLos, setzeWasIstLos] = useState<WasIstLos | null>(null);
 
-  // Abbruch automatisch nach 10 Sekunden Untaetigkeit.
-  useEffect(() => {
-    const uhr = setTimeout(beiAbbruch, 10_000);
-    return () => clearTimeout(uhr);
-  }, [pin, wasIstLos, beiAbbruch]);
+  // Abbruch automatisch nach 10 Sekunden Untaetigkeit - das lief vorher nie
+  // ab (siehe zeitgeber.ts). "Was ist los?" bleibt eine Minute: Der Gastgeber
+  // soll die Seite lesen und abfotografieren koennen, und zehn Sekunden
+  // reichen dafuer nicht.
+  useZeitgeber(beiAbbruch, wasIstLos ? 60_000 : 10_000, [pin, wasIstLos]);
 
   if (wasIstLos) {
     return (
       <div className="seite kiosk">
-        <h1 className="titel">Was ist los?</h1>
-        <div className="mitte" style={{ alignItems: 'stretch', textAlign: 'left' }}>
-          <div className="karte" style={{ fontSize: '0.95rem', lineHeight: 1.8 }}>
-            <div>Kamera: {wasIstLos.kamera === 'bereit' ? 'in Ordnung' : 'meldet sich nicht'}</div>
-            <div>Drucker: {druckerText(wasIstLos)}</div>
-            <div>{wasIstLos.warteschlangeOffen} Foto(s) warten auf den Druck</div>
-            <div>Noch {wasIstLos.materialRest} Blatt Papier</div>
-            <div>{wasIstLos.speicherFreiGb} GB Speicher frei</div>
-            <div>
-              {wasIstLos.sitzungen} Durchgänge, {wasIstLos.drucke} Ausdrucke bisher
-            </div>
-          </div>
-          {wasIstLos.stoerungstext && (
-            <p className="untertitel">
-              {wasIstLos.stoerungstext.titel} {wasIstLos.stoerungstext.tun}
-            </p>
-          )}
+        <div className="kopf">
+          <h1 className="titel">Was ist los?</h1>
+          <p className="untertitel">
+            {wasIstLos.veranstaltung?.name ?? 'Keine Veranstaltung aktiv'} — ein Foto dieser Seite
+            beantwortet die meisten Fragen.
+          </p>
+        </div>
+        {/* Linksbuendig mit der Ueberschrift: Eine mittig eingerueckte Liste
+            unter einer linken Ueberschrift sah aus wie verrutscht. */}
+        <div style={{ flex: 1, maxWidth: 'calc(200 * var(--mm))' }}>
+          <Statusliste zustand={alsZustand(wasIstLos)} stand={wasIstLos.stand} />
         </div>
         <div className="reihe reihe--ende">
           <button className="knopf knopf--neben" onClick={() => setzeWasIstLos(null)}>
@@ -143,14 +155,17 @@ export function PinAbfrage({
   }
 }
 
-function druckerText(w: WasIstLos): string {
-  if (w.drucker === 'bereit') return 'in Ordnung';
-  return w.stoerungstext?.titel ?? 'meldet einen Fehler';
-}
-
 /**
  * Servicemenue. Der Kunde kann alles erledigen, was im Alltag anfaellt, aber
  * nichts kaputt machen.
+ *
+ * Links der Zustand der Box mit dem naechsten Handgriff, falls etwas nicht
+ * stimmt - der Betreuer ist ja der "Jemand", dem der Gast Bescheid sagt.
+ * Rechts die Handgriffe, jeder mit einer Zeile, was er tut.
+ *
+ * Es schliesst sich nach einer Minute ohne Beruehrung. Vorher blieb es offen,
+ * bis jemand "Zurueck" drueckte - und ein offen gelassenes Besitzer-Menue
+ * fuehrte jeden Gast mit einem Tipper in die Verwaltung.
  */
 export function Servicemenue({
   ebene,
@@ -163,59 +178,194 @@ export function Servicemenue({
   beiGalerie: () => void;
   beiAdmin: () => void;
 }) {
+  const [zustand, setzeZustand] = useState<WasIstLos | null>(null);
   const [meldung, setzeMeldung] = useState<string | null>(null);
+  const [rueckfrage, setzeRueckfrage] = useState<Rueckfrage | null>(null);
+  const [beruehrt, setzeBeruehrt] = useState(0);
+
+  useZeitgeber(beiSchliessen, 60_000, [beruehrt, rueckfrage]);
+  useZeitgeber(() => setzeMeldung(null), meldung ? 4000 : null, [meldung]);
+
+  useEffect(() => {
+    const laden = () =>
+      api.hole<WasIstLos>('/api/kiosk/wasistlos').then(setzeZustand).catch(() => undefined);
+    void laden();
+    const uhr = setInterval(laden, 5000);
+    return () => clearInterval(uhr);
+  }, [meldung]);
+
+  const pausiert = zustand?.veranstaltung?.status === 'pausiert';
 
   return (
-    <div className="seite kiosk">
-      <h1 className="titel">Servicemenü</h1>
-      <p className="untertitel">
-        {ebene === 'besitzer' ? 'Besitzer — voller Zugriff' : 'Betreuer — Handgriffe des Alltags'}
-      </p>
-      {meldung && <p className="untertitel">{meldung}</p>}
+    <div
+      className="seite kiosk"
+      style={{ position: 'relative' }}
+      onPointerDown={() => setzeBeruehrt((n) => n + 1)}
+    >
+      <div className="kopf">
+        <h1 className="titel">Servicemenü</h1>
+        <p className="untertitel">
+          {ebene === 'besitzer' ? 'Besitzer — voller Zugriff' : 'Betreuer — die Handgriffe des Alltags'}
+          {zustand?.veranstaltung && ` · ${zustand.veranstaltung.name}`}
+        </p>
+      </div>
 
-      <div className="mitte" style={{ justifyContent: 'flex-start', paddingTop: 'var(--abstand)' }}>
-        <div className="raster" style={{ gridTemplateColumns: '1fr 1fr', width: '100%' }}>
-          <button className="knopf" onClick={beiSchliessen}>
+      <div className="service">
+        <div className="service__spalte">
+          {zustand ? (
+            <>
+              <Statusliste zustand={alsZustand(zustand)} stand={zustand.stand} />
+              {zustand.betreuerHinweis && <p className="betreuer-hinweis">{zustand.betreuerHinweis}</p>}
+            </>
+          ) : (
+            <p className="untertitel">Einen Moment…</p>
+          )}
+        </div>
+
+        <div className="service__knoepfe">
+          <button className="knopf knopf--haupt" onClick={beiSchliessen}>
             Zurück zum Kiosk
           </button>
-          <button className="knopf" onClick={beiGalerie}>
-            Nachdruck aus der Galerie
-          </button>
-          <button className="knopf" onClick={() => void tue('/api/kiosk/service/fortsetzen', 'Warteschlange läuft weiter.')}>
-            Papier gewechselt — weiter drucken
-          </button>
-          <button className="knopf" onClick={() => void tue('/api/kiosk/service/neue-rolle', 'Materialzähler zurückgesetzt.')}>
-            Neue Rolle eingelegt
-          </button>
+
+          <p className="service__trenner">Alltag</p>
+          <Handgriff
+            titel={pausiert ? 'Pause beenden' : 'Pause einlegen'}
+            zeile={pausiert ? 'Gäste können wieder fotografieren' : 'Etwa während des Essens'}
+            beiTipp={() =>
+              void tue('/api/kiosk/service/pause', { an: !pausiert }, pausiert ? 'Es geht weiter.' : 'Pause läuft.')
+            }
+          />
+          <Handgriff
+            titel="Papier gewechselt"
+            zeile="Wartende Fotos weiter drucken"
+            beiTipp={() => void tue('/api/kiosk/service/fortsetzen', {}, 'Die wartenden Fotos werden gedruckt.')}
+          />
+          <Handgriff titel="Nachdruck" zeile="Ein Foto aus der Galerie drucken" beiTipp={beiGalerie} />
+          <Handgriff
+            titel="Neue Rolle eingelegt"
+            zeile="Papierzähler auf voll zurücksetzen"
+            beiTipp={() =>
+              setzeRueckfrage({
+                titel: 'Neue Rolle eingelegt?',
+                text:
+                  'Der Papierzähler springt auf eine volle Rolle zurück. Wenn noch die alte ' +
+                  'Rolle drin ist, zeigt die Box danach zu viel Papier an und warnt nicht rechtzeitig.',
+                ja: 'Ja, neue Rolle ist drin',
+                aktion: () => void tue('/api/kiosk/service/neue-rolle', {}, 'Papierzähler steht wieder auf voll.'),
+              })
+            }
+          />
 
           {ebene === 'besitzer' && (
             <>
-              <button className="knopf" onClick={beiAdmin}>
-                Verwaltung öffnen
-              </button>
-              <button
-                className="knopf"
-                onClick={() => {
-                  // Vollbild verlassen; den Kiosk beendet danach Windows.
+              <p className="service__trenner">Besitzer</p>
+              <Handgriff titel="Verwaltung öffnen" zeile="Einstellungen, Vorlagen, Gerät" beiTipp={beiAdmin} />
+              <Handgriff
+                titel="Veranstaltung abschließen"
+                zeile="Zahlen einfrieren, Auslagen-CSV schreiben"
+                beiTipp={() => {
+                  const ev = zustand?.veranstaltung;
+                  if (!ev) return;
+                  setzeRueckfrage({
+                    titel: `„${ev.name}" abschließen?`,
+                    text:
+                      'Die Zahlen werden eingefroren und die Auslagenaufstellung geschrieben. ' +
+                      'Danach zeigt der Kiosk keine Startseite mehr. Wieder öffnen geht in der Verwaltung.',
+                    ja: 'Abschließen',
+                    aktion: () =>
+                      void tue(`/api/admin/events/${ev.id}/status`, { status: 'abgeschlossen' }, 'Veranstaltung abgeschlossen.'),
+                  });
+                }}
+              />
+              <Handgriff
+                titel="Vollbild verlassen"
+                zeile="Zum Windows-Desktop"
+                beiTipp={() => {
                   void document.exitFullscreen?.().catch(() => undefined);
                   setzeMeldung('Vollbild verlassen.');
                 }}
-              >
-                Vollbild verlassen
-              </button>
+              />
+              <Handgriff
+                titel="PC herunterfahren"
+                zeile="Sauber ausschalten vor dem Abbau"
+                beiTipp={() =>
+                  setzeRueckfrage({
+                    titel: 'Fotobox herunterfahren?',
+                    text:
+                      'Der PC schaltet sich in 15 Sekunden aus. Alle Fotos und Zahlen sind ' +
+                      'gespeichert. Kamera und Drucker danach von Hand ausschalten.',
+                    ja: 'Herunterfahren',
+                    aktion: () => void herunterfahren(),
+                  })
+                }
+              />
             </>
           )}
         </div>
       </div>
+
+      {rueckfrage && (
+        <div className="rueckfrage">
+          <div className="rueckfrage__karte">
+            <p className="rueckfrage__titel">{rueckfrage.titel}</p>
+            <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.45 }}>{rueckfrage.text}</p>
+            <div className="reihe" style={{ justifyContent: 'flex-end' }}>
+              <button className="knopf knopf--neben" onClick={() => setzeRueckfrage(null)}>
+                Abbrechen
+              </button>
+              <button
+                className="knopf"
+                onClick={() => {
+                  rueckfrage.aktion();
+                  setzeRueckfrage(null);
+                }}
+              >
+                {rueckfrage.ja}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {meldung && <div className="hinweis-fest">{meldung}</div>}
     </div>
   );
 
-  async function tue(pfad: string, erfolgstext: string) {
+  async function tue(pfad: string, koerper: unknown, erfolgstext: string) {
     try {
-      await api.sende(pfad, {});
+      await api.sende(pfad, koerper);
       setzeMeldung(erfolgstext);
     } catch (fehler) {
       setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
     }
   }
+
+  async function herunterfahren() {
+    try {
+      const antwort = await api.sende<{ simuliert: boolean }>('/api/kiosk/service/herunterfahren', {});
+      setzeMeldung(
+        antwort.simuliert
+          ? 'Im Entwicklungsbetrieb wird nicht heruntergefahren.'
+          : 'Der PC fährt in 15 Sekunden herunter.',
+      );
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
+  }
+}
+
+interface Rueckfrage {
+  titel: string;
+  text: string;
+  ja: string;
+  aktion: () => void;
+}
+
+function Handgriff({ titel, zeile, beiTipp }: { titel: string; zeile: string; beiTipp: () => void }) {
+  return (
+    <button className="knopf service__knopf" onClick={beiTipp}>
+      {titel}
+      <small>{zeile}</small>
+    </button>
+  );
 }

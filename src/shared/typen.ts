@@ -341,9 +341,12 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   startUntertitel: 'Tippt auf den Knopf und los geht es!',
   farbeAkzent: '#c8963e',
   fokus: 'fest',
+  // {loeschfrist} wird durch die eingestellte Zahl von Tagen ersetzt - der Text
+  // hatte vorher "nach der Veranstaltung" versprochen, geloescht wurde aber
+  // erst nach 30 Tagen. Eine Einwilligung muss stimmen.
   einwilligungstext:
-    'Ich moechte mein Foto per E-Mail erhalten und bin damit einverstanden, ' +
-    'dass meine Adresse dafuer gespeichert und nach der Veranstaltung geloescht wird.',
+    'Ich möchte mein Foto per E-Mail bekommen. Meine Adresse wird nur dafür ' +
+    'gespeichert und spätestens {loeschfrist} Tage nach der Feier gelöscht.',
   emailLoeschfristTage: 30,
   vorlagen: [],
   filter: [FILTER_OHNE, 'schwarzweiss', 'sepia', 'warm', 'pop'],
@@ -498,7 +501,7 @@ export const STOERUNGSTEXTE: Record<Stoerung, { titel: string; folge: string; tu
   },
   'drucker-offline': {
     titel: 'Der Drucker meldet sich gerade nicht.',
-    folge: 'Dein Foto ist gespeichert. Sobald er wieder laeuft, wird gedruckt.',
+    folge: 'Dein Foto ist gespeichert. Sobald er wieder läuft, wird gedruckt.',
     tun: 'Bitte gib jemandem Bescheid, dass der Drucker aus ist.',
   },
   'drucker-klappe': {
@@ -521,4 +524,28 @@ export const STOERUNGSTEXTE: Record<Stoerung, { titel: string; folge: string; tu
     folge: 'Gleich geht es weiter.',
     tun: '',
   },
+};
+
+/**
+ * Was der Betreuer im Servicemenue zu einer Stoerung liest.
+ *
+ * Der Gast bekommt "Sag bitte jemandem Bescheid" - der Betreuer ist dieser
+ * Jemand und braucht den naechsten Handgriff, nicht die Beschreibung des
+ * Problems. Deshalb getrennte Texte fuer getrennte Leser.
+ */
+export const BETREUER_HINWEISE: Record<Stoerung, string> = {
+  'papier-leer':
+    'Neue Rolle und neues Farbband einlegen. Danach hier „Neue Rolle eingelegt" ' +
+    'und „Papier gewechselt — weiter drucken" antippen.',
+  'drucker-offline':
+    'Prüfen, ob der Drucker eingeschaltet ist und das USB-Kabel steckt. Danach ' +
+    '„Papier gewechselt — weiter drucken" antippen.',
+  'drucker-klappe':
+    'Druckerklappe öffnen, Papier gerade einlegen, Klappe fest schließen. Danach ' +
+    '„Papier gewechselt — weiter drucken" antippen.',
+  'kamera-offline':
+    'Prüfen, ob die Kamera eingeschaltet ist und das USB-Kabel steckt. Die Box ' +
+    'verbindet sich danach von selbst neu.',
+  'speicher-voll': 'Der Besitzer der Fotobox sollte Bescheid bekommen. Fotografieren geht weiter.',
+  aussetzer: 'Nichts zu tun — die Box fängt sich von selbst.',
 };

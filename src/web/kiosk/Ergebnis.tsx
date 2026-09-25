@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
 import { toene } from './toene.js';
+import { EmailEingabe } from './Email.js';
+import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
+import { useZeitgeber } from './zeitgeber.js';
 
 /**
  * Ergebnis und Ausgabe auf einer Seite: das fertige Layout gross oben, darunter
@@ -22,6 +24,7 @@ export function Ergebnis({
   ausgabe: {
     druckAktiv: boolean;
     emailAktiv: boolean;
+    einwilligungstext: string;
     kopienVorgabe: number;
     kopienMax: number;
     druckLimitErreicht: boolean;
@@ -31,19 +34,19 @@ export function Ergebnis({
   beiFertig: () => void;
 }) {
   const [kopien, setzeKopien] = useState(ausgabe.kopienVorgabe);
-  const [meldung, setzeMeldung] = useState<string | null>(null);
-  const [fehlgeschlagen, setzeFehlgeschlagen] = useState(false);
-  const [beschaeftigt, setzeBeschaeftigt] = useState(false);
+  const [emailOffen, setzeEmailOffen] = useState(false);
+  const druck = useDrucken(ausgabeId, 'kiosk', beiFertig);
 
   useEffect(() => {
     if (tonAn) toene.ergebnis();
   }, [tonAn]);
 
-  // Rueckkehr zum Startbildschirm, wenn der Gast gar nichts tut.
-  useEffect(() => {
-    const uhr = setTimeout(beiFertig, rueckkehrSekunden * 1000);
-    return () => clearTimeout(uhr);
-  }, [rueckkehrSekunden, beiFertig, meldung]);
+  // Rueckkehr zum Startbildschirm, wenn der Gast gar nichts tut. Das lief
+  // vorher nie ab (siehe zeitgeber.ts) - der naechste Gast stand vor dem Foto
+  // seines Vorgaengers, mit aktivem Druckknopf. Waehrend der E-Mail-Eingabe
+  // steht die Uhr: Wer eine Adresse tippt, braucht laenger als 20 Sekunden,
+  // und die Eingabe hat ihren eigenen Leerlauf.
+  useZeitgeber(beiFertig, emailOffen ? null : rueckkehrSekunden * 1000, [druck.quittung]);
 
   const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht;
 
@@ -54,24 +57,12 @@ export function Ergebnis({
       <div className="ergebnis__leiste">
         {druckMoeglich && (
           <>
-            <div className="menge">
-              <button
-                className="knopf knopf--neben"
-                onClick={() => setzeKopien((k) => Math.max(1, k - 1))}
-                disabled={kopien <= 1}
-              >
-                −
-              </button>
-              <span className="menge__zahl">{kopien}</span>
-              <button
-                className="knopf knopf--neben"
-                onClick={() => setzeKopien((k) => Math.min(ausgabe.kopienMax, k + 1))}
-                disabled={kopien >= ausgabe.kopienMax}
-              >
-                +
-              </button>
-            </div>
-            <button className="knopf knopf--haupt" onClick={() => void drucke()} disabled={beschaeftigt}>
+            <Mengenwahl kopien={kopien} max={ausgabe.kopienMax} beiAendern={setzeKopien} />
+            <button
+              className="knopf knopf--haupt"
+              onClick={() => void druck.drucke(kopien)}
+              disabled={druck.beschaeftigt}
+            >
               {kopien === 1 ? 'Drucken' : `${kopien}× drucken`}
             </button>
           </>
@@ -80,7 +71,7 @@ export function Ergebnis({
         {/* Ist der E-Mail-Versand aus, ist der Knopf nicht ausgegraut,
             sondern gar nicht da. */}
         {ausgabe.emailAktiv && (
-          <button className="knopf" onClick={() => setzeMeldung('E-Mail-Versand folgt.')}>
+          <button className="knopf" onClick={() => setzeEmailOffen(true)}>
             Per E-Mail schicken
           </button>
         )}
@@ -90,75 +81,21 @@ export function Ergebnis({
         </button>
       </div>
 
-      {/*
-        Die Rueckmeldung legt sich ueber die Seite, statt als Zeile darunter zu
-        erscheinen: Vorher ist beim Drucken das ganze Layout gesprungen, genau
-        in dem Moment, in dem der Gast noch die Finger auf dem Schirm hatte.
-      */}
-      {meldung && (
-        <div className="quittung">
-          <div className="quittung__karte">
-            <Zeichen art={fehlgeschlagen ? 'warnung' : 'drucker'} />
-            <p className="quittung__text">{meldung}</p>
-            {fehlgeschlagen && (
-              <button className="knopf" onClick={() => setzeMeldung(null)}>
-                Zurück
-              </button>
-            )}
-          </div>
-        </div>
+      {emailOffen && (
+        <EmailEingabe
+          ausgabeId={ausgabeId}
+          einwilligungstext={ausgabe.einwilligungstext}
+          beiSchliessen={() => setzeEmailOffen(false)}
+        />
+      )}
+
+      {druck.quittung && (
+        <Quittung
+          text={druck.quittung.text}
+          fehlgeschlagen={druck.quittung.fehlgeschlagen}
+          beiZurueck={druck.schliesseQuittung}
+        />
       )}
     </div>
-  );
-
-  async function drucke() {
-    setzeBeschaeftigt(true);
-    try {
-      await api.sende('/api/kiosk/drucken', { ausgabeId, kopien, quelle: 'kiosk' });
-      // Der Gast bekommt sofort Rueckmeldung und macht Platz - der Druck
-      // laeuft im Hintergrund weiter.
-      setzeFehlgeschlagen(false);
-      setzeMeldung('Dein Bild wird gedruckt. Du kannst es gleich am Drucker abholen.');
-      setTimeout(beiFertig, 3500);
-    } catch (fehler) {
-      setzeFehlgeschlagen(true);
-      setzeMeldung(fehler instanceof Error ? fehler.message : 'Drucken hat nicht geklappt.');
-      setzeBeschaeftigt(false);
-    }
-  }
-}
-
-/**
- * Die beiden Zeichen der Quittung, gezeichnet statt als Emoji: Ein Emoji haengt
- * an der Schriftart des Systems und kommt auf einem frisch aufgesetzten Windows
- * als leeres Kaestchen heraus - ausgerechnet in dem Moment, in dem der Gast
- * wissen will, ob sein Bild jetzt gedruckt wird.
- */
-function Zeichen({ art }: { art: 'drucker' | 'warnung' }) {
-  return (
-    <svg
-      className="quittung__zeichen"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {art === 'drucker' ? (
-        <>
-          <path d="M7 9V3h10v6" />
-          <path d="M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
-          <rect x="7" y="15" width="10" height="6" rx="1" />
-        </>
-      ) : (
-        <>
-          <path d="M12 3 2.5 20h19L12 3Z" />
-          <path d="M12 9v5" />
-          <path d="M12 17.5v.5" />
-        </>
-      )}
-    </svg>
   );
 }

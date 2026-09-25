@@ -21,6 +21,10 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('admin', pfad.startsWith('/admin'));
+    document.documentElement.classList.toggle(
+      'handy-ansicht',
+      pfad.startsWith('/g/') || pfad.startsWith('/s/'),
+    );
   }, [pfad]);
 
   if (pfad.startsWith('/admin')) return <Admin pfad={pfad} navigiere={navigiere} />;

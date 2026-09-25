@@ -372,6 +372,37 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               />
             </div>
           </div>
+          {/*
+            Die Gaeste lesen diesen Text, bevor sie ihre Adresse hergeben - also
+            muss er sich auch aendern lassen. Vorher stand er im Datenmodell,
+            aber in keinem Feld.
+          */}
+          {e.emailAktiv && (
+            <div className="zeile" style={{ alignItems: 'flex-start' }}>
+              <div className="feld" style={{ flex: 1 }}>
+                <label htmlFor="einwilligung">
+                  Einwilligungstext für die E-Mail — {'{loeschfrist}'} wird durch die Tage ersetzt
+                </label>
+                <textarea
+                  id="einwilligung"
+                  rows={3}
+                  value={e.einwilligungstext}
+                  onChange={(ev) => void speichere({ einwilligungstext: ev.target.value })}
+                />
+              </div>
+              <div className="feld feld--klein">
+                <label htmlFor="loeschfrist">Adressen löschen nach (Tagen)</label>
+                <input
+                  id="loeschfrist"
+                  className="zahl"
+                  type="number"
+                  min={1}
+                  value={e.emailLoeschfristTage}
+                  onChange={(ev) => void speichere({ emailLoeschfristTage: Number(ev.target.value) })}
+                />
+              </div>
+            </div>
+          )}
           {e.galerieAktiv && (
             <div className="zeile" style={{ fontSize: '0.8rem', color: 'var(--schrift-leise)' }}>
               <span>
