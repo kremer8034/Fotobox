@@ -384,6 +384,36 @@ verstellen.
 Zurück ins Vollbild kommst du mit einem Doppelklick auf **`Kiosk starten`** im
 Ordner `windows` — oder einfach mit dem nächsten Start des PCs.
 
+## Foto per E-Mail (nur wenn die Box Internet hat)
+
+Die Box kann Gästen ihr Foto per E-Mail schicken — aber nur, wenn sie am Abend
+wirklich online ist. Im eigenen Reise-Router-WLAN ohne Internet erscheint der
+Knopf gar nicht.
+
+**Einmal einrichten** (Verwaltung → **Gerät** → **E-Mail-Versand**):
+
+1. Lege dir ein **eigenes E-Mail-Konto nur für die Fotobox** an — nicht dein
+   privates Postfach.
+2. Erzeuge dort ein **App-Passwort** (bei Gmail: Google-Konto → Sicherheit →
+   App-Passwörter). Das normale Passwort gehört hier nicht hin: Das
+   App-Passwort liegt auf der Box, und wer den PC in der Hand hat, könnte es
+   finden.
+3. Postausgangsserver, Port (465 oder 587), Benutzername, App-Passwort und
+   Absender eintragen, **Speichern**.
+4. **Testmail senden** an dich selbst. Kommt sie an, passt alles.
+
+Die Verbindung zum Mailserver ist immer verschlüsselt; ohne Verschlüsselung
+verschickt die Box nichts.
+
+**Je Veranstaltung** (Detailseite → Reiter **Ausgabe**): E-Mail einschalten,
+Einwilligungstext prüfen und die Frist setzen, nach der die Adressen gelöscht
+werden. Die Box löscht sie danach selbst. Darunter stehen alle erfassten
+Adressen; bittet ein Gast um Löschung, reicht ein Klick auf **Löschen**.
+
+Damit niemand die Box zum Verschicken von Massenmails missbraucht, gilt: nur das
+gerade eben fertig gewordene Foto, höchstens drei Mails je Adresse und Tag,
+fünf Versuche je Minute, 200 Mails je Feier und Tag.
+
 ## Ein Foto aus der Galerie nehmen
 
 Landet ein Foto in der Galerie, das dort nicht hingehört, kann der Gastgeber es

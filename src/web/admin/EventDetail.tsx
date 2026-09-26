@@ -403,6 +403,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               </div>
             </div>
           )}
+          <Adressen eventId={id} />
           {e.galerieAktiv && (
             <div className="zeile" style={{ fontSize: '0.8rem', color: 'var(--schrift-leise)' }}>
               <span>
@@ -684,6 +685,84 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     setzePin('');
     await lade();
     zeige('Betreuer-PIN gesetzt.');
+  }
+}
+
+interface Adresseintrag {
+  id: string;
+  adresse: string;
+  status: string;
+  einwilligungAm: string | null;
+  geloeschtAm: string | null;
+}
+
+/**
+ * Die erfassten E-Mail-Adressen - fuer die Auskunft, wenn ein Gast fragt, und
+ * zum sofortigen Loeschen, wenn er darum bittet. Nach der Frist loescht die Box
+ * sie ohnehin selbst; Zeitpunkt und Wortlaut der Einwilligung bleiben als
+ * Nachweis stehen.
+ */
+function Adressen({ eventId }: { eventId: string }) {
+  const [daten, setzeDaten] = useState<{ loeschfristTage: number; adressen: Adresseintrag[] } | null>(null);
+
+  useEffect(() => {
+    void lade();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
+  if (!daten || daten.adressen.length === 0) return null;
+  const offen = daten.adressen.filter((a) => !a.geloeschtAm);
+  const datum = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '–';
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <div className="zeile">
+        <strong>Erfasste E-Mail-Adressen</strong>
+        <span style={{ color: 'var(--schrift-leise)', fontSize: '0.85rem' }}>
+          {offen.length} gespeichert, {daten.adressen.length - offen.length} bereits gelöscht · automatisch
+          gelöscht {daten.loeschfristTage} Tage nach der Einwilligung
+        </span>
+        {offen.length > 0 && (
+          <button
+            className="knopf knopf--neben"
+            onClick={() => {
+              if (window.confirm(`Alle ${offen.length} gespeicherten Adressen jetzt löschen?`)) void alleLoeschen();
+            }}
+          >
+            Alle jetzt löschen
+          </button>
+        )}
+      </div>
+      {offen.length > 0 && (
+        <ul className="vorfaelle" style={{ marginTop: '0.5rem' }}>
+          {offen.map((a) => (
+            <li key={a.id} className="vorfaelle__eintrag" style={{ gridTemplateColumns: '9rem 1fr 7rem auto' }}>
+              <span className="vorfaelle__zeit">{datum(a.einwilligungAm)}</span>
+              <span>{a.adresse}</span>
+              <span className="vorfaelle__bereich">{a.status}</span>
+              <button className="knopf knopf--neben" onClick={() => void loeschen(a.id)}>
+                Löschen
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  async function lade() {
+    setzeDaten(await api.hole(`/api/admin/events/${eventId}/adressen`));
+  }
+
+  async function loeschen(versandId: string) {
+    await api.loesche(`/api/admin/events/${eventId}/adressen/${versandId}`);
+    await lade();
+  }
+
+  async function alleLoeschen() {
+    await api.loesche(`/api/admin/events/${eventId}/adressen`);
+    await lade();
   }
 }
 

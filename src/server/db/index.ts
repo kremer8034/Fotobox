@@ -47,6 +47,7 @@ export function oeffneDb(pfad: string): DB {
 function ergaenzeSpalten(verbindung: DB): void {
   const nachtraege: { tabelle: string; spalte: string; definition: string }[] = [
     { tabelle: 'ausgaben', spalte: 'verborgen', definition: 'INTEGER NOT NULL DEFAULT 0' },
+    { tabelle: 'versand', spalte: 'einwilligung_text', definition: 'TEXT' },
   ];
   for (const { tabelle, spalte, definition } of nachtraege) {
     const vorhanden = (verbindung.prepare(`PRAGMA table_info(${tabelle})`).all() as { name: string }[]).some(

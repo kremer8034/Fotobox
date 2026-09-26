@@ -106,6 +106,9 @@ CREATE TABLE IF NOT EXISTS versand (
   kanal            TEXT NOT NULL,
   ziel             TEXT NOT NULL,
   einwilligung_am  TEXT,
+  -- Der Wortlaut, dem der Gast zugestimmt hat - als Nachweis, auch nachdem
+  -- die Adresse selbst geloescht ist.
+  einwilligung_text TEXT,
   status           TEXT NOT NULL DEFAULT 'wartend',
   gesendet_am      TEXT,
   geloescht_am     TEXT

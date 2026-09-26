@@ -8,6 +8,8 @@ interface Geraet {
   digicamcontrolPfad: string;
   speicherWarnungGb: number;
   besitzerPinGesetzt: boolean;
+  mail: Mail | null;
+  mailPasswortGesetzt: boolean;
   lanAdresse: string | null;
   hardware: string;
   kamera: { iso: string; blende: string; verschlusszeit: string };
@@ -17,6 +19,13 @@ interface Geraet {
     skalierungXProzent: number;
     skalierungYProzent: number;
   };
+}
+
+interface Mail {
+  host: string;
+  port: number;
+  benutzer: string;
+  absender: string;
 }
 
 const KAMERA_BESCHRIFTUNG = {
@@ -184,7 +193,13 @@ export function GeraetSeite() {
         <div className="zeile">
           <div className="feld feld--klein">
             <label>Neue PIN (4–8 Ziffern)</label>
-            <input value={pin} onChange={(e) => setzePin(e.target.value)} />
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="new-password"
+              value={pin}
+              onChange={(e) => setzePin(e.target.value)}
+            />
           </div>
           <button
             className="knopf knopf--neben"
@@ -195,6 +210,12 @@ export function GeraetSeite() {
           </button>
         </div>
       </div>
+
+      <MailKarte
+        mail={geraet.mail}
+        passwortGesetzt={geraet.mailPasswortGesetzt}
+        beiSpeichern={(teil) => speichere(teil)}
+      />
 
       <div className="karte">
         <h2>Speicher</h2>
@@ -226,6 +247,109 @@ export function GeraetSeite() {
   async function kalibrierdruck() {
     await api.sende('/api/admin/geraet/kalibrierdruck', { preset: '10x15-quer' });
     setzeMeldung('Testbild in der Warteschlange. Es zählt nicht in den Auslagenersatz.');
+  }
+}
+
+/**
+ * Der Postausgangsserver fuer "Foto per E-Mail".
+ *
+ * Das Passwortfeld ist immer leer: Das gespeicherte Passwort verlaesst den
+ * Server nie, auch nicht in die Verwaltung. Leer lassen heisst "unveraendert".
+ */
+function MailKarte({
+  mail,
+  passwortGesetzt,
+  beiSpeichern,
+}: {
+  mail: Mail | null;
+  passwortGesetzt: boolean;
+  beiSpeichern: (teil: Record<string, unknown>) => Promise<void>;
+}) {
+  const [entwurf, setzeEntwurf] = useState<Mail>(
+    mail ?? { host: '', port: 587, benutzer: '', absender: '' },
+  );
+  const [passwort, setzePasswort] = useState('');
+  const [testAn, setzeTestAn] = useState('');
+  const [ergebnis, setzeErgebnis] = useState<string | null>(null);
+  const feld = (name: keyof Mail, text: string, art = 'text') => (
+    <div className="feld">
+      <label>{text}</label>
+      <input
+        type={art}
+        value={entwurf[name]}
+        onChange={(e) =>
+          setzeEntwurf({ ...entwurf, [name]: art === 'number' ? Number(e.target.value) : e.target.value })
+        }
+      />
+    </div>
+  );
+
+  return (
+    <div className="karte">
+      <h2>E-Mail-Versand</h2>
+      <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+        Nötig für „Foto per E-Mail". Nimm ein <strong>eigenes Konto für die Fotobox</strong> und
+        dort ein <strong>App-Passwort</strong> — nie das Passwort deines privaten Postfachs: Es liegt
+        auf der Box. Die Verbindung ist immer verschlüsselt (Port 465 oder 587).
+      </p>
+      <div className="zeile">
+        {feld('host', 'Postausgangsserver, etwa smtp.gmail.com')}
+        {feld('port', 'Port', 'number')}
+      </div>
+      <div className="zeile">
+        {feld('benutzer', 'Benutzername')}
+        <div className="feld">
+          <label>Passwort {passwortGesetzt ? '(gespeichert — leer lassen zum Behalten)' : ''}</label>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={passwort}
+            onChange={(e) => setzePasswort(e.target.value)}
+          />
+        </div>
+      </div>
+      {feld('absender', 'Absender, etwa Fotobox <fotobox@example.de>')}
+      <div className="zeile">
+        <button
+          className="knopf"
+          disabled={!entwurf.host || !entwurf.absender}
+          onClick={() =>
+            void beiSpeichern({ mail: entwurf, ...(passwort ? { mailPasswort: passwort } : {}) }).then(() =>
+              setzePasswort(''),
+            )
+          }
+        >
+          Speichern
+        </button>
+        {mail && (
+          <button className="knopf knopf--neben" onClick={() => void beiSpeichern({ mail: null })}>
+            Zugang entfernen
+          </button>
+        )}
+      </div>
+      {mail && (
+        <div className="zeile" style={{ marginTop: '1rem' }}>
+          <div className="feld">
+            <label>Testmail an</label>
+            <input type="email" value={testAn} onChange={(e) => setzeTestAn(e.target.value)} />
+          </div>
+          <button className="knopf knopf--neben" disabled={!testAn} onClick={() => void testmail()}>
+            Testmail senden
+          </button>
+        </div>
+      )}
+      {ergebnis && <p style={{ marginBottom: 0 }}>{ergebnis}</p>}
+    </div>
+  );
+
+  async function testmail() {
+    setzeErgebnis('Wird verschickt …');
+    try {
+      await api.sende('/api/admin/geraet/testmail', { an: testAn });
+      setzeErgebnis('Die Testmail ist raus. Schau ins Postfach.');
+    } catch (fehler) {
+      setzeErgebnis(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
   }
 }
 

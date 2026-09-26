@@ -13,7 +13,8 @@ import { wurzelpfade } from './fach/pfade.js';
 import { findeDigiCamControl, findeSumatra } from './fach/hilfsprogramme.js';
 import { legeStandardvorlagenAn } from './fach/vorlagen.js';
 import { legeEingebauteFilterAn } from './fach/filter.js';
-import { holeAktivesEvent } from './fach/events.js';
+import { holeAktivesEvent, listeEvents } from './fach/events.js';
+import { raeumeAlleAdressenAuf } from './fach/email.js';
 import { stelleUnterbrocheneWiederAn } from './fach/druckwarteschlange.js';
 import { brichSitzungAb } from './fach/sitzungen.js';
 import { Betrieb, protokolliere } from './betrieb.js';
@@ -139,6 +140,22 @@ async function pruefeGalerie(): Promise<void> {
 await pruefeGalerie();
 const galerieUhr = setInterval(() => void pruefeGalerie().catch(() => undefined), 5000);
 
+/**
+ * Datenschutz: E-Mail-Adressen nach der zugesagten Frist loeschen - beim Start
+ * und danach stuendlich. Vorher gab es dafuer nur eine Funktion, die nie
+ * aufgerufen wurde; die Adressen blieben fuer immer.
+ */
+function raeumeAdressenAuf(): void {
+  try {
+    const geloescht = raeumeAlleAdressenAuf(listeEvents());
+    if (geloescht > 0) protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) nach Ablauf der Frist geloescht.`);
+  } catch (fehler) {
+    protokolliere('fehler', 'email', `Loeschen alter Adressen: ${(fehler as Error).message}`);
+  }
+}
+raeumeAdressenAuf();
+const loeschUhr = setInterval(raeumeAdressenAuf, 3600_000);
+
 /** Rettungsleine: Sitzungen, die haengen bleiben, werden verworfen. */
 const abbruchUhr = setInterval(() => {
   const sitzung = betrieb.aktiveSitzung;
@@ -169,6 +186,7 @@ async function registriereWeb(app: FastifyInstance): Promise<void> {
 async function beende(): Promise<void> {
   clearInterval(galerieUhr);
   clearInterval(abbruchUhr);
+  clearInterval(loeschUhr);
   await betrieb.beende();
   await oeffentlich?.close();
   await lokal.close();

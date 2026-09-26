@@ -21,7 +21,14 @@ async function anfrage<T>(pfad: string, optionen?: RequestInit): Promise<T> {
   try {
     antwort = await fetch(pfad, {
       ...optionen,
-      headers: { 'content-type': 'application/json', ...optionen?.headers },
+      // Die JSON-Kopfzeile nur, wenn auch etwas mitgeht. Ein DELETE ohne
+      // Inhalt, aber mit dieser Kopfzeile lehnt der Server ab ("Body cannot be
+      // empty") - daran scheiterte vorher jedes Loeschen in der Verwaltung,
+      // auch das von Vorlagen.
+      headers: {
+        ...(optionen?.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...optionen?.headers,
+      },
     });
   } catch {
     throw new ApiFehler('Keine Verbindung zur Fotobox.', KEINE_VERBINDUNG);

@@ -4,7 +4,7 @@ import { createReadStream } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { leseGeraet, schreibeGeraet, begrenzeKalibrierung } from '../db/geraet.js';
+import { leseGeraet, leseMailPasswort, schreibeGeraet, schreibeMailPasswort, begrenzeKalibrierung } from '../db/geraet.js';
 import {
   aktualisiereEvent,
   erneuereGalerieToken,
@@ -30,7 +30,16 @@ import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.j
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
-import { loescheAlteAdressen } from '../fach/email.js';
+import {
+  leseMailzugang,
+  listeAdressen,
+  loescheAdresse,
+  loescheAlleAdressen,
+  loescheAlteAdressen,
+  pruefeAdresse,
+  schwaerze,
+  sendeTestmail,
+} from '../fach/email.js';
 import { galerieUrl as galerieAdresse, lanAdresse } from '../netzwerk.js';
 import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
@@ -45,16 +54,24 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   const wurzel = wurzelpfade(konfig.datenpfad);
 
   // ---------------------------------------------------------------- Geraet
-  app.get('/api/admin/geraet', async () => {
+  /**
+   * Die Geraeteeinstellungen, wie sie der Browser sehen darf: ohne PIN-Hash
+   * und ohne Mailpasswort - nur, ob sie gesetzt sind. Vorher gab die Antwort
+   * auf das Speichern den PIN-Hash mit zurueck.
+   */
+  function geraetFuerBrowser() {
     const geraet = leseGeraet();
     return {
       ...geraet,
       besitzerPinGesetzt: geraet.besitzerPinHash !== null,
       besitzerPinHash: undefined,
+      mailPasswortGesetzt: leseMailPasswort() !== '',
       lanAdresse: lanAdresse(),
       hardware: konfig.echteHardware ? 'echt' : 'mock',
     };
-  });
+  }
+
+  app.get('/api/admin/geraet', async () => geraetFuerBrowser());
 
   app.put<{ Body: unknown }>('/api/admin/geraet', async (anfrage) => {
     const koerper = z
@@ -75,6 +92,18 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
           })
           .optional(),
         besitzerPin: z.string().min(4).max(32).optional(),
+        mail: z
+          .object({
+            host: z.string().trim().min(1).max(200),
+            port: z.number().int().min(1).max(65535),
+            benutzer: z.string().trim().max(200),
+            absender: z.string().trim().min(3).max(200),
+          })
+          .nullable()
+          .optional(),
+        // Leer oder weggelassen: bleibt, wie es ist. Das Feld in der
+        // Verwaltung ist immer leer - das gespeicherte Passwort kommt nie zurueck.
+        mailPasswort: z.string().max(200).optional(),
       })
       .parse(anfrage.body);
 
@@ -88,11 +117,33 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (koerper.kamera) aenderung.kamera = koerper.kamera;
     if (koerper.kalibrierung) aenderung.kalibrierung = begrenzeKalibrierung(koerper.kalibrierung);
     if (koerper.besitzerPin) aenderung.besitzerPinHash = await hashePin(koerper.besitzerPin);
+    if (koerper.mail !== undefined) aenderung.mail = koerper.mail;
 
     schreibeGeraet(aenderung);
+    if (koerper.mail === null) schreibeMailPasswort(null);
+    else if (koerper.mailPasswort) schreibeMailPasswort(koerper.mailPasswort);
     betrieb.ladeTreiberNeu();
     if (koerper.kamera) await betrieb.kamera.setzeBelichtung(koerper.kamera).catch(() => undefined);
-    return leseGeraet();
+    return geraetFuerBrowser();
+  });
+
+  /**
+   * Testmail an eine Adresse des Besitzers - prueft Server, Anmeldung und
+   * Verschluesselung, bevor der erste Gast auf "Per E-Mail" tippt.
+   */
+  app.post<{ Body: unknown }>('/api/admin/geraet/testmail', async (anfrage, antwort) => {
+    const { an } = z.object({ an: z.string().max(254) }).parse(anfrage.body);
+    if (!pruefeAdresse(an)) return antwort.code(400).send({ fehler: 'Diese Adresse sieht nicht richtig aus.' });
+    const zugang = leseMailzugang();
+    if (!zugang) return antwort.code(409).send({ fehler: 'Erst Server, Absender und Passwort eintragen.' });
+    try {
+      await sendeTestmail(an, zugang);
+      return { ok: true };
+    } catch (fehler) {
+      const text = schwaerze((fehler as Error).message);
+      protokolliere('warnung', 'email', `Testmail: ${text}`);
+      return antwort.code(502).send({ fehler: `Hat nicht geklappt: ${text}` });
+    }
   });
 
   /** Kalibrier-Testbild drucken. Zaehlt nicht in den Auslagenersatz. */
@@ -511,6 +562,34 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       return { kurzanleitung, aushang };
     },
   );
+
+  /** Erfasste E-Mail-Adressen einer Veranstaltung - fuer Auskunft und Loeschung. */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/adressen', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    return { loeschfristTage: event.einstellungen.emailLoeschfristTage, adressen: listeAdressen(event.id) };
+  });
+
+  /** Eine Adresse sofort loeschen - etwa wenn ein Gast darum bittet. */
+  app.delete<{ Params: { id: string; versandId: string } }>(
+    '/api/admin/events/:id/adressen/:versandId',
+    async (anfrage, antwort) => {
+      const eintrag = listeAdressen(anfrage.params.id).find((a) => a.id === anfrage.params.versandId);
+      if (!eintrag) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+      loescheAdresse(eintrag.id);
+      protokolliere('info', 'email', 'Eine E-Mail-Adresse auf Wunsch geloescht.');
+      return { ok: true };
+    },
+  );
+
+  /** Alle Adressen einer Veranstaltung sofort loeschen. */
+  app.delete<{ Params: { id: string } }>('/api/admin/events/:id/adressen', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    const geloescht = loescheAlleAdressen(event.id);
+    protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) von "${event.name}" geloescht.`);
+    return { geloescht };
+  });
 
   /** Erfasste E-Mail-Adressen nach der eingestellten Frist loeschen. */
   app.post<{ Params: { id: string } }>(

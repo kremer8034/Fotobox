@@ -43,7 +43,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 72 Tests, alle ohne Hardware
+npm test             # 82 Tests, alle ohne Hardware
 npm run typecheck
 ```
 
@@ -169,7 +169,14 @@ WLAN — darauf ist das Konzept zugeschnitten:
   Anfragen nur von eigenen Seiten an (gegen untergeschobene Formulare) — falls
   auf dem Fotobox-PC auch einmal im Internet gesurft wird.
 - **PINs nur als scrypt-Hash**, Drosselung nach drei Fehlversuchen.
-- **EXIF wird entfernt** aus allem, was über die Galerie herausgeht.
+- **EXIF wird entfernt** aus allem, was über die Galerie oder per E-Mail
+  herausgeht.
+- **E-Mail:** Die Verbindung zum Mailserver ist immer verschlüsselt (TLS ist
+  Pflicht, auch auf Port 587). Das Mailpasswort verlässt den Server nie, auch
+  nicht in die Verwaltung. Nur schlichte Adressen, nur das gerade fertige Foto,
+  höchstens drei Mails je Adresse und Tag. Adressen werden nach der Frist aus dem
+  Einwilligungstext automatisch gelöscht (Zeitpunkt und Wortlaut der
+  Einwilligung bleiben als Nachweis) und stehen nie im Protokoll.
 - Der **Startbereit-Check warnt**, wenn die Box in mehreren Netzen hängt und die
   Galerie deshalb im falschen landen könnte.
 

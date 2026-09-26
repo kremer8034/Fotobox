@@ -21,7 +21,17 @@ import {
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
 import { reiheEin } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
-import { drosselGreift, istOnline, leseMailzugang, pruefeAdresse, tageslimitErreicht, versende } from '../fach/email.js';
+import {
+  adresseZuOft,
+  drosselGreift,
+  einwilligungstextFuer,
+  FOTO_FRISCH_MS,
+  istOnline,
+  leseMailzugang,
+  pruefeAdresse,
+  tageslimitErreicht,
+  versende,
+} from '../fach/email.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
 import { filterVorschau, vorlagenVorschau } from '../bild/vorschau.js';
@@ -85,10 +95,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       ausgabe: {
         druckAktiv: event.einstellungen.druckAktiv,
         emailAktiv: event.einstellungen.emailAktiv && leseMailzugang() !== null && (await istOnline()),
-        einwilligungstext: event.einstellungen.einwilligungstext.replace(
-          /\{loeschfrist\}/g,
-          String(event.einstellungen.emailLoeschfristTage),
-        ),
+        einwilligungstext: einwilligungstextFuer(event),
         kopienVorgabe: event.einstellungen.kopienVorgabe,
         kopienMax: event.einstellungen.kopienMax,
         druckLimitErreicht: druckLimitErreicht(event.id),
@@ -349,15 +356,27 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!pruefeAdresse(koerper.adresse)) {
       return antwort.code(400).send({ fehler: 'Diese Adresse sieht nicht richtig aus.' });
     }
-    // Ein offenes Mailformular im Fremd-WLAN ist ein klassisches Missbrauchsziel.
+    // Ein Formular, das im Namen des Besitzers Mails verschickt, ist ein
+    // Missbrauchsziel - daher Drossel, Tageslimit und Limit je Adresse.
     const kennung = anfrage.ip;
-    if (drosselGreift(kennung) || tageslimitErreicht(event.id)) {
+    if (
+      drosselGreift(kennung) ||
+      tageslimitErreicht(event.id) ||
+      adresseZuOft(event.id, koerper.adresse)
+    ) {
       return antwort.code(429).send({ fehler: 'Gerade zu viele Anfragen. Bitte kurz warten.' });
     }
 
+    // Nur das Foto, das gerade eben fertig wurde - nicht jedes beliebige aus
+    // der Galerie, und keines, das der Gastgeber herausgenommen hat.
     const ausgabe = holeAusgabe(koerper.ausgabeId);
-    if (!ausgabe || ausgabe.eventId !== event.id) {
-      return antwort.code(404).send({ fehler: 'Ausgabe nicht gefunden.' });
+    if (
+      !ausgabe ||
+      ausgabe.eventId !== event.id ||
+      ausgabe.verborgen ||
+      Date.now() - Date.parse(ausgabe.erstellt) > FOTO_FRISCH_MS
+    ) {
+      return antwort.code(404).send({ fehler: 'Dieses Foto lässt sich nicht mehr verschicken.' });
     }
 
     const zugang = leseMailzugang();
@@ -366,9 +385,17 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     }
 
     try {
-      await versende(event, koerper.adresse, ausgabe.pfadLayout, ausgabe.id, zugang);
+      await versende(
+        event,
+        koerper.adresse,
+        ausgabe.pfadLayout,
+        ausgabe.id,
+        zugang,
+        einwilligungstextFuer(event),
+      );
       return { ok: true };
     } catch (fehler) {
+      // versende() hat die Adresse schon aus der Meldung entfernt.
       protokolliere('warnung', 'email', (fehler as Error).message);
       return antwort.code(502).send({ fehler: 'Versand hat nicht geklappt.' });
     }

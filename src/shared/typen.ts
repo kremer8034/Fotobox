@@ -461,6 +461,17 @@ export interface Geraeteeinstellungen {
   speicherWarnungGb: number;
   digicamcontrolPfad: string;
   sumatraPfad: string;
+  /** Postausgangsserver fuer "Foto per E-Mail". Das Passwort steht bewusst
+   *  nicht hier, sondern getrennt - es verlaesst den Server nie. */
+  mail: MailEinstellungen | null;
+}
+
+export interface MailEinstellungen {
+  host: string;
+  port: number;
+  benutzer: string;
+  /** Absenderadresse, etwa "Fotobox <fotobox@example.de>". */
+  absender: string;
 }
 
 // ---------------------------------------------------------------------------
