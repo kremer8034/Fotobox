@@ -53,7 +53,8 @@ Kalibrierung) steht in der
 | Autostart | Server und Kiosk starten beim Anmelden des Benutzers, der das Setup gestartet hat |
 | Firewall | eine Freigabe für Port 8787, nur im privaten Netzwerk (für die Handy-Galerie) |
 | Windows | Bildschirm, Standby und Ruhezustand am Netzteil aus; keine Update-Neustarts, solange jemand angemeldet ist |
-| Startmenü | „Fotobox Verwaltung“, „Kiosk starten“, „Fotobox-Server starten“, „Fotobox beenden“, Datenordner, Anleitungen |
+| Desktop | **„Fotobox starten“** (startet Server und Kiosk, soweit sie nicht laufen) und **„Fotobox Verwaltung“** |
+| Startmenü | dieselben beiden, dazu „Fotobox beenden“, „Nur den Server starten“, Datenordner, Anleitungen |
 
 Programm und Daten sind getrennt. Deshalb kann ein Update das Programm
 komplett austauschen, ohne ein einziges Foto anzufassen.
@@ -129,7 +130,7 @@ Im Notfall lässt sich außerdem die gesicherte Datenbank zurückholen:
 2. Aus `C:\Users\Public\Fotobox-Daten\sicherungen\vor-update_<Datum>` die
    Dateien `fotobox.db` (und, falls vorhanden, `fotobox.db-wal`) nach
    `C:\Users\Public\Fotobox-Daten` kopieren und ersetzen.
-3. Startmenü → Fotobox → **„Fotobox-Server starten“** (oder den PC neu starten).
+3. Desktop → **„Fotobox starten“** (oder den PC neu starten).
 
 ---
 

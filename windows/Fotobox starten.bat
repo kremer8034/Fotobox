@@ -31,6 +31,17 @@ if not exist "%FOTOBOX_DATEN%" mkdir "%FOTOBOX_DATEN%"
 set "NEUSTARTS=%FOTOBOX_DATEN%\neustarts.txt"
 
 :schleife
+REM Laeuft schon ein Server (Autostart, oder "Fotobox starten" wurde doppelt
+REM angeklickt), nicht einen zweiten daneben starten - der faende seinen Port
+REM besetzt und laege dann alle fuenf Sekunden in einer Neustart-Schleife.
+where curl.exe >nul 2>&1
+if not errorlevel 1 (
+  curl.exe -s -o nul --max-time 2 "http://127.0.0.1:8787/api/kiosk/start"
+  if not errorlevel 1 (
+    echo Die Fotobox laeuft bereits.
+    goto ende
+  )
+)
 echo Fotobox startet. Daten liegen unter %FOTOBOX_DATEN%
 "%NODE%" dist\server\index.js
 set "CODE=%ERRORLEVEL%"

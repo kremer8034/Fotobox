@@ -99,8 +99,10 @@ Du musst davon nichts tun — nur wissen, dass es passiert ist:
 - **Energiesparen aus:** Bildschirm und PC schlafen am Netzteil nicht ein.
 - **Keine Update-Neustarts**, solange jemand angemeldet ist.
 - **Firewall-Freigabe** für die Handy-Galerie (nur im privaten Netzwerk).
-- **Startmenü → Fotobox:** Verwaltung, Kiosk starten, Server starten, Fotobox
-  beenden, Datenordner, Anleitungen.
+- **Desktop:** **„Fotobox starten“** (startet alles, was fehlt, und öffnet den
+  Kiosk) und **„Fotobox Verwaltung“**.
+- **Startmenü → Fotobox:** dieselben beiden, dazu „Fotobox beenden“,
+  „Nur den Server starten“, Datenordner, Anleitungen.
 
 Alle Fotos, Veranstaltungen und Einstellungen liegen in
 `C:\Users\Public\Fotobox-Daten` — getrennt vom Programm. Deshalb bleiben
@@ -123,7 +125,7 @@ fortsetzen“**, der zurück in die Verwaltung führt.
 | Kein „Trotzdem ausführen“, nur „Nicht ausführen“ | Erst auf „Weitere Informationen“ klicken — dann erscheint der Knopf. |
 | „Diese App kann auf dem PC nicht ausgeführt werden“ | Der PC hat ein 32-Bit-Windows oder Windows älter als 10. Die Fotobox braucht Windows 10/11 in 64 Bit. |
 | Nach „Fertigstellen“ öffnet sich kein Browser | Startmenü → Fotobox → **„Fotobox Verwaltung“**. Kommt „Seite nicht erreichbar“: einen Moment warten und neu laden. |
-| Die Verwaltung bleibt „nicht erreichbar“ | Startmenü → Fotobox → **„Fotobox-Server starten“**, 10 Sekunden warten, neu laden. |
+| Die Verwaltung bleibt „nicht erreichbar“ | Desktop-Verknüpfung **„Fotobox Verwaltung“** noch einmal doppelklicken — sie startet den Server mit. |
 | Beim Setup „Datei wird verwendet“ | Startmenü → Fotobox → „Fotobox beenden“, dann das Setup erneut starten. |
 
 Später auf eine neue Version aktualisieren: siehe
@@ -195,8 +197,8 @@ prüfe, ob der Webserver in digiCamControl wirklich eingeschaltet und der Port
 ## Schritt 12: Die Fotobox sieht die Kamera
 
 1. Die Verwaltung öffnen: Desktop-Verknüpfung **„Fotobox Verwaltung“** (oder
-   Startmenü → Fotobox). Kommt „Seite nicht erreichbar“: Startmenü → Fotobox →
-   „Fotobox-Server starten“, 10 Sekunden warten, neu laden.
+   Startmenü → Fotobox). Läuft der Server nicht, startet die Verknüpfung ihn
+   mit — das dauert dann ein paar Sekunden länger.
 3. Links auf **„Gerät"** klicken.
 
 Oben steht der Zustand. Die Kamera muss als **bereit** gemeldet sein.
@@ -308,8 +310,8 @@ Arbeite die roten Zeilen ab. Der Text daneben sagt, was fehlt.
 ## Schritt 21: Losgehen
 
 1. Auf der Detailseite oben auf **„startbereit"** klicken, dann auf **„aktiv"**.
-2. Desktop-Verknüpfung **„Kiosk starten“** doppelklicken (oder Startmenü →
-   Fotobox → „Kiosk starten“).
+2. Desktop-Verknüpfung **„Fotobox starten“** doppelklicken (oder Startmenü →
+   Fotobox → „Fotobox starten“).
 
 Der Bildschirm wird zum Vollbild und zeigt „Fotobox" mit einem großen Knopf
 **„Foto starten"**. Das sehen deine Gäste.
@@ -340,7 +342,7 @@ verstellen.
    zurück zum Kiosk, die Verwaltung öffnen oder mit **„Kiosk schließen"** zum
    Windows-Desktop wechseln.
 
-Zurück ins Vollbild kommst du mit einem Doppelklick auf **„Kiosk starten“**
+Zurück ins Vollbild kommst du mit einem Doppelklick auf **„Fotobox starten“**
 (Desktop oder Startmenü) — oder einfach mit dem nächsten Start des PCs.
 
 ## Foto per E-Mail (nur wenn die Box Internet hat)

@@ -80,14 +80,14 @@ Name: "{%PUBLIC}\Fotobox-Daten"; Permissions: users-modify; Flags: uninsneveruni
 
 [Icons]
 Name: "{group}\Fotobox Verwaltung"; Filename: "{app}\windows\Verwaltung oeffnen.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 21
-Name: "{group}\Kiosk starten"; Filename: "{app}\windows\Kiosk starten.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 137
-Name: "{group}\Fotobox-Server starten"; Filename: "{app}\windows\Fotobox starten.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 24
+Name: "{group}\Fotobox starten"; Filename: "{app}\windows\Kiosk starten.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 137
+Name: "{group}\Nur den Server starten"; Filename: "{app}\windows\Fotobox starten.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 24
 Name: "{group}\Fotobox beenden"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\windows\Fotobox-beenden.ps1"" -Projektordner ""{app}"""; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 27
 Name: "{group}\Datenordner"; Filename: "{%PUBLIC}\Fotobox-Daten"
 Name: "{group}\Anleitungen"; Filename: "{app}\docs"
 Name: "{group}\Fotobox deinstallieren"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Fotobox Verwaltung"; Filename: "{app}\windows\Verwaltung oeffnen.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 21; Tasks: desktop
-Name: "{autodesktop}\Kiosk starten"; Filename: "{app}\windows\Kiosk starten.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 137; Tasks: desktop
+Name: "{autodesktop}\Fotobox starten"; Filename: "{app}\windows\Kiosk starten.bat"; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 137; Tasks: desktop
 
 [Run]
 ; Firewall-Freigabe, Energiesparen aus, keine Update-Neustarts - braucht Adminrechte.

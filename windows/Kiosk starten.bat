@@ -5,6 +5,10 @@ REM Die Flags stammen aus der Praxis des Photobooth-Projekts: keine
 REM Fehlerdialoge, keine Infoleisten, keine Uebersetzungsabfrage, keine
 REM Update-Pruefung, Touch aktiviert.
 REM
+REM Das ist auch das Desktop-Icon "Fotobox starten": Laeuft der Server nicht
+REM (etwa nach "Fotobox beenden"), startet diese Datei ihn mit. Vorher wartete
+REM sie dann endlos auf ihn.
+REM
 REM Zwei Dinge macht diese Datei, damit die Box ohne Betreuer durchhaelt:
 REM  1. Sie wartet, bis der Server antwortet. Sonst oeffnet der Browser beim
 REM     Hochfahren eine Fehlerseite ("Die Website ist nicht erreichbar") und
@@ -35,6 +39,13 @@ if errorlevel 1 (
 )
 curl.exe -s -o nul --max-time 2 "%ZIEL%/api/kiosk/start"
 if errorlevel 1 (
+  if not defined SERVER_GESTARTET (
+    set "SERVER_GESTARTET=1"
+    echo Der Fotobox-Server laeuft nicht - er wird gestartet.
+    REM Startet er gerade schon (Autostart), beendet sich dieser zweite Start
+    REM von selbst, sobald der erste antwortet.
+    start "Fotobox Server" /min "%~dp0Fotobox starten.bat"
+  )
   echo Warte auf den Fotobox-Server ...
   timeout /t 2 /nobreak >nul
   goto warten
