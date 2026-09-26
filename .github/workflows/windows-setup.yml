@@ -1,7 +1,7 @@
 # Baut die Setup-Datei der Fotobox auf einem echten Windows-Rechner.
 #
-#   - Bei jedem Pull Request: bauen und pruefen. Die Setup-Datei liegt dann
-#     unter "Artifacts" des Laufs zum Ausprobieren.
+#   - Bei jedem Push auf einen Zweig: bauen und pruefen. Die Setup-Datei
+#     liegt dann unter "Artifacts" des Laufs zum Ausprobieren.
 #   - Tag "v1.2.3" (oder Actions -> "Windows-Setup" -> "Run workflow" mit
 #     "veroeffentlichen"): zusaetzlich ein GitHub-Release mit Setup-Datei und
 #     Pruefsumme. Genau dort sucht die Verwaltung der Fotobox nach Updates.
@@ -12,9 +12,10 @@
 name: Windows-Setup
 
 on:
-  pull_request:
   push:
+    branches: ['**']
     tags: ['v*']
+    paths-ignore: ['**.md']
   workflow_dispatch:
     inputs:
       veroeffentlichen:

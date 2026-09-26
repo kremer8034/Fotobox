@@ -154,9 +154,9 @@ Setup-Datei zu dir:
 Den Teil mit Versionsnummer, Änderungsliste und Veröffentlichung kann Claude
 übernehmen – einfach sagen „Veröffentliche das als Version 1.1.0“.
 
-Bei jedem Pull Request baut GitHub die Setup-Datei ebenfalls, veröffentlicht
-sie aber nicht: Sie liegt dann beim Lauf unter „Artifacts“ zum Ausprobieren auf
-einem Test-PC.
+Bei jedem anderen Hochladen von Änderungen baut GitHub die Setup-Datei
+ebenfalls, veröffentlicht sie aber nicht: Sie liegt dann beim Lauf (Reiter
+„Actions“) unter „Artifacts“ zum Ausprobieren auf einem Test-PC.
 
 ---
 
