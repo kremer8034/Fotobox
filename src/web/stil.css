@@ -1652,3 +1652,17 @@ html.handy-ansicht body {
   font-size: 0.8rem;
   white-space: nowrap;
 }
+
+/* Handy ohne Verbindung zur Box: Hinweis oben, die Fotos bleiben stehen. */
+.handy__hinweis {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 0 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: var(--warnung);
+  color: #1b1208;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
