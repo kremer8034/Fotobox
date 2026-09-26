@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { VOM_KIOSK } from '../kiosk/Sperre.js';
 import { Dashboard } from './Dashboard.js';
 import { Veranstaltungen } from './Veranstaltungen.js';
 import { EventDetail } from './EventDetail.js';
@@ -19,6 +20,7 @@ import { FilterSeite } from './Filter.js';
  */
 export function Admin({ pfad, navigiere }: { pfad: string; navigiere: (ziel: string) => void }) {
   const [status, setzeStatus] = useState<{ aktivesEvent: { name: string } | null } | null>(null);
+  useRueckkehrZumKiosk(navigiere);
 
   useEffect(() => {
     const laden = () =>
@@ -83,4 +85,47 @@ function Verweis({
       {name}
     </a>
   );
+}
+
+/** So lange darf die Verwaltung am Kiosk unberuehrt offen stehen. */
+const LEERLAUF_AM_KIOSK_MS = 5 * 60_000;
+
+/**
+ * Aus dem Servicemenue geoeffnet, kehrt die Verwaltung nach fuenf Minuten
+ * ohne Beruehrung und ohne Taste von selbst zum Kiosk zurueck.
+ *
+ * Das Servicemenue schliesst sich nach einer Minute, damit ein offen
+ * gelassenes Besitzer-Menue keinen Gast in die Verwaltung fuehrt. Die
+ * Verwaltung selbst blieb aber fuer immer offen: Wer dort hineinging und
+ * dann abgelenkt wurde, liess jedem Gast Loeschen, PINs und Einstellungen
+ * offen. Am Schreibtisch (eigener Browser, ohne Merker) gilt das nicht.
+ */
+function useRueckkehrZumKiosk(navigiere: (ziel: string) => void) {
+  useEffect(() => {
+    let vomKiosk = false;
+    try {
+      vomKiosk = sessionStorage.getItem(VOM_KIOSK) === '1';
+    } catch {
+      vomKiosk = false;
+    }
+    if (!vomKiosk) return;
+
+    // Ein Zeitstempel statt eines Zustands: Jeder Tastendruck im Editor
+    // wuerde sonst die ganze Verwaltung neu zeichnen.
+    let zuletzt = Date.now();
+    const merke = () => {
+      zuletzt = Date.now();
+    };
+    const ereignisse = ['pointerdown', 'keydown', 'wheel'] as const;
+    for (const e of ereignisse) window.addEventListener(e, merke, { passive: true, capture: true });
+    const uhr = setInterval(() => {
+      if (Date.now() - zuletzt >= LEERLAUF_AM_KIOSK_MS) navigiere('/');
+    }, 5000);
+    return () => {
+      for (const e of ereignisse) window.removeEventListener(e, merke, { capture: true });
+      clearInterval(uhr);
+    };
+    // navigiere ruft nur pushState und einen stabilen Setter; ein neues Exemplar soll die Uhr nicht neu starten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }

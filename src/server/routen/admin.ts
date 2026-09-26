@@ -37,7 +37,7 @@ import {
 import { FILTER_EINGABE, holeFilter, listeFilter, loescheFilter, speichereFilter } from '../fach/filter.js';
 import { parseCube } from '../bild/lut.js';
 import { berechneAuslagen, schreibeAuslagenCsv } from '../fach/auslagen.js';
-import { listeAuftraege, reiheEin, setzeBerechnen } from '../fach/druckwarteschlange.js';
+import { listeAuftraege, reiheEin, setzeBerechnen, stelleFremdeZurueck } from '../fach/druckwarteschlange.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { hashePin, pruefePin } from '../fach/pin.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
@@ -541,8 +541,16 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
         })
         .parse(anfrage.body);
       try {
+        const vorher = holeEvent(anfrage.params.id)?.status;
         const event = setzeStatus(anfrage.params.id, koerper.status);
         if (koerper.status === 'abgeschlossen') await schreibeAuslagenCsv(event);
+        if (koerper.status === 'aktiv' && vorher !== 'pausiert' && vorher !== 'aktiv') {
+          // Liegengebliebene Drucke frueherer Feiern gehen hier nicht mehr raus.
+          const zurueck = stelleFremdeZurueck(event.id);
+          if (zurueck > 0) {
+            protokolliere('warnung', 'druck', `${zurueck} wartende Drucke frueherer Veranstaltungen zurueckgestellt.`);
+          }
+        }
         if (koerper.status === 'aktiv') await betrieb.starteLiveView();
         protokolliere('info', 'event', `"${event.name}" ist jetzt ${koerper.status}.`);
         return eventFuerBrowser(event);

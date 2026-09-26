@@ -534,9 +534,11 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
   /** Servicemenue: Papier gewechselt, Warteschlange fortsetzen. */
   app.post('/api/kiosk/service/fortsetzen', async () => {
-    betrieb.druckschleife.fortsetzen();
-    protokolliere('info', 'druck', 'Warteschlange nach Papierwechsel fortgesetzt.');
-    return { ok: true };
+    const wartend = betrieb.druckschleife.fortsetzen(holeAktivesEvent()?.id ?? null);
+    protokolliere('info', 'druck', `Warteschlange nach Papierwechsel fortgesetzt (${wartend} offen).`);
+    // Die Zahl gehoert in die Rueckmeldung: "Die wartenden Fotos werden
+    // gedruckt" stand vorher auch da, wenn gar nichts wartete.
+    return { ok: true, wartend };
   });
 
   /** Servicemenue: neue Rolle eingelegt, Materialzaehler zuruecksetzen. */

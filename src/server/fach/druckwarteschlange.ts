@@ -118,6 +118,28 @@ export function gastKopienVon(ausgabeId: string): number {
   return zeile.n;
 }
 
+/**
+ * Eine Veranstaltung geht los: Was von frueheren Feiern noch auf den Druck
+ * wartet, wird zurueckgestellt statt gedruckt.
+ *
+ * Endete eine Feier mit leerer Rolle, standen ihre letzten Auftraege weiter
+ * auf "wartend" - und kamen mit der neuen Rolle als Erstes heraus, auf der
+ * naechsten Veranstaltung, vor fremden Gaesten, abgerechnet bei der alten.
+ * Jetzt gelten sie als nicht gedruckt; nachdrucken laesst sich jedes Bild
+ * weiterhin aus der Verwaltung.
+ *
+ * @returns wie viele Auftraege zurueckgestellt wurden
+ */
+export function stelleFremdeZurueck(eventId: string): number {
+  return holeDb()
+    .prepare(
+      `UPDATE druckauftraege
+          SET status = 'fehlgeschlagen', fehlertext = 'Nicht gedruckt: Eine andere Veranstaltung wurde gestartet.'
+        WHERE status = 'wartend' AND event_id <> ?`,
+    )
+    .run(eventId).changes;
+}
+
 export function offeneAuftraege(): number {
   const zeile = holeDb()
     .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft')")
@@ -183,13 +205,33 @@ export class Druckschleife {
     this.gestoppt = true;
   }
 
-  /** "Papier gewechselt" im Servicemenue. */
-  fortsetzen(): void {
+  /**
+   * "Papier gewechselt" im Servicemenue.
+   *
+   * Holt nur die Fehldrucke der laufenden Veranstaltung nach. Vorher kamen
+   * alle fehlgeschlagenen Auftraege der Datenbank zurueck - auch die einer
+   * Feier von vor Wochen, und deren Fotos fremder Leute kamen dann auf der
+   * naechsten Hochzeit aus dem Drucker. Laeuft keine Veranstaltung (der
+   * Besitzer zu Hause), wird alles nachgeholt.
+   *
+   * @returns wie viele Auftraege dieser Veranstaltung jetzt auf den Druck warten
+   */
+  fortsetzen(eventId: string | null = null): number {
     this.angehalten = false;
     this.letzterFehler = null;
-    holeDb()
-      .prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen'")
-      .run();
+    const db = holeDb();
+    if (eventId) {
+      db.prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen' AND event_id = ?").run(
+        eventId,
+      );
+      return (
+        db
+          .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft') AND event_id = ?")
+          .get(eventId) as { n: number }
+      ).n;
+    }
+    db.prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen'").run();
+    return offeneAuftraege();
   }
 
   istAngehalten(): boolean {

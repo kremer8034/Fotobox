@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useZeitgeber } from './zeitgeber.js';
 import { Statusliste, type Boxzustand } from '../Statusliste.js';
 import { api } from '../api.js';
 
 type Ebene = 'betreuer' | 'besitzer';
+
+/** sessionStorage-Schluessel: Die Verwaltung wurde aus dem Servicemenue geoeffnet. */
+export const VOM_KIOSK = 'fotobox-verwaltung-vom-kiosk';
 
 interface WasIstLos {
   stand: string;
@@ -75,6 +78,9 @@ export function PinAbfrage({
   const [pin, setzePin] = useState('');
   const [meldung, setzeMeldung] = useState<string | null>(null);
   const [wasIstLos, setzeWasIstLos] = useState<WasIstLos | null>(null);
+  // Ein Doppeltipp auf OK schickte dieselbe PIN zweimal - eine falsche
+  // zaehlte dann als zwei Fehlversuche, und die Sperre kam einen Versuch zu frueh.
+  const prueftGerade = useRef(false);
 
   // Abbruch automatisch nach 10 Sekunden Untaetigkeit - das lief vorher nie
   // ab (siehe zeitgeber.ts). "Was ist los?" bleibt eine Minute: Der Gastgeber
@@ -141,17 +147,34 @@ export function PinAbfrage({
   }
 
   async function pruefe() {
+    if (prueftGerade.current) return;
+    // Eine PIN hat 4 bis 8 Ziffern. Ein OK auf zu wenige Ziffern kostete
+    // vorher einen der drei Versuche vor der Sperre - bei leerem Feld kam
+    // sogar eine englische Pruefmeldung des Servers.
+    if (pin.length < 4) {
+      setzeMeldung(pin.length === 0 ? 'Bitte zuerst die PIN eintippen.' : 'Die PIN hat mindestens 4 Ziffern.');
+      return;
+    }
+    prueftGerade.current = true;
     try {
       const antwort = await api.sende<{ ebene: Ebene }>('/api/kiosk/pin', { pin });
       beiErfolg(antwort.ebene);
     } catch (fehler) {
       setzePin('');
       setzeMeldung(fehler instanceof Error ? fehler.message : 'PIN stimmt nicht.');
+    } finally {
+      prueftGerade.current = false;
     }
   }
 
   async function ladeWasIstLos() {
-    setzeWasIstLos(await api.hole<WasIstLos>('/api/kiosk/wasistlos'));
+    // Ohne Fehlerbehandlung passierte beim Tippen einfach nichts, wenn der
+    // Server gerade neu startete - genau dann, wenn jemand wissen will, was los ist.
+    try {
+      setzeWasIstLos(await api.hole<WasIstLos>('/api/kiosk/wasistlos'));
+    } catch {
+      setzeMeldung('Die Box antwortet gerade nicht. Bitte gleich noch einmal versuchen.');
+    }
   }
 }
 
@@ -182,6 +205,9 @@ export function Servicemenue({
   const [meldung, setzeMeldung] = useState<string | null>(null);
   const [rueckfrage, setzeRueckfrage] = useState<Rueckfrage | null>(null);
   const [beruehrt, setzeBeruehrt] = useState(0);
+  // Ein Handgriff zur Zeit: Ein Doppeltipp auf "Herunterfahren" oder
+  // "Pause" schickte den Befehl sonst zweimal.
+  const beschaeftigt = useRef(false);
 
   useZeitgeber(beiSchliessen, 60_000, [beruehrt, rueckfrage]);
   useZeitgeber(() => setzeMeldung(null), meldung ? 4000 : null, [meldung]);
@@ -238,7 +264,7 @@ export function Servicemenue({
           <Handgriff
             titel="Papier gewechselt"
             zeile="Wartende Fotos weiter drucken"
-            beiTipp={() => void tue('/api/kiosk/service/fortsetzen', {}, 'Die wartenden Fotos werden gedruckt.')}
+            beiTipp={() => void papierGewechselt()}
           />
           <Handgriff titel="Galerie" zeile="Nachdrucken oder ein Foto herausnehmen" beiTipp={beiGalerie} />
           <Handgriff
@@ -259,18 +285,40 @@ export function Servicemenue({
           {ebene === 'besitzer' && (
             <>
               <p className="service__trenner">Besitzer</p>
-              <Handgriff titel="Verwaltung öffnen" zeile="Einstellungen, Vorlagen, Gerät" beiTipp={beiAdmin} />
+              <Handgriff
+                titel="Verwaltung öffnen"
+                zeile="Einstellungen, Vorlagen, Gerät"
+                beiTipp={() => {
+                  // Merkt sich, dass die Verwaltung am Kiosk offen ist: Dort
+                  // kehrt sie nach Leerlauf von selbst zurueck (siehe Admin.tsx).
+                  try {
+                    sessionStorage.setItem(VOM_KIOSK, '1');
+                  } catch {
+                    // Ohne Speicher bleibt nur die Rueckkehr von Hand.
+                  }
+                  beiAdmin();
+                }}
+              />
               <Handgriff
                 titel="Veranstaltung abschließen"
                 zeile="Zahlen einfrieren, Auslagen-CSV schreiben"
                 beiTipp={() => {
                   const ev = zustand?.veranstaltung;
-                  if (!ev) return;
+                  // Vorher passierte ohne laufende Veranstaltung beim Tippen gar nichts.
+                  if (!ev) {
+                    setzeMeldung(zustand ? 'Es läuft gerade keine Veranstaltung.' : 'Einen Moment, der Zustand wird noch geladen.');
+                    return;
+                  }
+                  const offen = zustand.warteschlangeOffen;
                   setzeRueckfrage({
-                    titel: `„${ev.name}" abschließen?`,
+                    titel: `„${ev.name}“ abschließen?`,
                     text:
                       'Die Zahlen werden eingefroren und die Auslagenaufstellung geschrieben. ' +
-                      'Danach zeigt der Kiosk keine Startseite mehr. Wieder öffnen geht in der Verwaltung.',
+                      'Danach zeigt der Kiosk keine Startseite mehr. Wieder öffnen geht in der Verwaltung.' +
+                      (offen > 0
+                        ? ` ${offen === 1 ? 'Ein Foto wartet' : `${offen} Fotos warten`} noch auf den Druck und ` +
+                          'kommt heraus, sobald der Drucker bereit ist.'
+                        : ''),
                     ja: 'Abschließen',
                     aktion: () =>
                       void tue(`/api/admin/events/${ev.id}/status`, { status: 'abgeschlossen' }, 'Veranstaltung abgeschlossen.'),
@@ -338,35 +386,41 @@ export function Servicemenue({
     </div>
   );
 
-  async function tue(pfad: string, koerper: unknown, erfolgstext: string) {
+  /** Schickt einen Handgriff ab; die Rueckmeldung baut `text` aus der Antwort. */
+  async function handgriff<T>(pfad: string, koerper: unknown, text: (antwort: T) => string) {
+    if (beschaeftigt.current) return;
+    beschaeftigt.current = true;
     try {
-      await api.sende(pfad, koerper);
-      setzeMeldung(erfolgstext);
+      setzeMeldung(text(await api.sende<T>(pfad, koerper)));
     } catch (fehler) {
       setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    } finally {
+      beschaeftigt.current = false;
     }
   }
 
-  async function kioskSchliessen() {
-    try {
-      const antwort = await api.sende<{ simuliert: boolean }>('/api/kiosk/service/kiosk-schliessen', {});
-      setzeMeldung(antwort.simuliert ? 'Im Testbetrieb bleibt der Kiosk offen.' : 'Kiosk wird geschlossen …');
-    } catch (fehler) {
-      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
-    }
+  function tue(pfad: string, koerper: unknown, erfolgstext: string) {
+    return handgriff(pfad, koerper, () => erfolgstext);
   }
 
-  async function herunterfahren() {
-    try {
-      const antwort = await api.sende<{ simuliert: boolean }>('/api/kiosk/service/herunterfahren', {});
-      setzeMeldung(
-        antwort.simuliert
-          ? 'Im Entwicklungsbetrieb wird nicht heruntergefahren.'
-          : 'Der PC fährt in 15 Sekunden herunter.',
-      );
-    } catch (fehler) {
-      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
-    }
+  function papierGewechselt() {
+    return handgriff<{ wartend?: number }>('/api/kiosk/service/fortsetzen', {}, ({ wartend = 0 }) =>
+      wartend === 0
+        ? 'Es wartet kein Foto auf den Druck.'
+        : `${wartend === 1 ? 'Ein Foto wird' : `${wartend} Fotos werden`} gedruckt, sobald der Drucker bereit ist.`,
+    );
+  }
+
+  function kioskSchliessen() {
+    return handgriff<{ simuliert: boolean }>('/api/kiosk/service/kiosk-schliessen', {}, (antwort) =>
+      antwort.simuliert ? 'Im Testbetrieb bleibt der Kiosk offen.' : 'Kiosk wird geschlossen …',
+    );
+  }
+
+  function herunterfahren() {
+    return handgriff<{ simuliert: boolean }>('/api/kiosk/service/herunterfahren', {}, (antwort) =>
+      antwort.simuliert ? 'Im Entwicklungsbetrieb wird nicht heruntergefahren.' : 'Der PC fährt in 15 Sekunden herunter.',
+    );
   }
 }
 
