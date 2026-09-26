@@ -9,6 +9,7 @@ import { holeVorlage, listeVorlagen } from '../fach/vorlagen.js';
 import { listeFilter } from '../fach/filter.js';
 import { leseGeraet } from '../db/geraet.js';
 import {
+  bestaetigungsbild,
   brichSitzungAb,
   galerieEintraege,
   holeAusgabe,
@@ -17,6 +18,7 @@ import {
   starteSitzung,
   stelleFertig,
   verbucheFoto,
+  zahlDerFotos,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
 import { gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
@@ -205,6 +207,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       if (!sitzung || sitzung.id !== anfrage.params.id) {
         return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
       }
+      if (koerper.index > sitzung.benoetigteFotos) {
+        return antwort.code(400).send({ fehler: `Diese Vorlage hat nur ${sitzung.benoetigteFotos} Fotoplätze.` });
+      }
       const event = holeEvent(sitzung.eventId);
       if (!event) return antwort.code(409).send({ fehler: 'Veranstaltung fehlt.' });
 
@@ -243,6 +248,21 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     },
   );
 
+  /** Das eben gemachte Foto fuer die Bestaetigung - nur waehrend der eigenen Sitzung. */
+  app.get<{ Params: { id: string; index: string } }>(
+    '/api/kiosk/sitzung/:id/foto/:index/bild.jpg',
+    async (anfrage, antwort) => {
+      if (betrieb.aktiveSitzung?.id !== anfrage.params.id) {
+        return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
+      }
+      const index = Number(anfrage.params.index);
+      if (!Number.isInteger(index) || index < 1) return antwort.code(400).send({ fehler: 'Ungueltiger Platz.' });
+      const bild = await bestaetigungsbild(anfrage.params.id, index).catch(() => null);
+      if (!bild) return antwort.code(404).send({ fehler: 'Foto nicht gefunden.' });
+      return antwort.type('image/jpeg').header('Cache-Control', 'no-store').send(bild);
+    },
+  );
+
   /**
    * Ist die Kamera bereit fuer das naechste Foto? Bereit heisst: Es kam gerade
    * eben ein frisches Live-Bild. Der Kiosk fragt das vor jedem Countdown, damit
@@ -270,6 +290,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       }
       const event = holeEvent(sitzung.eventId);
       if (!event) return antwort.code(409).send({ fehler: 'Veranstaltung fehlt.' });
+      // Ein Layout mit leeren Fotoplaetzen soll nie entstehen.
+      if (zahlDerFotos(sitzung.id) < sitzung.benoetigteFotos) {
+        return antwort.code(409).send({ fehler: 'Es fehlen noch Fotos. Bitte startet noch einmal.' });
+      }
 
       betrieb.letzteBeruehrung = Date.now();
       const geraet = leseGeraet();

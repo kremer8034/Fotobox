@@ -137,11 +137,20 @@ export function Aufnahme({
 
         // Kurze Bestaetigung, bewusst ohne Rueckfrage und ohne "Nochmal" -
         // reine Anzeige, der Ablauf laeuft durch.
+        // Gezeigt wird das aufgenommene Foto selbst, nicht ein Standbild des
+        // Live-Views - das zeigte die Gruppe beim Auseinandergehen. Erst
+        // laden, dann zeigen: Die eingestellte Zeit soll das Foto zu sehen
+        // sein, nicht ein halb geladenes Bild. Kommt es nicht, laeuft der
+        // Ablauf ohne Bestaetigung weiter.
         if (zeiten.bestaetigung > 0) {
-          setzeLetztesFoto(`/stream/standbild.jpg?t=${Date.now()}`);
-          setzePhase('bestaetigung');
-          await pause(zeiten.bestaetigung * 1000);
-          setzeLetztesFoto(null);
+          const adresse = `/api/kiosk/sitzung/${sitzung.sitzungId}/foto/${i}/bild.jpg?t=${Date.now()}`;
+          if (await ladeBild(adresse, 4000)) {
+            if (gestoppt || abgebrochen.current) return;
+            setzeLetztesFoto(adresse);
+            setzePhase('bestaetigung');
+            await pause(zeiten.bestaetigung * 1000);
+            setzeLetztesFoto(null);
+          }
         }
       }
       if (!gestoppt && !abgebrochen.current) beiFertig();
@@ -321,6 +330,23 @@ function Ausschnitt({
       {children}
     </div>
   );
+}
+
+/** Laedt ein Bild vor; false, wenn es nicht rechtzeitig kommt. */
+function ladeBild(adresse: string, hoechstensMs: number): Promise<boolean> {
+  return new Promise((fertig) => {
+    const bild = new Image();
+    const uhr = setTimeout(() => fertig(false), hoechstensMs);
+    bild.onload = () => {
+      clearTimeout(uhr);
+      fertig(true);
+    };
+    bild.onerror = () => {
+      clearTimeout(uhr);
+      fertig(false);
+    };
+    bild.src = adresse;
+  });
 }
 
 function pause(ms: number): Promise<void> {

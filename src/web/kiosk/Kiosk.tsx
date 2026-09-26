@@ -50,6 +50,13 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
   // spaeter.
   useZeitgeber(() => setzeFehler(null), fehler ? 30_000 : null, [fehler]);
 
+  // Die Vorlagenwahl hat keine Uhr, die den Gast hetzt - aber wer "Foto
+  // starten" tippt und geht, soll die Box nicht fuer den Rest des Abends auf
+  // dieser Seite stehen lassen. Es greift dieselbe Rettungsleine wie in der
+  // Sitzung (Vorgabe drei Minuten); jede Beruehrung dort verlaesst die Seite ohnehin.
+  const abbruchMs = (start?.zeiten?.sitzungAbbruch ?? 180) * 1000;
+  useZeitgeber(() => setzeSchirm({ art: 'start' }), schirm.art === 'vorlagen' ? abbruchMs : null, [schirm.art]);
+
   /*
    * Sperre gegen Doppeltipper. Ein Ref, kein Zustand: Zwei Tipper im selben
    * Bildaufbau saehen einen Zustand beide noch als "frei". Vorher gingen bei
@@ -83,6 +90,15 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       ) {
         await api.sende(`/api/kiosk/sitzung/${daten.aktiveSitzungId}/abbrechen`, {}).catch(() => undefined);
         daten.aktiveSitzungId = null;
+      }
+      // Die Rettungsleine des Servers hat die Sitzung verworfen (drei Minuten
+      // ohne Beruehrung) oder er wurde neu gestartet: Die Filterwahl gehoert
+      // dann niemandem mehr. Vorher blieb sie stehen - mit den Fotos der
+      // vorigen Gruppe in den Kacheln -, bis jemand tippte und "Sitzung ist
+      // nicht mehr aktiv" las.
+      const jetzt = schirmJetzt.current;
+      if (jetzt.art === 'filter' && !beschaeftigt.current && daten.aktiveSitzungId !== jetzt.sitzungId) {
+        setzeSchirm({ art: 'start' });
       }
       // Nur neu zeichnen, wenn sich etwas geaendert hat. Vorher zeichnete jede
       // Abfrage alle 5 s den ganzen Kiosk neu - auch mitten im Countdown.

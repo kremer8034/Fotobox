@@ -174,14 +174,47 @@ export async function verbucheFoto(
   const ziel = join(pfade.originale, zielName);
   if (quellPfad !== ziel) await verschiebe(quellPfad, ziel);
 
-  holeDb()
-    .prepare(
+  const db = holeDb();
+  db.transaction(() => {
+    // Ein Platz, ein Foto. Kam die Antwort auf ein gelungenes Foto nicht beim
+    // Kiosk an und er loeste noch einmal aus, stand der Platz sonst doppelt in
+    // der Datenbank - und beim Fertigstellen schrieben zwei Durchlaeufe
+    // gleichzeitig in dieselbe Datei.
+    db.prepare('DELETE FROM fotos WHERE sitzung_id = ? AND ebene_index = ?').run(sitzung.id, ebeneIndex);
+    db.prepare(
       'INSERT INTO fotos (id, sitzung_id, ebene_index, pfad_original, pfad_bearbeitet) VALUES (?, ?, ?, ?, NULL)',
-    )
-    .run(randomUUID(), sitzung.id, ebeneIndex, ziel);
+    ).run(randomUUID(), sitzung.id, ebeneIndex, ziel);
+  })();
 
   bereiteVor(sitzung.id, ebeneIndex, ziel);
   return ziel;
+}
+
+/** Wie viele verschiedene Plaetze der Sitzung schon ein Foto haben. */
+export function zahlDerFotos(sitzungId: string): number {
+  return (
+    holeDb().prepare('SELECT COUNT(DISTINCT ebene_index) AS n FROM fotos WHERE sitzung_id = ?').get(sitzungId) as {
+      n: number;
+    }
+  ).n;
+}
+
+/**
+ * Das eben gemachte Foto fuer "So sieht es aus!" - in Bildschirmgroesse, aus
+ * der ohnehin vorbereiteten Arbeitsfassung.
+ *
+ * Vorher zeigte die Bestaetigung ein Standbild des Live-Views, also das, was
+ * die Kamera eine Sekunde NACH dem Ausloesen sah: Die Gruppe beim
+ * Auseinandergehen, bei der 600D oft gar nichts, weil der Live-View nach der
+ * Aufnahme erst wieder anlaeuft. Das eigentliche Foto bekam niemand zu sehen.
+ */
+export async function bestaetigungsbild(sitzungId: string, ebeneIndex: number): Promise<Buffer | null> {
+  const zeile = holeDb()
+    .prepare('SELECT pfad_original FROM fotos WHERE sitzung_id = ? AND ebene_index = ?')
+    .get(sitzungId, ebeneIndex) as { pfad_original: string } | undefined;
+  if (!zeile) return null;
+  const bild = await arbeitsbild(sitzungId, ebeneIndex, zeile.pfad_original);
+  return sharp(bild).resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
 }
 
 /**
