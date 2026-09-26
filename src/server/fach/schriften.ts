@@ -70,6 +70,12 @@ export function richteSchriftenEin(datenpfad: string): string {
 
   // fontconfig sucht in diesem Verzeichnis nach "fonts.conf".
   process.env.FONTCONFIG_PATH = ordner;
+  // Unter Windows sucht die Textdarstellung (Pango) Schriften sonst ueber die
+  // Windows-eigene Schriftverwaltung und fragt fontconfig gar nicht - eine
+  // Schrift aus dem Schriftenordner der Fotobox blieb dort unauffindbar (im
+  // Windows-Test: Ersatzschrift statt der eigenen). Mit "fc" nimmt sie
+  // fontconfig und damit dieselbe Konfiguration wie unter Linux.
+  if (process.platform === 'win32') process.env.PANGOCAIRO_BACKEND ??= 'fc';
   return ordner;
 }
 
