@@ -91,6 +91,7 @@ jobs:
           "Setup: $($datei.Name), $([math]::Round($datei.Length / 1MB, 1)) MB, SHA-256 $hash"
 
       - name: Setup ausprobieren (installieren, Update, deinstallieren)
+        timeout-minutes: 15
         shell: pwsh
         run: pwsh -File skripte\installer-probe.ps1 -Setup "paket\ausgabe\Fotobox-Setup-${{ steps.version.outputs.version }}.exe"
 

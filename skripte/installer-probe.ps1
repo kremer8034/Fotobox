@@ -21,10 +21,17 @@ function Pruefe([bool]$ok, [string]$text) {
   else { Write-Host "  X   $text" -ForegroundColor Red; $script:fehler += $text }
 }
 
-function Installiere([string]$protokoll) {
-  $p = Start-Process -FilePath (Resolve-Path $Setup) -Wait -PassThru `
-    -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$protokoll"
+# Nur auf das Setup selbst warten - nicht mit "Start-Process -Wait": Das
+# wartet auch auf alles, was das Setup startet, und nach der Erstinstallation
+# oeffnet es gewollt die Verwaltung im Browser, der offen bleibt.
+function Starte([string]$datei, [string[]]$argumente) {
+  $p = Start-Process -FilePath $datei -PassThru -ArgumentList $argumente
+  if (-not $p.WaitForExit(600000)) { $p.Kill(); return -1 }
   return $p.ExitCode
+}
+
+function Installiere([string]$protokoll) {
+  return Starte (Resolve-Path $Setup).Path @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$protokoll")
 }
 
 function ServerAntwortet {
@@ -75,8 +82,7 @@ Pruefe ($log -notmatch 'DeleteFile failed|RemoveDirectory failed|Failed to') 'ke
 Write-Host "`n=== 4. Deinstallation"
 Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$programm*" } | Stop-Process -Force
 $deinst = Get-ChildItem $programm -Filter 'unins*.exe' | Select-Object -First 1
-$p = Start-Process -FilePath $deinst.FullName -Wait -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
-Pruefe ($p.ExitCode -eq 0) 'Deinstallation endet ohne Fehler'
+Pruefe ((Starte $deinst.FullName @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART')) -eq 0) 'Deinstallation endet ohne Fehler'
 Start-Sleep 3
 Pruefe (-not (Test-Path "$programm\dist")) 'Programm entfernt'
 Pruefe ($null -eq (Get-ScheduledTask -TaskName 'Fotobox Server' -ErrorAction SilentlyContinue)) 'Autostart entfernt'
