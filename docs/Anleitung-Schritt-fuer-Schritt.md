@@ -285,6 +285,19 @@ voreingestellte PIN gibt es aus gutem Grund nicht.
 
 Du landest automatisch auf der Detailseite.
 
+**Ab der zweiten Veranstaltung geht es schneller:**
+
+- **Duplizieren:** In der Liste bei einer bisherigen Veranstaltung auf
+  **„Duplizieren"** klicken, Namen und Datum anpassen, **„Anlegen"**. Die neue
+  übernimmt alle Einstellungen (Vorlagen, Filter, Zeiten, Texte, Kopien,
+  Limits) — aber keine Fotos, keine Zahlen, keine Galerie-Links und keine
+  Betreuer-PIN.
+- **Voreinstellung:** Auf der Detailseite einer gut eingestellten Veranstaltung
+  unter **„Als Voreinstellung speichern"** einen Namen vergeben, etwa
+  „Kinderparty" oder „Hochzeit". Beim Anlegen der nächsten dann unter
+  **„Einstellungen"** auswählen. Speichern unter demselben Namen überschreibt;
+  gelöscht wird eine Voreinstellung über das ✕ in der Liste.
+
 ## Schritt 19: Einstellen, was die Gäste dürfen
 
 Scrolle auf der Detailseite nach unten und setze Haken bei den Vorlagen, die zur

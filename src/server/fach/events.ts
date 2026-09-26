@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { holeDb, jetzt } from '../db/index.js';
 import { legeEventordnerAn, eventpfade, ordnernameFuer } from './pfade.js';
@@ -87,7 +87,12 @@ export function erstelleEvent(
   eventsWurzel: string,
 ): Veranstaltung {
   const id = randomUUID();
-  const ordner = join(eventsWurzel, ordnernameFuer(eingabe.datum, eingabe.name));
+  // Gleicher Name am gleichen Tag ergab vorher denselben Ordner - die Fotos
+  // zweier Veranstaltungen lagen dann gemischt, und das Loeschen der einen
+  // nahm den Ordner der anderen mit. Jetzt bekommt jede ihren eigenen.
+  const basis = join(eventsWurzel, ordnernameFuer(eingabe.datum, eingabe.name));
+  let ordner = basis;
+  for (let n = 2; existsSync(ordner); n += 1) ordner = `${basis}_${n}`;
   legeEventordnerAn(ordner);
 
   const einstellungen: EventEinstellungen = {
@@ -116,6 +121,24 @@ export function erstelleEvent(
   const event = holeEvent(id)!;
   schreibeEventJson(event);
   return event;
+}
+
+/**
+ * Eine Veranstaltung mit allen Einstellungen der Vorlage-Veranstaltung anlegen
+ * - fuer die naechste Buchung desselben Gastgebers oder dieselbe Art Feier.
+ * Uebernommen werden nur die Einstellungen: keine Fotos, keine Zahlen, keine
+ * Galerie-Links (neue Tokens) und keine Betreuer-PIN - der naechste Gastgeber
+ * bekommt seine eigene.
+ */
+export function dupliziereEvent(
+  quelleId: string,
+  eingabe: { name: string; datum: string },
+  eventsWurzel: string,
+  uebernimm: (e: EventEinstellungen) => EventEinstellungen = (e) => e,
+): Veranstaltung {
+  const quelle = holeEvent(quelleId);
+  if (!quelle) throw new Error('Veranstaltung nicht gefunden.');
+  return erstelleEvent({ ...eingabe, einstellungen: uebernimm(quelle.einstellungen) }, eventsWurzel);
 }
 
 export function aktualisiereEvent(

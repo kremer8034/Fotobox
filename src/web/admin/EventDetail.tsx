@@ -194,6 +194,8 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           </div>
 
+          <VoreinstellungKarte eventId={event.id} />
+
           <div className="karte">
             <h2>Lebenszyklus</h2>
             <p style={{ color: 'var(--schrift-leise)', fontSize: '0.82rem', marginTop: 0 }}>
@@ -1106,4 +1108,74 @@ function Kennzahl({ name, wert, ton }: { name: string; wert: string; ton?: 'gut'
       <span className="kennzahl__name">{name}</span>
     </div>
   );
+}
+
+/**
+ * Die Einstellungen dieser Veranstaltung unter einem Namen aufheben, um die
+ * naechste gleicher Art daraus anzulegen. Ein vorhandener Name wird
+ * ueberschrieben - so bleibt "Kinderparty" immer der aktuelle Stand.
+ */
+function VoreinstellungKarte({ eventId }: { eventId: string }) {
+  const [name, setzeName] = useState('');
+  const [vorhandene, setzeVorhandene] = useState<{ id: string; name: string }[]>([]);
+  const [meldung, setzeMeldung] = useState<string | null>(null);
+
+  useEffect(() => {
+    void api
+      .hole<{ id: string; name: string }[]>('/api/admin/voreinstellungen')
+      .then(setzeVorhandene)
+      .catch(() => undefined);
+  }, []);
+
+  const ueberschreibt = vorhandene.some((v) => v.name.toLowerCase() === name.trim().toLowerCase());
+
+  return (
+    <div className="karte">
+      <h2>Als Voreinstellung speichern</h2>
+      <p style={{ color: 'var(--schrift-leise)', fontSize: '0.82rem', marginTop: 0 }}>
+        Hebt alle Einstellungen dieser Veranstaltung auf – Vorlagen, Filter, Zeiten, Texte, Kopien, Limits.
+        Beim Anlegen der nächsten Veranstaltung unter „Einstellungen“ auswählen.
+      </p>
+      <div className="zeile">
+        <div className="feld" style={{ flex: 1 }}>
+          <label htmlFor="vorein-name">Name der Voreinstellung</label>
+          <input
+            id="vorein-name"
+            list="vorein-liste"
+            value={name}
+            maxLength={60}
+            placeholder="Kinderparty"
+            onChange={(e) => {
+              setzeName(e.target.value);
+              setzeMeldung(null);
+            }}
+          />
+          <datalist id="vorein-liste">
+            {vorhandene.map((v) => (
+              <option key={v.id} value={v.name} />
+            ))}
+          </datalist>
+        </div>
+        <button className="knopf knopf--neben" disabled={!name.trim()} onClick={() => void speichere()}>
+          {ueberschreibt ? 'Überschreiben' : 'Speichern'}
+        </button>
+      </div>
+      {meldung && <p style={{ marginBottom: 0 }}>{meldung}</p>}
+    </div>
+  );
+
+  async function speichere() {
+    if (ueberschreibt && !window.confirm(`Die Voreinstellung „${name.trim()}“ gibt es schon. Überschreiben?`)) return;
+    try {
+      const v = await api.sende<{ id: string; name: string }>('/api/admin/voreinstellungen', {
+        eventId,
+        name: name.trim(),
+      });
+      setzeMeldung(`Gespeichert als „${v.name}“.`);
+      setzeVorhandene((alt) => [...alt.filter((a) => a.id !== v.id), v]);
+      setzeName('');
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
+  }
 }

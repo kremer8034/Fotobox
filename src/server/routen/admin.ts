@@ -17,6 +17,7 @@ import {
   aktualisiereEvent,
   erneuereGalerieToken,
   erneuereStatusToken,
+  dupliziereEvent,
   erstelleEvent,
   holeAktivesEvent,
   holeEvent,
@@ -63,6 +64,13 @@ import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene, type FilterO
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import { holeDb } from '../db/index.js';
 import type { Konfig } from '../konfig.js';
+import {
+  holeVoreinstellung,
+  listeVoreinstellungen,
+  loescheVoreinstellung,
+  speichereVoreinstellung,
+  uebernehmbar,
+} from '../fach/voreinstellungen.js';
 import { Aktualisierer, pruefeAufUpdate, type UpdateInfo } from '../fach/aktualisierung.js';
 import { VERSION } from '../version.js';
 
@@ -500,10 +508,63 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     };
   });
 
+  /*
+   * Neue Veranstaltung - leer (Vorgaben), aus einer Voreinstellung oder als
+   * Duplikat einer bestehenden. Uebernommen werden in beiden Faellen nur
+   * Einstellungen, nie Fotos, Zahlen, Galerie-Links oder die Betreuer-PIN.
+   */
   app.post<{ Body: unknown }>('/api/admin/events', async (anfrage, antwort) => {
-    const geprueft = z.object({ name: EVENT_NAME, datum: EVENT_DATUM }).safeParse(anfrage.body);
+    const geprueft = z
+      .object({
+        name: EVENT_NAME,
+        datum: EVENT_DATUM,
+        voreinstellungId: z.string().max(64).optional(),
+        wieEventId: z.string().max(64).optional(),
+      })
+      .strict()
+      .safeParse(anfrage.body);
     if (!geprueft.success) return antwort.code(400).send({ fehler: ersteMeldung(geprueft.error) });
-    return eventFuerBrowser(erstelleEvent(geprueft.data, wurzel.events));
+    const { name, datum, voreinstellungId, wieEventId } = geprueft.data;
+
+    if (wieEventId) {
+      if (!holeEvent(wieEventId)) return antwort.code(404).send({ fehler: 'Die Veranstaltung zum Übernehmen gibt es nicht mehr.' });
+      const neu = dupliziereEvent(wieEventId, { name, datum }, wurzel.events, uebernehmbar);
+      protokolliere('info', 'event', `"${neu.name}" als Kopie der Einstellungen angelegt.`);
+      return eventFuerBrowser(neu);
+    }
+    if (voreinstellungId) {
+      const vorlage = holeVoreinstellung(voreinstellungId);
+      if (!vorlage) return antwort.code(404).send({ fehler: 'Die Voreinstellung gibt es nicht mehr.' });
+      return eventFuerBrowser(
+        erstelleEvent({ name, datum, einstellungen: uebernehmbar(vorlage.einstellungen) }, wurzel.events),
+      );
+    }
+    return eventFuerBrowser(erstelleEvent({ name, datum }, wurzel.events));
+  });
+
+  app.get('/api/admin/voreinstellungen', async () =>
+    listeVoreinstellungen().map((v) => ({ id: v.id, name: v.name, geaendert: v.geaendert })),
+  );
+
+  /** Die Einstellungen einer Veranstaltung als Voreinstellung aufheben (gleicher Name ueberschreibt). */
+  app.post<{ Body: unknown }>('/api/admin/voreinstellungen', async (anfrage, antwort) => {
+    const geprueft = z
+      .object({
+        eventId: z.string().max(64),
+        name: z.string().trim().min(1, 'Die Voreinstellung braucht einen Namen.').max(60, 'Höchstens 60 Zeichen.'),
+      })
+      .strict()
+      .safeParse(anfrage.body);
+    if (!geprueft.success) return antwort.code(400).send({ fehler: ersteMeldung(geprueft.error) });
+    const event = holeEvent(geprueft.data.eventId);
+    if (!event) return antwort.code(404).send({ fehler: 'Veranstaltung nicht gefunden.' });
+    const gespeichert = speichereVoreinstellung(geprueft.data.name, event.einstellungen);
+    return { id: gespeichert.id, name: gespeichert.name, geaendert: gespeichert.geaendert };
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/admin/voreinstellungen/:id', async (anfrage, antwort) => {
+    if (!loescheVoreinstellung(anfrage.params.id)) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    return { ok: true };
   });
 
   app.put<{ Params: { id: string }; Body: unknown }>(

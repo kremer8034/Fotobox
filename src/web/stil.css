@@ -1681,3 +1681,17 @@ html.handy-ansicht body {
   border-radius: var(--radius-klein);
   display: block;
 }
+
+/* Schlichter Textknopf, etwa das Kreuz zum Loeschen einer Voreinstellung. */
+.knopf-text {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0.15rem;
+  opacity: 0.7;
+}
+.knopf-text:hover {
+  opacity: 1;
+}

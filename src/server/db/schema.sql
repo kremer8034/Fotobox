@@ -123,3 +123,14 @@ CREATE TABLE IF NOT EXISTS protokoll (
   text     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_protokoll_zeit ON protokoll(zeit);
+
+-- Gespeicherte Einstellungen einer Veranstaltung ("Kinderparty", "Hochzeit"),
+-- aus denen eine neue Veranstaltung angelegt werden kann. Der Name ist die
+-- Kennung fuer den Menschen: Speichern unter demselben Namen ueberschreibt.
+CREATE TABLE IF NOT EXISTS voreinstellungen (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  einstellungen TEXT NOT NULL,
+  erstellt      TEXT NOT NULL,
+  geaendert     TEXT NOT NULL
+);
