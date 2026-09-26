@@ -16,7 +16,7 @@ type Schirm =
   | { art: 'aufnahme'; sitzung: SitzungStart }
   | { art: 'filter'; sitzungId: string }
   | { art: 'ergebnis'; ausgabeId: string }
-  | { art: 'galerie' }
+  | { art: 'galerie'; betreuung?: 'betreuer' | 'besitzer' }
   | { art: 'pin' }
   | { art: 'service'; ebene: 'betreuer' | 'besitzer' };
 
@@ -173,7 +173,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
         <Servicemenue
           ebene={schirm.ebene}
           beiSchliessen={() => setzeSchirm({ art: 'start' })}
-          beiGalerie={() => setzeSchirm({ art: 'galerie' })}
+          beiGalerie={() => setzeSchirm({ art: 'galerie', betreuung: schirm.ebene })}
           beiAdmin={() => navigiere('/admin')}
         />
       );
@@ -212,7 +212,11 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
           {schloss}
           <Galerie
             leerlaufSekunden={start.zeiten?.galerieLeerlauf ?? 60}
-            beiZurueck={() => setzeSchirm({ art: 'start' })}
+            betreuung={Boolean(schirm.betreuung)}
+            // Aus dem Servicemenue gekommen: dorthin zurueck, ohne neue PIN.
+            beiZurueck={() =>
+              setzeSchirm(schirm.betreuung ? { art: 'service', ebene: schirm.betreuung } : { art: 'start' })
+            }
           />
         </>
       );

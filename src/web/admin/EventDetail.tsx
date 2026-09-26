@@ -413,6 +413,9 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               <button className="knopf knopf--neben" onClick={() => void neuerToken()}>
                 Galerie-Link erneuern
               </button>
+              <button className="knopf knopf--neben" onClick={() => void neuerStatusToken()}>
+                Status-Link erneuern
+              </button>
             </div>
           )}
         </div>
@@ -636,6 +639,12 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     await api.sende(`/api/admin/events/${id}/galerie-token`, {});
     await lade();
     zeige('Der alte Link ist jetzt tot.');
+  }
+
+  async function neuerStatusToken() {
+    await api.sende(`/api/admin/events/${id}/status-token`, {});
+    await lade();
+    zeige('Der alte Status-Link ist jetzt tot.');
   }
 
   async function unterlagen() {

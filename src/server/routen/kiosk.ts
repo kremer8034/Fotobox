@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
+import QRCode from 'qrcode';
 import { z } from 'zod';
 import { holeAktivesEvent, holeEvent, setzeStatus, verbucheMaterial } from '../fach/events.js';
 import { holeVorlage, listeVorlagen } from '../fach/vorlagen.js';
@@ -11,6 +12,7 @@ import {
   brichSitzungAb,
   galerieEintraege,
   holeAusgabe,
+  setzeVerborgen,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -372,17 +374,49 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     }
   });
 
-  /** Galerie am Touchscreen: die fertigen Layouts der laufenden Veranstaltung. */
-  app.get('/api/kiosk/galerie', async () => {
+  /**
+   * Galerie am Touchscreen: die fertigen Layouts der laufenden Veranstaltung.
+   * Mit ?alle=1 (aus dem Servicemenue) auch die aus der Galerie genommenen,
+   * damit man sie zurueckholen kann.
+   */
+  app.get<{ Querystring: { alle?: string } }>('/api/kiosk/galerie', async (anfrage) => {
     const event = holeAktivesEvent();
     if (!event) return { bilder: [] };
     return {
       veranstaltung: event.name,
       nachdruckMoeglich: event.einstellungen.druckAktiv && !druckLimitErreicht(event.id),
       kopienMax: event.einstellungen.kopienMax,
-      bilder: galerieEintraege(event.id).map((e) => ({ id: e.ausgabeId, erstellt: e.erstellt })),
+      bilder: galerieEintraege(event.id, { mitVerborgenen: anfrage.query.alle === '1' }).map((e) => ({
+        id: e.ausgabeId,
+        erstellt: e.erstellt,
+        verborgen: e.verborgen,
+      })),
     };
   });
+
+  /**
+   * Servicemenue: ein Bild aus der Galerie nehmen oder zurueckholen. Es
+   * verschwindet sofort von allen Handys und vom Touchscreen; die Dateien
+   * bleiben und gehen mit der Uebergabe an den Gastgeber.
+   */
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    '/api/kiosk/service/galerie/:id',
+    async (anfrage, antwort) => {
+      const { verborgen } = z.object({ verborgen: z.boolean() }).parse(anfrage.body);
+      const event = holeAktivesEvent();
+      const ausgabe = holeAusgabe(anfrage.params.id);
+      if (!event || !ausgabe || ausgabe.eventId !== event.id) {
+        return antwort.code(404).send({ fehler: 'Bild nicht gefunden.' });
+      }
+      setzeVerborgen(ausgabe.id, verborgen);
+      protokolliere(
+        'info',
+        'galerie',
+        `Bild ${ausgabe.id.slice(0, 8)} ${verborgen ? 'aus der Galerie genommen' : 'wieder in die Galerie gestellt'}.`,
+      );
+      return { ok: true, verborgen };
+    },
+  );
 
   /**
    * "Was ist los?" - erreichbar ueber einen Knopf auf der PIN-Abfrage, also
@@ -497,6 +531,17 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       stdio: 'ignore',
     }).unref();
     return { ok: true, simuliert: false };
+  });
+
+  /**
+   * QR-Code fuer den Startbildschirm. Nur lokal: Im WLAN braucht ihn niemand,
+   * und ein offener Generator dort waere nur Rechenzeit fuer Fremde.
+   */
+  app.get<{ Querystring: { text?: string } }>('/api/qr', async (anfrage, antwort) => {
+    const text = anfrage.query.text ?? '';
+    if (!text || text.length > 500) return antwort.code(400).send({ fehler: 'Kein gueltiger Text.' });
+    const png = await QRCode.toBuffer(text, { width: 512, margin: 1 });
+    return antwort.header('Content-Type', 'image/png').send(png);
   });
 
   /** Die Oberflaeche meldet einen eigenen Absturz, damit er im Protokoll steht. */

@@ -6,19 +6,28 @@ import { networkInterfaces } from 'node:os';
  * bleibt der Link ueber alle Veranstaltungen stabil.
  */
 export function lanAdresse(): string | null {
-  const schnittstellen = networkInterfaces();
-  const kandidaten: string[] = [];
-  for (const eintraege of Object.values(schnittstellen)) {
-    for (const eintrag of eintraege ?? []) {
-      if (eintrag.family !== 'IPv4' || eintrag.internal) continue;
-      kandidaten.push(eintrag.address);
-    }
-  }
+  const kandidaten = alleLanAdressen();
   // Private Netze bevorzugen: Der Reise-Router spannt ein Insel-Netz auf.
   const privat = kandidaten.find(
     (a) => a.startsWith('192.168.') || a.startsWith('10.') || /^172\.(1[6-9]|2\d|3[01])\./.test(a),
   );
   return privat ?? kandidaten[0] ?? null;
+}
+
+/**
+ * Alle IPv4-Adressen der Box ausser 127.0.0.1. Mehr als eine heisst: Die Box
+ * haengt in mehreren Netzen - etwa im Reise-Router und per Kabel im Netz der
+ * Location. Dann ist nicht sicher, in welchem die Galerie landet.
+ */
+export function alleLanAdressen(): string[] {
+  const kandidaten: string[] = [];
+  for (const eintraege of Object.values(networkInterfaces())) {
+    for (const eintrag of eintraege ?? []) {
+      if (eintrag.family !== 'IPv4' || eintrag.internal) continue;
+      kandidaten.push(eintrag.address);
+    }
+  }
+  return kandidaten;
 }
 
 /** WLAN-QR-Code nach dem Format, das Android und iOS direkt lesen. */

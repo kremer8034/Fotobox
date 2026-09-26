@@ -43,7 +43,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 62 Tests, alle ohne Hardware
+npm test             # 72 Tests, alle ohne Hardware
 npm run typecheck
 ```
 
@@ -153,9 +153,25 @@ WLAN — darauf ist das Konzept zugeschnitten:
 - **Kein Dateipfad kommt je aus der URL.** Bilder werden über Ausgabe-IDs
   angefordert; den Pfad baut der Server und prüft ihn gegen den Ordner des
   freigegebenen Events.
-- **Galerie-Zugang über ein Zufallstoken** mit 128 Bit, jederzeit erneuerbar.
+- **Galerie-Zugang über ein Zufallstoken** mit 128 Bit, jederzeit erneuerbar
+  (Galerie- und Status-Link getrennt). Ein Token gilt **nur, solange seine
+  Veranstaltung läuft** — der Link der Hochzeit vom letzten Wochenende zeigt auf
+  dem nächsten Geburtstag nichts mehr, obwohl der Reise-Router derselbe ist.
+- **Probelauf-Bilder und herausgenommene Bilder** sind über keinen Weg abrufbar.
+  Betreuer und Besitzer können im Servicemenü unter „Galerie" jedes Foto sofort
+  aus der Galerie nehmen (und zurückholen); die Dateien bleiben für die Übergabe.
+- **Strenge Kopfzeilen im WLAN:** Content-Security-Policy, kein Einbetten in
+  fremde Seiten, kein Referrer mit dem Galerie-Link, keine zwischengespeicherten
+  Antworten. Neue Bildfassungen werden höchstens zwei gleichzeitig gerechnet,
+  damit viele Handys auf einmal den Kiosk nicht ausbremsen.
+- **Verwaltung gegen fremde Webseiten geschützt:** Die lokale Instanz antwortet
+  nur unter `localhost`/`127.0.0.1` (gegen DNS-Rebinding) und nimmt schreibende
+  Anfragen nur von eigenen Seiten an (gegen untergeschobene Formulare) — falls
+  auf dem Fotobox-PC auch einmal im Internet gesurft wird.
 - **PINs nur als scrypt-Hash**, Drosselung nach drei Fehlversuchen.
 - **EXIF wird entfernt** aus allem, was über die Galerie herausgeht.
+- Der **Startbereit-Check warnt**, wenn die Box in mehreren Netzen hängt und die
+  Galerie deshalb im falschen landen könnte.
 
 Ehrlich zur Grenze: Ein Browser-Kiosk ist nur so sicher wie Windows darunter.
 Das Konzept schützt zuverlässig gegen neugierige Gäste und versehentliches

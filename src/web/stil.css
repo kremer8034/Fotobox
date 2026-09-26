@@ -1629,3 +1629,26 @@ html.handy-ansicht body {
 .vorfaelle__bereich {
   color: var(--schrift-leise);
 }
+
+/* Servicemenue-Galerie: herausgenommene Fotos bleiben sichtbar, aber gedaempft. */
+.galerie-kachel {
+  position: relative;
+}
+
+.galerie-kachel--verborgen .galerie-kachel__bild {
+  opacity: 0.35;
+}
+
+.galerie-kachel__marke {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-klein);
+  background: var(--fehler);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}

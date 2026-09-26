@@ -284,38 +284,50 @@ export function platzhalterFuer(event: Veranstaltung): Record<string, string> {
   };
 }
 
-/** Fertige Layouts einer Veranstaltung - das ist der Galerie-Inhalt. */
-export function galerieEintraege(eventId: string): {
+/**
+ * Fertige Layouts einer Veranstaltung - das ist der Galerie-Inhalt. Aus der
+ * Galerie genommene Bilder fehlen, ausser fuer das Servicemenue, das sie zum
+ * Zurueckholen braucht.
+ */
+export function galerieEintraege(
+  eventId: string,
+  optionen: { mitVerborgenen?: boolean } = {},
+): {
   ausgabeId: string;
   sitzungId: string;
   pfadLayout: string;
   erstellt: string;
+  verborgen: boolean;
 }[] {
   const zeilen = holeDb()
     .prepare(
-      `SELECT a.id AS ausgabe_id, a.sitzung_id, a.pfad_layout, a.erstellt
+      `SELECT a.id AS ausgabe_id, a.sitzung_id, a.pfad_layout, a.erstellt, a.verborgen
          FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id
-        WHERE s.event_id = ? AND s.ist_test = 0
+        WHERE s.event_id = ? AND s.ist_test = 0 AND (a.verborgen = 0 OR ?)
         ORDER BY a.erstellt DESC`,
     )
-    .all(eventId) as {
+    .all(eventId, optionen.mitVerborgenen ? 1 : 0) as {
     ausgabe_id: string;
     sitzung_id: string;
     pfad_layout: string;
     erstellt: string;
+    verborgen: number;
   }[];
   return zeilen.map((z) => ({
     ausgabeId: z.ausgabe_id,
     sitzungId: z.sitzung_id,
     pfadLayout: z.pfad_layout,
     erstellt: z.erstellt,
+    verborgen: z.verborgen === 1,
   }));
 }
 
-export function holeAusgabe(id: string): (Ausgabe & { eventId: string }) | null {
+export function holeAusgabe(
+  id: string,
+): (Ausgabe & { eventId: string; istTest: boolean; verborgen: boolean }) | null {
   const zeile = holeDb()
     .prepare(
-      `SELECT a.*, s.event_id FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id WHERE a.id = ?`,
+      `SELECT a.*, s.event_id, s.ist_test FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id WHERE a.id = ?`,
     )
     .get(id) as
     | {
@@ -325,6 +337,8 @@ export function holeAusgabe(id: string): (Ausgabe & { eventId: string }) | null 
         pfad_druck_pdf: string | null;
         erstellt: string;
         event_id: string;
+        ist_test: number;
+        verborgen: number;
       }
     | undefined;
   if (!zeile) return null;
@@ -335,7 +349,21 @@ export function holeAusgabe(id: string): (Ausgabe & { eventId: string }) | null 
     pfadDruckPdf: zeile.pfad_druck_pdf,
     erstellt: zeile.erstellt,
     eventId: zeile.event_id,
+    istTest: zeile.ist_test === 1,
+    verborgen: zeile.verborgen === 1,
   };
+}
+
+/**
+ * Ein Bild aus der Galerie nehmen oder zurueckholen - etwa ein Foto, das dem
+ * Gastgeber nicht gefaellt. Es verschwindet von den Handys und vom
+ * Touchscreen; die Dateien bleiben im Ordner und gehen mit der Uebergabe mit.
+ */
+export function setzeVerborgen(ausgabeId: string, verborgen: boolean): boolean {
+  return (
+    holeDb().prepare('UPDATE ausgaben SET verborgen = ? WHERE id = ?').run(verborgen ? 1 : 0, ausgabeId)
+      .changes > 0
+  );
 }
 
 /**

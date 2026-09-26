@@ -384,6 +384,24 @@ verstellen.
 Zurück ins Vollbild kommst du mit einem Doppelklick auf **`Kiosk starten`** im
 Ordner `windows` — oder einfach mit dem nächsten Start des PCs.
 
+## Ein Foto aus der Galerie nehmen
+
+Landet ein Foto in der Galerie, das dort nicht hingehört, kann der Gastgeber es
+selbst herausnehmen:
+
+1. Oben rechts in die Ecke tippen und zwei Sekunden halten, Betreuer-PIN
+   eingeben.
+2. Im Servicemenü auf **„Galerie"** tippen.
+3. Das Foto antippen und **„Aus der Galerie nehmen"** wählen.
+
+Es verschwindet sofort von allen Handys und vom Bildschirm der Box. Gelöscht
+ist es nicht: Mit **„Wieder zeigen"** kommt es zurück, und bei der Übergabe
+liegt es im Ordner.
+
+Die Handy-Galerie ist nur erreichbar, solange die Veranstaltung läuft. Nach dem
+Abschließen zeigt der alte Link nichts mehr — auch nicht, wenn ein Gast ihn auf
+der nächsten Feier wieder aufruft.
+
 ## Wenn etwas ausfällt
 
 Die Box ist dafür gebaut, allein beim Gastgeber zu stehen. Das meiste regelt

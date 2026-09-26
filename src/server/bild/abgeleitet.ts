@@ -35,6 +35,30 @@ export const FASSUNGEN = {
 /** Laufende Berechnungen: Zwanzig gleichzeitige Abrufe rechnen einmal, nicht zwanzigmal. */
 const inArbeit = new Map<string, Promise<string>>();
 
+/*
+ * Hoechstens zwei neue Fassungen gleichzeitig.
+ *
+ * Oeffnen dreissig Gaeste nach dem Essen gleichzeitig die Galerie, fordert
+ * jedes Handy andere Bilder an - jedes davon muss einmal verkleinert werden.
+ * Ohne Grenze rechnete der N100 alle auf einmal, und genau in diesem Moment
+ * stockten Live-Bild und Countdown am Kiosk. Einmal gerechnet, kommen die
+ * Bilder ohnehin von der Platte; die Grenze betrifft nur den ersten Abruf.
+ */
+const GLEICHZEITIG = 2;
+let laufend = 0;
+const warteschlange: (() => void)[] = [];
+
+async function mitPlatz<T>(arbeit: () => Promise<T>): Promise<T> {
+  if (laufend >= GLEICHZEITIG) await new Promise<void>((weiter) => warteschlange.push(weiter));
+  laufend += 1;
+  try {
+    return await arbeit();
+  } finally {
+    laufend -= 1;
+    warteschlange.shift()?.();
+  }
+}
+
 /**
  * Pfad der fertigen Fassung - bei Bedarf wird sie erst erzeugt.
  *
@@ -59,14 +83,16 @@ export async function abgeleitet(
   const arbeit = (async () => {
     if (await aktuell(ziel, quelle)) return ziel;
     await mkdir(join(cacheOrdner, 'bilder'), { recursive: true });
-    let bild = sharp(quelle).rotate();
-    if (fassung.kante) bild = bild.resize(fassung.kante, fassung.kante, { fit: 'inside' });
-    // Erst unter anderem Namen schreiben, dann umbenennen: Ein Abruf waehrend
-    // des Schreibens bekommt nie eine halbe Datei.
-    const zwischen = `${ziel}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
-    await bild.jpeg({ quality: fassung.qualitaet }).toFile(zwischen);
-    await rename(zwischen, ziel);
-    return ziel;
+    return mitPlatz(async () => {
+      let bild = sharp(quelle).rotate();
+      if (fassung.kante) bild = bild.resize(fassung.kante, fassung.kante, { fit: 'inside' });
+      // Erst unter anderem Namen schreiben, dann umbenennen: Ein Abruf waehrend
+      // des Schreibens bekommt nie eine halbe Datei.
+      const zwischen = `${ziel}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+      await bild.jpeg({ quality: fassung.qualitaet }).toFile(zwischen);
+      await rename(zwischen, ziel);
+      return ziel;
+    });
   })();
 
   inArbeit.set(ziel, arbeit);

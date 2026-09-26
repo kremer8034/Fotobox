@@ -4,7 +4,7 @@ import { leseGeraet } from '../db/geraet.js';
 import { holeVorlage } from './vorlagen.js';
 import { wurzelpfade } from './pfade.js';
 import { schriftenOrdner } from './schriften.js';
-import { lanAdresse } from '../netzwerk.js';
+import { alleLanAdressen, lanAdresse } from '../netzwerk.js';
 import type { Veranstaltung } from '../../shared/typen.js';
 import type { Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
@@ -127,6 +127,22 @@ export async function startbereitPruefung(
         ? `Galerie laeuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}`
         : 'Keine Netzwerkadresse gefunden. Haengt die Box am Reise-Router?',
     });
+
+    // Haengt die Box zusaetzlich in einem fremden Netz (Kabel der Location,
+    // Hotel-WLAN), koennte die Galerie dort statt im eigenen Router landen -
+    // offen fuer alle in diesem Netz.
+    const alle = alleLanAdressen();
+    if (alle.length > 1) {
+      punkte.push({
+        schluessel: 'netze',
+        titel: 'Box haengt nur im eigenen Netz',
+        bestanden: false,
+        nurWarnung: true,
+        hinweis:
+          `Die Box hat mehrere Netzwerkadressen (${alle.join(', ')}); die Galerie laeuft unter ${adresse}. ` +
+          'Ist das nicht der Reise-Router, andere Verbindungen trennen (Netzwerkkabel ziehen, fremdes WLAN vergessen).',
+      });
+    }
   }
 
   punkte.push({

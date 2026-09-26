@@ -76,7 +76,10 @@ CREATE TABLE IF NOT EXISTS ausgaben (
   sitzung_id     TEXT NOT NULL REFERENCES sitzungen(id) ON DELETE CASCADE,
   pfad_layout    TEXT NOT NULL,
   pfad_druck_pdf TEXT,
-  erstellt       TEXT NOT NULL
+  erstellt       TEXT NOT NULL,
+  -- 1 = aus der Galerie genommen (Handy und Touchscreen). Die Dateien bleiben;
+  -- der Gastgeber bekommt sie bei der Uebergabe trotzdem.
+  verborgen      INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_ausgaben_sitzung ON ausgaben(sitzung_id);
 

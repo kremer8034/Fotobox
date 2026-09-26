@@ -240,7 +240,7 @@ export function Servicemenue({
             zeile="Wartende Fotos weiter drucken"
             beiTipp={() => void tue('/api/kiosk/service/fortsetzen', {}, 'Die wartenden Fotos werden gedruckt.')}
           />
-          <Handgriff titel="Nachdruck" zeile="Ein Foto aus der Galerie drucken" beiTipp={beiGalerie} />
+          <Handgriff titel="Galerie" zeile="Nachdrucken oder ein Foto herausnehmen" beiTipp={beiGalerie} />
           <Handgriff
             titel="Neue Rolle eingelegt"
             zeile="Papierzähler auf voll zurücksetzen"

@@ -8,6 +8,7 @@ import { leseGeraet, schreibeGeraet, begrenzeKalibrierung } from '../db/geraet.j
 import {
   aktualisiereEvent,
   erneuereGalerieToken,
+  erneuereStatusToken,
   erstelleEvent,
   holeAktivesEvent,
   holeEvent,
@@ -409,6 +410,10 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
 
   app.post<{ Params: { id: string } }>('/api/admin/events/:id/galerie-token', async (anfrage) =>
     erneuereGalerieToken(anfrage.params.id),
+  );
+
+  app.post<{ Params: { id: string } }>('/api/admin/events/:id/status-token', async (anfrage) =>
+    erneuereStatusToken(anfrage.params.id),
   );
 
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/startbereit', async (anfrage, antwort) => {

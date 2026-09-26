@@ -24,6 +24,7 @@ import { registriereMedien } from './routen/medien.js';
 import { registriereStream } from './routen/stream.js';
 import { registriereEntwicklung } from './routen/entwicklung.js';
 import { lanAdresse } from './netzwerk.js';
+import { haerteOeffentlich, schuetzeLokal } from './sicherheit.js';
 
 /**
  * Einstiegspunkt.
@@ -80,6 +81,7 @@ betrieb.starte();
 // --------------------------------------------------------------------------
 const lokal = Fastify({ logger: false, bodyLimit: 20 * 1024 * 1024 });
 await lokal.register(fastifyMultipart, { limits: { fileSize: 30 * 1024 * 1024 } });
+schuetzeLokal(lokal);
 
 registriereKiosk(lokal, betrieb, konfig);
 registriereAdmin(lokal, betrieb, konfig);
@@ -105,7 +107,10 @@ async function galerieAn(): Promise<void> {
     protokolliere('warnung', 'server', 'Galerie gewuenscht, aber keine Netzwerkadresse gefunden.');
     return;
   }
-  const app = Fastify({ logger: false });
+  // Nur lesende Anfragen, keine Uploads: ein kleines Limit fuer den Rumpf
+  // genuegt, und nach 10 s ohne Antwort ist eine Verbindung zu.
+  const app = Fastify({ logger: false, bodyLimit: 16 * 1024, connectionTimeout: 10_000 });
+  haerteOeffentlich(app);
   registriereOeffentlich(app, betrieb);
   await registriereWeb(app);
   await app.listen({ host: adresse, port: konfig.portOeffentlich });

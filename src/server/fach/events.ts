@@ -193,6 +193,12 @@ export function erneuereGalerieToken(id: string): Veranstaltung {
   return holeEvent(id)!;
 }
 
+/** Ein weitergegebener Status-Link wird so ungueltig - wie beim Galerie-Link. */
+export function erneuereStatusToken(id: string): Veranstaltung {
+  holeDb().prepare('UPDATE events SET status_token = ? WHERE id = ?').run(neuesToken(), id);
+  return holeEvent(id)!;
+}
+
 export function findeEventNachGalerieToken(token: string): Veranstaltung | null {
   if (!token) return null;
   const zeile = holeDb().prepare('SELECT * FROM events WHERE galerie_token = ?').get(token) as
