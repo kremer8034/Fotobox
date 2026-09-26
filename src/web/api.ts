@@ -75,6 +75,7 @@ export interface Stoerungstext {
 
 export interface KioskStart {
   bereit: boolean;
+  aktiveSitzungId?: string | null;
   pausiert?: boolean;
   grund?: string;
   status: {

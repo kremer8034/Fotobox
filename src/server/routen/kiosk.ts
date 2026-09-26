@@ -9,7 +9,7 @@ import {
   brichSitzungAb,
   galerieEintraege,
   holeAusgabe,
-  erstesFoto,
+  vorschauBasis,
   starteSitzung,
   stelleFertig,
   verbucheFoto,
@@ -55,6 +55,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       bereit: event.status === 'aktiv',
       pausiert: event.status === 'pausiert',
       status,
+      // Damit der Kiosk eine verwaiste Sitzung erkennt - etwa nach einem
+      // Neuladen des Browsers mitten in der Aufnahme - und sie verwirft,
+      // statt den naechsten Gast drei Minuten mit "laeuft schon" zu blockieren.
+      aktiveSitzungId: betrieb.aktiveSitzung?.id ?? null,
       veranstaltung: { id: event.id, name: event.name, probelauf: event.probelauf },
       darstellung: {
         titel: event.einstellungen.startTitel,
@@ -133,7 +137,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
       // Der Pfad kommt aus der Datenbank, nie aus der Anfrage - aus der URL
       // stammt nur die Sitzungskennung.
-      const eigenes = anfrage.query.sitzung ? erstesFoto(anfrage.query.sitzung) : null;
+      // Schlaegt das Lesen fehl (Datei noch nicht fertig geschrieben), bleibt
+      // das allgemeine Muster - eine Vorschau ist besser als eine leere Kachel.
+      const eigenes = anfrage.query.sitzung ? await vorschauBasis(anfrage.query.sitzung) : null;
 
       const bild = await filterVorschau(preset, wurzel.luts, eigenes);
       return antwort.type('image/jpeg').header('Cache-Control', 'no-cache').send(bild);

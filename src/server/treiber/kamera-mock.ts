@@ -13,6 +13,14 @@ export class MockKamera implements KameraTreiber {
   private zielordner = '';
   private liveView = false;
   private zaehler = 0;
+  /** Abrufe des Live-Bilds - fuer Messungen, wie oft die Kamera gefragt wird. */
+  liveAbrufe = 0;
+  /**
+   * Kuenstliche Abrufzeit je Live-Bild. Die echte 600D braucht ueber USB und
+   * digiCamControl einige Dutzend Millisekunden; ohne diese Verzoegerung
+   * liesse sich das Zeitverhalten des Live-Bilds nicht nachstellen.
+   */
+  private readonly liveVerzoegerung = Number(process.env.FOTOBOX_MOCK_LIVEBILD_MS ?? 0);
 
   async pruefe(): Promise<KameraStatus> {
     return { verbunden: true, liveViewLaeuft: this.liveView };
@@ -28,6 +36,8 @@ export class MockKamera implements KameraTreiber {
 
   async liveBild(): Promise<Buffer | null> {
     if (!this.liveView) return null;
+    this.liveAbrufe += 1;
+    if (this.liveVerzoegerung > 0) await new Promise((r) => setTimeout(r, this.liveVerzoegerung));
     // Ein langsam wandernder Farbverlauf, damit man im Browser sieht, dass der
     // Strom lebt und nicht ein Standbild haengt.
     const phase = (Date.now() / 3000) % 1;

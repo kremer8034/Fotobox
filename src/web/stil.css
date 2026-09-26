@@ -326,6 +326,62 @@ button {
   pointer-events: none;
 }
 
+/*
+ * Rueckmeldung beim Antippen. Die angetippte Kachel leuchtet sofort, die
+ * anderen treten zurueck - der Gast sieht, dass sein Tipper angekommen ist,
+ * auch wenn die Box noch einen Moment rechnet.
+ */
+.raster--wartet .kachel:not(.kachel--wartet) {
+  opacity: 0.35;
+  transition: opacity 150ms ease;
+}
+
+.kachel--wartet {
+  border-color: var(--akzent);
+  box-shadow: 0 0 calc(5 * var(--mm)) var(--akzent-schimmer);
+}
+
+.zusammensetzen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(16, 18, 22, 0.78);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand-gross);
+  /* Erst nach einer Viertelsekunde einblenden: Geht es schneller, flackert
+     sonst nur kurz ein Schleier auf. */
+  animation: zusammensetzen-ein 200ms ease 250ms both;
+}
+
+@keyframes zusammensetzen-ein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.zusammensetzen__text {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+/* Nur transform wird animiert - das rechnet die Grafikkarte, der Prozessor
+   bleibt frei fuer das Bild, das gerade entsteht. */
+.kreisel {
+  width: calc(18 * var(--mm));
+  height: calc(18 * var(--mm));
+  border-radius: 50%;
+  border: calc(2 * var(--mm)) solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--akzent);
+  animation: kreisel-dreh 0.9s linear infinite;
+}
+
+@keyframes kreisel-dreh {
+  to { transform: rotate(360deg); }
+}
+
 /* Aufnahmebildschirm: Live-Bild als Vollbild, Countdown direkt darueber. */
 .aufnahme {
   position: relative;

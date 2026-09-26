@@ -79,14 +79,13 @@ export async function vorlagenVorschau(vorlage: Vorlage, assetsOrdner: string): 
 export async function filterVorschau(
   preset: FilterPreset,
   lutOrdner: string,
-  eigenesFoto?: string | null,
+  eigeneMiniatur?: Buffer | null,
 ): Promise<Buffer> {
   // Mit dem eigenen Foto wird gar nicht zwischengelagert: Es gilt nur fuer
-  // diese eine Sitzung, und fuenf kleine Filterlaeufe kosten zusammen weniger
-  // als der Speicher, den ein Lager je Sitzung braeuchte.
-  const quelle = eigenesFoto ? await miniatur(eigenesFoto) : null;
-  if (quelle) {
-    return wendeFilterAn(quelle, preset, { lutOrdner });
+  // diese eine Sitzung. Die Miniatur selbst ist je Sitzung schon gerechnet -
+  // hier laeuft nur noch der Filter ueber 320 Pixel.
+  if (eigeneMiniatur) {
+    return wendeFilterAn(eigeneMiniatur, preset, { lutOrdner });
   }
 
   const schluessel = `filter:${preset.id}`;
@@ -99,21 +98,15 @@ export async function filterVorschau(
 }
 
 /**
- * Das eigene Foto auf Kachelgroesse. Quadratisch beschnitten, weil die Kachel
- * quadratisch ist - und klein, damit der Filter in Millisekunden rechnet statt
- * auf achtzehn Megapixeln.
+ * Ein Foto auf Kachelgroesse. Quadratisch beschnitten, weil die Kachel
+ * quadratisch ist - und klein, damit der Filter in Millisekunden rechnet.
  */
-async function miniatur(pfad: string): Promise<Buffer | null> {
-  try {
-    return await sharp(pfad)
-      .resize(FILTER_KANTE, FILTER_KANTE, { fit: 'cover', position: 'attention' })
-      .jpeg({ quality: 82 })
-      .toBuffer();
-  } catch {
-    // Datei noch nicht fertig geschrieben oder Format unbekannt: Dann eben das
-    // allgemeine Muster - eine Vorschau ist besser als eine leere Kachel.
-    return null;
-  }
+export function miniatur(quelle: Buffer | string): Promise<Buffer> {
+  return sharp(quelle)
+    .rotate()
+    .resize(FILTER_KANTE, FILTER_KANTE, { fit: 'cover', position: 'attention' })
+    .jpeg({ quality: 82 })
+    .toBuffer();
 }
 
 /** Ruhige, nummerierte Flaeche fuer die Foto-Ebenen der Vorlagenvorschau. */

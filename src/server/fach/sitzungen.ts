@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import sharp from 'sharp';
 import { holeDb, jetzt } from '../db/index.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { wendeFilterAn } from '../bild/filter.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
+import { miniatur } from '../bild/vorschau.js';
 import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
 import { holeVorlage } from './vorlagen.js';
@@ -23,6 +24,96 @@ import { fotoEbenen, type Ausgabe, type Veranstaltung, type Vorlage } from '../.
 /** Arbeitsgroesse: lange Kante 2000 px reicht fuer 300 dpi auf 10x15 und fuer
  *  den Handy-Download. Der Filter laeuft NACH dem Verkleinern. */
 const ARBEITSGROESSE = 2000;
+
+/*
+ * Vorverkleinern, solange der Gast noch schaut.
+ *
+ * Ein 18-Megapixel-Original zu dekodieren und auf Arbeitsgroesse zu bringen,
+ * ist der teuerste Einzelschritt der ganzen Pipeline - gemessen rund eine
+ * Viertelsekunde je Foto, auf dem N100 eher eine halbe. Bisher geschah das
+ * dreimal hintereinander NACH dem Filter-Tipp, waehrend der Gast wartete.
+ *
+ * Jetzt beginnt es, sobald ein Foto verbucht ist - in den zwei Sekunden, in
+ * denen der Gast es zur Bestaetigung sieht, und im Bereitmachen fuer das
+ * naechste. Bis er einen Filter waehlt, liegen alle Fotos laengst klein im
+ * Speicher. Dieselbe Fassung speist die Filtervorschau, die bisher fuenfmal
+ * das volle Original las.
+ */
+interface Vorbereitet {
+  pfad: string;
+  arbeitsbild: Promise<Buffer>;
+}
+const vorbereitet = new Map<string, Vorbereitet>();
+const vorschauBasen = new Map<string, Promise<Buffer | null>>();
+/** Obergrenze fuer Sitzungen, die nie sauber endeten - etwa nach einem Absturz des Browsers. */
+const HOECHSTENS_VORBEREITET = 24;
+
+function verkleinere(pfad: string): Promise<Buffer> {
+  return sharp(pfad)
+    .rotate()
+    .resize(ARBEITSGROESSE, ARBEITSGROESSE, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+function bereiteVor(sitzungId: string, ebeneIndex: number, pfad: string): void {
+  const arbeitsbild = verkleinere(pfad);
+  // Ein Fehler hier ist nicht endgueltig: arbeitsbild() versucht es beim
+  // Fertigstellen noch einmal direkt vom Original.
+  arbeitsbild.catch(() => undefined);
+  if (vorbereitet.size >= HOECHSTENS_VORBEREITET) {
+    vorbereitet.delete(vorbereitet.keys().next().value!);
+  }
+  vorbereitet.set(`${sitzungId}:${ebeneIndex}`, { pfad, arbeitsbild });
+}
+
+async function arbeitsbild(sitzungId: string, ebeneIndex: number, pfad: string): Promise<Buffer> {
+  const eintrag = vorbereitet.get(`${sitzungId}:${ebeneIndex}`);
+  if (eintrag && eintrag.pfad === pfad) {
+    try {
+      return await eintrag.arbeitsbild;
+    } catch {
+      // weiter unten neu
+    }
+  }
+  return verkleinere(pfad);
+}
+
+function vergiss(sitzungId: string): void {
+  for (const schluessel of vorbereitet.keys()) {
+    if (schluessel.startsWith(`${sitzungId}:`)) vorbereitet.delete(schluessel);
+  }
+  vorschauBasen.delete(sitzungId);
+}
+
+/**
+ * Das erste Foto der Sitzung als kleine Kachel - die Grundlage der
+ * Filtervorschau. Einmal je Sitzung gerechnet, nicht einmal je Filter.
+ */
+export function vorschauBasis(sitzungId: string): Promise<Buffer | null> {
+  const vorhanden = vorschauBasen.get(sitzungId);
+  if (vorhanden) return vorhanden;
+
+  const zeile = holeDb()
+    .prepare(
+      'SELECT ebene_index, pfad_original FROM fotos WHERE sitzung_id = ? ORDER BY ebene_index LIMIT 1',
+    )
+    .get(sitzungId) as { ebene_index: number; pfad_original: string } | undefined;
+  if (!zeile) return Promise.resolve(null);
+
+  const basis = arbeitsbild(sitzungId, zeile.ebene_index, zeile.pfad_original)
+    .then((bild) => miniatur(bild))
+    .catch(() => {
+      // Nicht als endgueltig merken: Die naechste Kachel versucht es erneut.
+      vorschauBasen.delete(sitzungId);
+      return null;
+    });
+  if (vorschauBasen.size >= HOECHSTENS_VORBEREITET) {
+    vorschauBasen.delete(vorschauBasen.keys().next().value!);
+  }
+  vorschauBasen.set(sitzungId, basis);
+  return basis;
+}
 
 export interface SitzungZustand {
   id: string;
@@ -62,6 +153,7 @@ export function brichSitzungAb(sitzungId: string): void {
   // Die bereits gemachten Fotos bleiben im Ordner; nur die Sitzung wird
   // beendet, damit die Box wieder frei ist.
   holeDb().prepare('UPDATE sitzungen SET beendet = ? WHERE id = ?').run(jetzt(), sitzungId);
+  vergiss(sitzungId);
 }
 
 /**
@@ -88,6 +180,7 @@ export async function verbucheFoto(
     )
     .run(randomUUID(), sitzung.id, ebeneIndex, ziel);
 
+  bereiteVor(sitzung.id, ebeneIndex, ziel);
   return ziel;
 }
 
@@ -114,25 +207,28 @@ export async function stelleFertig(
     .prepare('SELECT id, ebene_index, pfad_original FROM fotos WHERE sitzung_id = ? ORDER BY ebene_index')
     .all(sitzung.id) as { id: string; ebene_index: number; pfad_original: string }[];
 
+  // Alle Fotos gleichzeitig: sharp rechnet ohnehin in eigenen Threads, und
+  // der N100 hat vier Kerne, die sonst nacheinander auf einen warteten.
   const fotos = new Map<number, Buffer>();
-  for (const zeile of zeilen) {
-    const original = await readFile(zeile.pfad_original);
-    // Erst verkleinern, dann filtern: Damit rechnet auch eine 3D-LUT ueber
-    // wenige hunderttausend Pixel statt ueber achtzehn Millionen.
-    const verkleinert = await sharp(original)
-      .rotate()
-      .resize(ARBEITSGROESSE, ARBEITSGROESSE, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 92 })
-      .toBuffer();
-    const gefiltert = await wendeFilterAn(verkleinert, preset, { lutOrdner: kontext.lutOrdner });
+  try {
+    await Promise.all(
+      zeilen.map(async (zeile) => {
+        // Erst verkleinern, dann filtern: Damit rechnet auch eine 3D-LUT ueber
+        // wenige hunderttausend Pixel statt ueber achtzehn Millionen.
+        const verkleinert = await arbeitsbild(sitzung.id, zeile.ebene_index, zeile.pfad_original);
+        const gefiltert = await wendeFilterAn(verkleinert, preset, { lutOrdner: kontext.lutOrdner });
 
-    const bearbeitetPfad = join(pfade.bearbeitet, `${sitzung.id}_${zeile.ebene_index}.jpg`);
-    await writeFile(bearbeitetPfad, gefiltert);
-    holeDb()
-      .prepare('UPDATE fotos SET pfad_bearbeitet = ? WHERE id = ?')
-      .run(bearbeitetPfad, zeile.id);
+        const bearbeitetPfad = join(pfade.bearbeitet, `${sitzung.id}_${zeile.ebene_index}.jpg`);
+        await writeFile(bearbeitetPfad, gefiltert);
+        holeDb()
+          .prepare('UPDATE fotos SET pfad_bearbeitet = ? WHERE id = ?')
+          .run(bearbeitetPfad, zeile.id);
 
-    fotos.set(zeile.ebene_index, gefiltert);
+        fotos.set(zeile.ebene_index, gefiltert);
+      }),
+    );
+  } finally {
+    vergiss(sitzung.id);
   }
 
   const layout = await baueLayout(
@@ -261,20 +357,4 @@ function extension(pfad: string): string {
   const name = basename(pfad);
   const punkt = name.lastIndexOf('.');
   return punkt >= 0 ? name.slice(punkt) : '.jpg';
-}
-
-/**
- * Pfad des ersten aufgenommenen Fotos einer Sitzung.
- *
- * Damit kann die Filterauswahl das eigene Bild des Gastes zeigen statt eines
- * abstrakten Musters - an einem fremden Farbfeld sieht niemand, was ein Filter
- * mit seinem Gesicht macht.
- */
-export function erstesFoto(sitzungId: string): string | null {
-  const zeile = holeDb()
-    .prepare(
-      'SELECT pfad_original FROM fotos WHERE sitzung_id = ? ORDER BY ebene_index LIMIT 1',
-    )
-    .get(sitzungId) as { pfad_original: string } | undefined;
-  return zeile?.pfad_original ?? null;
 }

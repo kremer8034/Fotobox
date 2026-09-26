@@ -58,12 +58,15 @@ export async function baueLayout(
     },
   });
 
-  const auflagen: sharp.OverlayOptions[] = [];
-  for (const ebene of vorlage.ebenen) {
-    if (ebene.sichtbar === false) continue;
-    const auflage = await rendereEbene(ebene, quellen, masse);
-    if (auflage) auflagen.push(auflage);
-  }
+  // Alle Ebenen gleichzeitig vorbereiten - die Stapelreihenfolge bleibt, weil
+  // Promise.all die Ergebnisse in der Reihenfolge der Eingabe liefert.
+  const auflagen = (
+    await Promise.all(
+      vorlage.ebenen
+        .filter((ebene) => ebene.sichtbar !== false)
+        .map((ebene) => rendereEbene(ebene, quellen, masse)),
+    )
+  ).filter((auflage): auflage is sharp.OverlayOptions => auflage !== null);
 
   return grund.composite(auflagen).jpeg({ quality: 95, chromaSubsampling: '4:4:4' }).toBuffer();
 }
@@ -81,6 +84,22 @@ async function rendereEbene(
     case 'text':
       return rendereText(ebene, quellen, masse);
   }
+}
+
+/**
+ * Eine fertige Ebene als Rohpixel samt Transparenz weiterreichen. Vorher ging
+ * jede Ebene als PNG hinueber - bei einem Foto in Druckgroesse hiess das,
+ * Millionen Pixel zu komprimieren, nur damit composite() sie gleich wieder
+ * entpackt.
+ */
+async function alsAuflage(bild: sharp.Sharp, links: number, oben: number): Promise<sharp.OverlayOptions> {
+  const { data, info } = await bild.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return {
+    input: data,
+    raw: { width: info.width, height: info.height, channels: info.channels },
+    left: links,
+    top: oben,
+  };
 }
 
 /** Normalisierte Koordinaten in Pixel umrechnen. */
@@ -106,7 +125,7 @@ async function rendereBild(
       bild = bild.ensureAlpha(Math.max(0, Math.min(1, ebene.deckkraft)));
     }
     if (ebene.rotation) bild = bild.rotate(ebene.rotation, { background: '#00000000' });
-    return { input: await bild.png().toBuffer(), left: links, top: oben };
+    return await alsAuflage(bild, links, oben);
   } catch {
     // Eine fehlende Bilddatei darf nicht die ganze Sitzung sprengen. Der
     // Startbereit-Check meldet so etwas vorher.
@@ -134,11 +153,14 @@ async function rendereFoto(
     const maske = Buffer.from(
       `<svg width="${breite}" height="${hoehe}"><rect x="0" y="0" width="${breite}" height="${hoehe}" rx="${radiusPx}" ry="${radiusPx}" fill="#fff"/></svg>`,
     );
-    bild = sharp(await bild.png().toBuffer()).composite([{ input: maske, blend: 'dest-in' }]);
+    const { data, info } = await bild.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    bild = sharp(data, {
+      raw: { width: info.width, height: info.height, channels: info.channels },
+    }).composite([{ input: maske, blend: 'dest-in' }]);
   }
 
   if (ebene.rotation) bild = bild.rotate(ebene.rotation, { background: '#00000000' });
-  return { input: await bild.png().toBuffer(), left: links, top: oben };
+  return alsAuflage(bild, links, oben);
 }
 
 async function rendereText(
@@ -178,7 +200,7 @@ async function rendereText(
 
   let bild = sharp(Buffer.from(svg));
   if (ebene.rotation) bild = bild.rotate(ebene.rotation, { background: '#00000000' });
-  return { input: await bild.png().toBuffer(), left: links, top: oben };
+  return alsAuflage(bild, links, oben);
 }
 
 /**
