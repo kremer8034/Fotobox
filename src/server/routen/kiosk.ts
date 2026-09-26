@@ -419,13 +419,19 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     }
     // Ein Formular, das im Namen des Besitzers Mails verschickt, ist ein
     // Missbrauchsziel - daher Drossel, Tageslimit und Limit je Adresse.
+    // Drei Sperren, drei Saetze: "Bitte kurz warten" stimmte nur fuer die
+    // erste - bei den anderen hilft Warten an diesem Abend nicht.
     const kennung = anfrage.ip;
-    if (
-      drosselGreift(kennung) ||
-      tageslimitErreicht(event.id) ||
-      adresseZuOft(event.id, koerper.adresse)
-    ) {
-      return antwort.code(429).send({ fehler: 'Gerade zu viele Anfragen. Bitte kurz warten.' });
+    if (drosselGreift(kennung)) {
+      return antwort.code(429).send({ fehler: 'Gerade zu viele E-Mails auf einmal. Bitte eine Minute warten.' });
+    }
+    if (tageslimitErreicht(event.id)) {
+      return antwort
+        .code(429)
+        .send({ fehler: 'Heute gehen keine E-Mails mehr hinaus. Die Fotos gibt es später beim Gastgeber.' });
+    }
+    if (adresseZuOft(event.id, koerper.adresse)) {
+      return antwort.code(429).send({ fehler: 'An diese Adresse sind heute schon genug Fotos gegangen.' });
     }
 
     // Nur das Foto, das gerade eben fertig wurde - nicht jedes beliebige aus

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useZeitgeber } from './zeitgeber.js';
 import { api } from '../api.js';
+import { pruefeAdresse } from '../../shared/adresse.js';
+import { tippeInAdresse } from './adresse-tippen.js';
 
 /*
  * Tastaturbelegung. QWERTZ, weil das die Gaeste von ihrem eigenen Handy kennen,
@@ -44,6 +46,9 @@ export function EmailEingabe({
   const [einverstanden, setzeEinverstanden] = useState(false);
   const [zustand, setzeZustand] = useState<Zustand>('eingabe');
   const [fehler, setzeFehler] = useState<string | null>(null);
+  // Ein Ref, kein Zustand: Zwei Tipper im selben Bildaufbau saehen "eingabe"
+  // beide noch und verschickten zwei Mails.
+  const sendetGerade = useRef(false);
 
   // Wer mitten in der Eingabe weggeht, blockiert sonst die Box fuer den
   // naechsten Gast. Jeder Tipper setzt die Uhr zurueck.
@@ -53,7 +58,9 @@ export function EmailEingabe({
     [adresse, einverstanden, zustand, fehler],
   );
 
-  const siehtGutAus = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(adresse);
+  // Dieselbe Regel wie auf dem Server: "Senden" ist nur frei, wenn er die
+  // Adresse auch annimmt.
+  const siehtGutAus = pruefeAdresse(adresse);
   const bereit = siehtGutAus && einverstanden && zustand === 'eingabe';
 
   if (zustand === 'fertig') {
@@ -130,10 +137,12 @@ export function EmailEingabe({
 
   function tippe(zeichen: string) {
     setzeFehler(null);
-    setzeAdresse((a) => (a + zeichen).slice(0, 254));
+    setzeAdresse((a) => tippeInAdresse(a, zeichen));
   }
 
   async function senden() {
+    if (sendetGerade.current) return;
+    sendetGerade.current = true;
     setzeZustand('senden');
     setzeFehler(null);
     try {
@@ -144,6 +153,8 @@ export function EmailEingabe({
       // sieht nicht richtig aus.", "Die Box ist gerade nicht online.").
       setzeFehler(u instanceof Error ? u.message : 'Hat nicht geklappt.');
       setzeZustand('eingabe');
+    } finally {
+      sendetGerade.current = false;
     }
   }
 }

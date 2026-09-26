@@ -42,7 +42,15 @@ export function Ergebnis({
   // waehrend der Gast an der Kopienzahl drehte - und die Seite verschwand
   // unter seinem Finger.
   const [beruehrt, setzeBeruehrt] = useState(0);
-  const druck = useDrucken(ausgabeId, 'kiosk', beiFertig);
+  // Nach dem Drucken ging es vorher sofort zum Start - wer danach das Foto
+  // noch per E-Mail wollte, kam nicht mehr heran. Gibt es E-Mail, bleibt die
+  // Seite stehen (ohne Druckknopf, damit niemand aus Versehen nachlegt), und
+  // die normale Rueckkehr-Uhr uebernimmt.
+  const [gedruckt, setzeGedruckt] = useState(false);
+  const druck = useDrucken(ausgabeId, 'kiosk', () => {
+    if (ausgabe.emailAktiv) setzeGedruckt(true);
+    else beiFertig();
+  });
 
   useEffect(() => {
     if (tonAn) toene.ergebnis();
@@ -55,7 +63,7 @@ export function Ergebnis({
   // und die Eingabe hat ihren eigenen Leerlauf.
   useZeitgeber(beiFertig, emailOffen ? null : rueckkehrSekunden * 1000, [druck.quittung, beruehrt]);
 
-  const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht && hoechstens >= 1;
+  const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht && hoechstens >= 1 && !gedruckt;
 
   return (
     <div

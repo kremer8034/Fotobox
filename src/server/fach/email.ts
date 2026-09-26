@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import { holeDb, jetzt } from '../db/index.js';
 import { leseGeraet, leseMailPasswort } from '../db/geraet.js';
 import type { Veranstaltung } from '../../shared/typen.js';
+import { pruefeAdresse } from '../../shared/adresse.js';
 
 /**
  * E-Mail-Versand.
@@ -35,13 +36,9 @@ export interface Mailzugang {
   absender: string;
 }
 
-/*
- * Bewusst enger als der Standard erlaubt. Die Bildschirmtastatur kennt ohnehin
- * nur Buchstaben, Ziffern und ". _ -". Vorher war jedes Zeichen ausser @ und
- * Leerraum erlaubt - "gast@web.de,postmaster" ging durch, und der Mailserver
- * haette daraus zwei Empfaenger gemacht.
- */
-const EMAIL_MUSTER = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,63}$/;
+/** Die Adresspruefung liegt in shared/adresse.ts - der Kiosk prueft mit derselben Regel. */
+export { pruefeAdresse };
+
 const TAGESLIMIT = 200;
 const JE_ADRESSE_UND_TAG = 3;
 /** Bis so lange nach dem Fertigwerden darf ein Foto per E-Mail verschickt werden. */
@@ -49,9 +46,6 @@ export const FOTO_FRISCH_MS = 15 * 60_000;
 
 const zaehlerJeGeraet = new Map<string, { anzahl: number; fenster: number }>();
 
-export function pruefeAdresse(adresse: string): boolean {
-  return adresse.length <= 254 && EMAIL_MUSTER.test(adresse) && !adresse.includes('..');
-}
 
 /** Fuenf Versuche je Minute und Geraet. */
 export function drosselGreift(kennung: string): boolean {
