@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 const ganz = (name: string, min: number, max: number) =>
   z
-    .number({ invalid_type_error: `${name}: bitte eine Zahl eintragen.` })
+    .number({ error: `${name}: bitte eine Zahl eintragen.` })
     .int(`${name}: bitte eine ganze Zahl.`)
     .min(min, `${name}: mindestens ${min}.`)
     .max(max, `${name}: höchstens ${max}.`);
@@ -50,7 +50,7 @@ export const EINSTELLUNGEN_EINGABE = z
     kopienMax: ganz('Kopien je Foto höchstens', 1, 10),
     druckLimit: ganz('Druck-Limit gesamt', 0, 100_000),
     ersatzJeDruck: z
-      .number({ invalid_type_error: 'Ersatz je Druck: bitte eine Zahl eintragen.' })
+      .number({ error: 'Ersatz je Druck: bitte eine Zahl eintragen.' })
       .min(0, 'Ersatz je Druck: nicht negativ.')
       .max(100, 'Ersatz je Druck: höchstens 100 €.'),
     materialStart: ganz('Material Start', 0, 100_000),

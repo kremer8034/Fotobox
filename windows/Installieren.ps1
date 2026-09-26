@@ -37,8 +37,8 @@ try {
   $version = (& node --version) 2>$null
   if ($version -match 'v(\d+)\.') {
     $haupt = [int]$Matches[1]
-    if ($haupt -ge 22) { Gut "Node $version gefunden"; $nodeDa = $true }
-    else { Hinweis "Node $version ist zu alt, gebraucht wird mindestens v22." }
+    if ($haupt -ge 24) { Gut "Node $version gefunden"; $nodeDa = $true }
+    else { Hinweis "Node $version ist zu alt, gebraucht wird mindestens v24." }
   }
 } catch { }
 

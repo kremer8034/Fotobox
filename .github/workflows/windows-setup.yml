@@ -37,7 +37,7 @@ jobs:
         with:
           # Diese Node-Version wird auch mitgeliefert - die Datenbank-
           # Bibliothek ist an sie gebunden.
-          node-version: '22'
+          node-version: '24'
           cache: npm
 
       - name: Abhaengigkeiten
