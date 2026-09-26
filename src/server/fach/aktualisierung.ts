@@ -204,10 +204,15 @@ export class Aktualisierer {
 }
 
 /**
- * Startet das Setup ueber die Benutzerkontensteuerung. Node selbst kann kein
- * Programm mit Administratorrechten starten (CreateProcess scheitert mit
- * "Vorgang erfordert erhoehte Rechte"); PowerShell mit -Verb RunAs zeigt die
- * uebliche Windows-Rueckfrage.
+ * Startet das Setup. Die Rueckfrage der Benutzerkontensteuerung stellt das
+ * Setup selbst - bewusst nicht hier "als Administrator" gestartet: Dann
+ * wuesste es nicht mehr, wer der eigentliche Benutzer ist, und wuerde den
+ * Autostart auf einem PC mit getrenntem Admin-Konto diesem Konto zuordnen.
+ *
+ * Ueber PowerShell (ShellExecute) statt direkt: Verlangt die Datei
+ * Administratorrechte, kann Node sie nicht selbst starten (CreateProcess
+ * scheitert mit "Vorgang erfordert erhoehte Rechte"); ShellExecute zeigt dann
+ * die uebliche Windows-Rueckfrage.
  *
  * /SILENT: Nur ein Fortschrittsfenster, keine Fragen - die Einstellungen der
  * bisherigen Installation gelten weiter.
@@ -217,12 +222,7 @@ function starteMitRueckfrage(pfad: string, protokoll: string): void {
   const argumente = `/SILENT /SUPPRESSMSGBOXES /NORESTART /LOG="${protokoll}"`;
   spawn(
     'powershell.exe',
-    [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      `Start-Process -FilePath ${text(pfad)} -ArgumentList ${text(argumente)} -Verb RunAs`,
-    ],
+    ['-NoProfile', '-NonInteractive', '-Command', `Start-Process -FilePath ${text(pfad)} -ArgumentList ${text(argumente)}`],
     { detached: true, stdio: 'ignore', windowsHide: true },
   ).unref();
 }
