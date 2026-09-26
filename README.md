@@ -7,6 +7,10 @@ Layout zusammensetzen, drucken — und alles sauber pro Veranstaltung ablegen.
 Der reine Fotobox-Betrieb läuft **vollständig ohne Internet**. Online-Funktionen
 (Handy-Galerie, E-Mail) sind pro Veranstaltung zuschaltbar und standardmäßig aus.
 
+**Aktuelle Version: 1.0.1** – Setup-Datei auf der
+[Releases-Seite](https://github.com/kremer8034/fotobox/releases), Neuerungen je
+Version in [docs/Aenderungen.md](docs/Aenderungen.md).
+
 ## Was die Software kann
 
 - **Kiosk-Ablauf**: Vorlage wählen → Bereitmachen mit Live-Bild → Countdown über
@@ -24,14 +28,23 @@ Der reine Fotobox-Betrieb läuft **vollständig ohne Internet**. Online-Funktion
 - **Druckkalibrierung** mit Millimeter-Testbild gegen den Beschnitt des
   randlosen Drucks.
 - **Veranstaltungen** mit Lebenszyklus, Probelauf-Modus, Startbereit-Check,
-  Auslagenersatz und Materialzähler.
-- **Kiosk-Sperre** mit verstecktem Schloss, zwei PIN-Ebenen und Servicemenü.
+  Auslagenersatz und Materialzähler – jede mit eigenem Ordner. Eine
+  Veranstaltung lässt sich **duplizieren**, und ihre Einstellungen lassen sich
+  als **Voreinstellung** speichern und beim Anlegen der nächsten übernehmen.
+- **Galerie** am Touchscreen mit Nachdruck, dazu optional im WLAN fürs Handy
+  (per QR-Code), eine schreibgeschützte **Statusseite** und **Foto per E-Mail**,
+  sobald die Box online ist.
+- **Kiosk-Sperre** mit verstecktem Schloss, zwei PIN-Ebenen und Servicemenü;
+  Störungshinweise für Gäste in Alltagssprache.
+- **Installation per Setup-Datei** mit Desktop-Icons, **Updates** auf Knopfdruck
+  aus der Verwaltung – nie automatisch.
 - **Übergabe** des Event-Ordners auf einen USB-Stick, mit Prüfmarker und einer
   eigenständigen `galerie.html` zum Doppelklicken.
 
 ## Schnellstart zur Entwicklung
 
-Ohne Kamera und Drucker, mit Mock-Treibern:
+Voraussetzung ist **Node.js 24** (die aktuelle Langzeit-Version; dieselbe
+bringt auch die Setup-Datei mit). Ohne Kamera und Drucker, mit Mock-Treibern:
 
 ```bash
 npm install
@@ -43,7 +56,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 113 Tests, alle ohne Hardware
+npm test             # alle Tests, ohne Hardware
 npm run typecheck
 ```
 
@@ -63,7 +76,8 @@ Umgebungsvariablen:
 doppelklicken, „Installieren“. Sie bringt alles mit – eigenes Node.js, fertig
 gebautes Programm, SumatraPDF – und richtet Autostart, Firewall-Freigabe und
 Energieeinstellungen ein. An der Box braucht es dafür weder Internet noch
-Kommandozeile.
+Kommandozeile. Auf dem Desktop landen **„Fotobox starten“** (Server und Kiosk)
+und **„Fotobox Verwaltung“**.
 
 **Updates** gehen mit derselben Art Datei: in der Verwaltung unter
 *Gerät → Software* auf „Nach Updates suchen“, oder die neue Setup-Datei per
@@ -107,7 +121,8 @@ Autostart).
 
 ## Vor jeder Veranstaltung
 
-1. Veranstaltung anlegen, Vorlagen und Filter freigeben, Zeiten prüfen.
+1. Veranstaltung anlegen – leer, aus einer Voreinstellung oder als Duplikat
+   einer früheren –, Vorlagen und Filter freigeben, Zeiten prüfen.
 2. Betreuer-PIN setzen — sie bekommt der Gastgeber.
 3. Unterlagen erzeugen: die Kurzanleitung kommt in die Box, der QR-Aushang
    außen dran.
@@ -117,9 +132,16 @@ Autostart).
 
 ## Ordnerstruktur der Daten
 
+Auf der Box liegen alle Daten unter `C:\Users\Public\Fotobox-Daten`, getrennt
+vom Programm – ein Update tauscht das Programm aus, ohne ein Foto anzufassen.
+Jede Veranstaltung bekommt einen eigenen Ordner `events\<Datum>_<Name>`
+(Umlaute ausgeschrieben, Sonderzeichen als Bindestrich; ein Duplikat mit
+gleichem Namen und Datum bekommt `_2` angehängt).
+
 ```
 Fotobox-Daten/
   fotobox.db
+  sicherungen/                  Datenbank-Sicherung vor jedem Update (die letzten fünf)
   vorlagen/                     Vorlagen-Definitionen und ihre Bilddateien
   schriften/                    eigene Schriftdateien (TTF/OTF)
   luts/                         eigene .cube-Dateien
@@ -182,6 +204,11 @@ Kaputtmachen — nicht gegen jemanden mit Schraubenzieher und Zeit.
 
 ## Architektur
 
+TypeScript durchgehend: Node.js 24 mit Fastify, SQLite über better-sqlite3,
+Bildbearbeitung mit sharp (libvips), Druck-PDFs mit pdfkit, Oberfläche mit
+React und Vite. Gedruckt wird über SumatraPDF, die Kamera spricht
+digiCamControl an.
+
 ```
 src/shared/     Domänentypen und Vorgabewerte, von Server und Oberfläche genutzt
 src/server/
@@ -194,6 +221,9 @@ src/web/
   kiosk/        Gästeoberfläche
   admin/        Verwaltung
   galerie/      Handy-Ansicht
+windows/        Start- und Einrichtungsskripte, Inno-Setup-Skript (installer/)
+skripte/        Paket bauen, Rauchtest, Installer-Probe, Änderungstext
+docs/           Anleitungen, Installation und Updates, Änderungen
 ```
 
 Die Hardware liegt hinter zwei Schnittstellen (`KameraTreiber`,
