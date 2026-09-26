@@ -18,7 +18,9 @@ const umgebung = await vi.hoisted(async () => {
   const { join: verbinde } = await import('node:path');
   const { richteSchriftenEin } = await import('../fach/schriften.js');
 
-  const daten = mkdtempSync(verbinde(tmpdir(), 'fb-schrift-'));
+  // Der Ordner kommt aus vitest.config.ts, wo er vor dem Start dieses
+  // Testprozesses angelegt wurde - siehe dort.
+  const daten = process.env.FOTOBOX_TEST_SCHRIFTDATEN ?? mkdtempSync(verbinde(tmpdir(), 'fb-schrift-'));
   const ordner = richteSchriftenEin(daten);
 
   /*
