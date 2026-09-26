@@ -31,9 +31,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # Diese Node-Version wird auch mitgeliefert - die Datenbank-
           # Bibliothek ist an sie gebunden.
@@ -95,7 +95,7 @@ jobs:
         shell: pwsh
         run: pwsh -File skripte\installer-probe.ps1 -Setup "paket\ausgabe\Fotobox-Setup-${{ steps.version.outputs.version }}.exe"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Fotobox-Setup-${{ steps.version.outputs.version }}
           path: paket/ausgabe/*
@@ -107,7 +107,7 @@ jobs:
 
       - name: Release veroeffentlichen
         if: steps.version.outputs.veroeffentlichen == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
           target_commitish: ${{ github.sha }}
