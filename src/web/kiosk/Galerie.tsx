@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useZeitgeber } from './zeitgeber.js';
 import { api } from '../api.js';
 import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
@@ -7,7 +7,7 @@ interface GalerieDaten {
   veranstaltung?: string;
   nachdruckMoeglich?: boolean;
   kopienMax?: number;
-  bilder: { id: string; erstellt: string; verborgen?: boolean }[];
+  bilder: { id: string; erstellt: string; verborgen?: boolean; restKopien?: number }[];
 }
 
 /**
@@ -35,12 +35,40 @@ export function Galerie({
   betreuung?: boolean;
 }) {
   const [daten, setzeDaten] = useState<GalerieDaten | null>(null);
+  const [ladefehler, setzeLadefehler] = useState(false);
   const [offen, setzeOffen] = useState<string | null>(null);
   const [beruehrt, setzeBeruehrt] = useState(0);
 
-  useEffect(() => {
-    void api.hole<GalerieDaten>(`/api/kiosk/galerie${betreuung ? '?alle=1' : ''}`).then(setzeDaten);
+  // Vorher gab es fuer einen Fehler beim Laden keinen Weg: "Einen Moment…"
+  // stand da, bis der Leerlauf die Galerie schloss.
+  const lade = useCallback(async () => {
+    setzeLadefehler(false);
+    try {
+      setzeDaten(await api.hole<GalerieDaten>(`/api/kiosk/galerie${betreuung ? '?alle=1' : ''}`));
+    } catch {
+      setzeLadefehler(true);
+    }
   }, [betreuung]);
+
+  useEffect(() => {
+    void lade();
+  }, [lade]);
+
+  /*
+   * Die Stelle im Raster merken. Das Raster wird beim Oeffnen eines Fotos
+   * abgebaut; vorher sprang es danach an den Anfang zurueck - wer sein Foto
+   * von vor einer Stunde gesucht hatte, scrollte nach jedem "Zurueck" von
+   * vorn.
+   */
+  const raster = useRef<HTMLDivElement>(null);
+  const scrollStand = useRef(0);
+  useLayoutEffect(() => {
+    if (!offen && raster.current) raster.current.scrollTop = scrollStand.current;
+  }, [offen, daten]);
+  const oeffne = (id: string) => {
+    scrollStand.current = raster.current?.scrollTop ?? 0;
+    setzeOffen(id);
+  };
 
   // Die eingestellte Leerlaufzeit stand in den Veranstaltungseinstellungen,
   // wirkte aber nirgends: Wer die Galerie offen liess, liess sie offen, bis
@@ -55,8 +83,19 @@ export function Galerie({
         <Einzelbild
           id={offen}
           nachdruckMoeglich={daten?.nachdruckMoeglich ?? false}
-          kopienMax={daten?.kopienMax ?? 1}
+          // Gaeste: nur, was von "maximale Kopien" fuer dieses Foto noch uebrig
+          // ist. Betreuer: je Druck bis zur Obergrenze, ohne Anrechnung.
+          kopienMax={
+            betreuung
+              ? (daten?.kopienMax ?? 1)
+              : (daten?.bilder.find((b) => b.id === offen)?.restKopien ?? daten?.kopienMax ?? 1)
+          }
           beiZurueck={() => setzeOffen(null)}
+          beiGedruckt={() => {
+            setzeOffen(null);
+            // Die Restkopien haben sich geaendert.
+            void lade();
+          }}
           verborgen={daten?.bilder.find((b) => b.id === offen)?.verborgen ?? false}
           betreuung={betreuung}
           beiUmschalten={(verborgen) =>
@@ -82,7 +121,15 @@ export function Galerie({
         )}
       </div>
 
-      {daten === null && <p className="untertitel">Einen Moment…</p>}
+      {daten === null && !ladefehler && <p className="untertitel">Einen Moment…</p>}
+      {daten === null && ladefehler && (
+        <div className="mitte">
+          <p className="untertitel">Die Fotos lassen sich gerade nicht laden.</p>
+          <button className="knopf" onClick={() => void lade()}>
+            Noch einmal versuchen
+          </button>
+        </div>
+      )}
       {daten && daten.bilder.length === 0 && (
         <div className="mitte">
           <p className="untertitel">Hier ist noch nichts. Macht das erste Foto!</p>
@@ -90,12 +137,12 @@ export function Galerie({
       )}
 
       {daten && daten.bilder.length > 0 && (
-        <div className="galerie-raster" onScroll={regeSichAn}>
+        <div className="galerie-raster" onScroll={regeSichAn} ref={raster}>
           {daten.bilder.map((bild) => (
             <button
               key={bild.id}
               className={`galerie-kachel${bild.verborgen ? ' galerie-kachel--verborgen' : ''}`}
-              onClick={() => setzeOffen(bild.id)}
+              onClick={() => oeffne(bild.id)}
             >
               {/* Fester Bildkasten fuer alle: Ein Hochformat wurde vorher unten
                   abgeschnitten, waehrend die Querformate daneben leer hingen. */}
@@ -122,6 +169,7 @@ function Einzelbild({
   nachdruckMoeglich,
   kopienMax,
   beiZurueck,
+  beiGedruckt,
   verborgen,
   betreuung,
   beiUmschalten,
@@ -130,6 +178,7 @@ function Einzelbild({
   nachdruckMoeglich: boolean;
   kopienMax: number;
   beiZurueck: () => void;
+  beiGedruckt: () => void;
   verborgen: boolean;
   betreuung: boolean;
   beiUmschalten: (verborgen: boolean) => void;
@@ -151,7 +200,9 @@ function Einzelbild({
     }
   }
   // Nach erfolgreichem Druck zurueck in die Uebersicht - das Bild ist erledigt.
-  const druck = useDrucken(id, 'galerie', beiZurueck);
+  // Nachdrucke des Betreuers zaehlen als solche, nicht als Galerie-Nachdruck.
+  const druck = useDrucken(id, betreuung ? 'servicemenue' : 'galerie', beiGedruckt);
+  const nochDruckbar = kopienMax > 0;
 
   return (
     <div className="seite kiosk" style={{ position: 'relative' }}>
@@ -163,15 +214,20 @@ function Einzelbild({
             {verborgen ? 'Wieder zeigen' : 'Aus der Galerie nehmen'}
           </button>
         )}
-        {nachdruckMoeglich && (
+        {nachdruckMoeglich && !nochDruckbar && (
+          <p className="untertitel" style={{ margin: 0 }}>
+            Von diesem Foto sind alle Ausdrucke gemacht.
+          </p>
+        )}
+        {nachdruckMoeglich && nochDruckbar && (
           <>
-            <Mengenwahl kopien={kopien} max={kopienMax} beiAendern={setzeKopien} />
+            <Mengenwahl kopien={Math.min(kopien, kopienMax)} max={kopienMax} beiAendern={setzeKopien} />
             <button
               className="knopf knopf--haupt"
-              onClick={() => void druck.drucke(kopien)}
+              onClick={() => void druck.drucke(Math.min(kopien, kopienMax))}
               disabled={druck.beschaeftigt}
             >
-              {kopien === 1 ? 'Noch einmal drucken' : `${kopien}× drucken`}
+              {Math.min(kopien, kopienMax) === 1 ? 'Noch einmal drucken' : `${Math.min(kopien, kopienMax)}× drucken`}
             </button>
           </>
         )}

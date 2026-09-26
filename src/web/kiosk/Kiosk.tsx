@@ -179,6 +179,25 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
+    // Der Betreuer kommt aus dem Servicemenue in die Galerie - auch in der
+    // Pause, in der sonst "Kleine Pause" ueber allem steht. Gerade dann hat
+    // er Zeit, nachzudrucken oder ein Foto herauszunehmen.
+    if (schirm.art === 'galerie' && schirm.betreuung && start) {
+      return (
+        <>
+          {schloss}
+          <Galerie
+            leerlaufSekunden={start.zeiten?.galerieLeerlauf ?? 60}
+            betreuung={Boolean(schirm.betreuung)}
+            // Aus dem Servicemenue gekommen: dorthin zurueck, ohne neue PIN.
+            beiZurueck={() =>
+              setzeSchirm(schirm.betreuung ? { art: 'service', ebene: schirm.betreuung } : { art: 'start' })
+            }
+          />
+        </>
+      );
+    }
+
     if (!start) {
       return (
         <div className="seite kiosk">

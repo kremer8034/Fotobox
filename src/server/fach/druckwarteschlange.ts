@@ -103,6 +103,21 @@ export function stelleUnterbrocheneWiederAn(): number {
     .run().changes;
 }
 
+/**
+ * Wie viele Blatt eines Fotos Gaeste schon angestossen haben - am Ergebnis und
+ * ueber die Galerie zusammen. Nachdrucke des Betreuers zaehlen nicht mit.
+ * Auch fehlgeschlagene Auftraege zaehlen: Sie werden nach dem Papierwechsel
+ * nachgeholt.
+ */
+export function gastKopienVon(ausgabeId: string): number {
+  const zeile = holeDb()
+    .prepare(
+      "SELECT COALESCE(SUM(kopien), 0) AS n FROM druckauftraege WHERE ausgabe_id = ? AND quelle IN ('kiosk', 'galerie')",
+    )
+    .get(ausgabeId) as { n: number };
+  return zeile.n;
+}
+
 export function offeneAuftraege(): number {
   const zeile = holeDb()
     .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft')")

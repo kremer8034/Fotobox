@@ -19,7 +19,7 @@ import {
   verbucheFoto,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
-import { reiheEin } from '../fach/druckwarteschlange.js';
+import { gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import {
   adresseZuOft,
@@ -322,6 +322,24 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(404).send({ fehler: 'Ausgabe nicht gefunden.' });
     }
 
+    // "Maximale Kopien" gilt je Foto, nicht je Tipper. Vorher liess sich
+    // dasselbe Foto ueber die Galerie immer wieder drucken - im Test zwoelf
+    // Blatt bei eingestellten drei. Genau das sollte die Einstellung bei
+    // einer Kinderparty verhindern. Der Betreuer im Servicemenue darf mehr.
+    if (koerper.quelle !== 'servicemenue') {
+      const rest = event.einstellungen.kopienMax - gastKopienVon(ausgabe.id);
+      if (rest <= 0) {
+        return antwort
+          .code(409)
+          .send({ fehler: 'Von diesem Foto sind schon alle Ausdrucke gemacht, die es gibt. Frag gern den Gastgeber.' });
+      }
+      if (koerper.kopien > rest) {
+        return antwort
+          .code(409)
+          .send({ fehler: `Von diesem Foto ${rest === 1 ? 'geht nur noch ein Ausdruck' : `gehen nur noch ${rest} Ausdrucke`}.` });
+      }
+    }
+
     const auftragId = reiheEin({
       eventId: event.id,
       ausgabeId: ausgabe.id,
@@ -333,7 +351,12 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     });
 
     betrieb.letzteBeruehrung = Date.now();
-    return { auftragId, wartend: true };
+    // Steht der Drucker gerade, soll die Quittung das sagen - nicht "gleich am
+    // Drucker abholen", waehrend das Papier leer ist.
+    const stoerung = betrieb.aktuelleStoerung();
+    const druckerSteht =
+      stoerung === 'papier-leer' || stoerung === 'drucker-offline' || stoerung === 'drucker-klappe';
+    return { auftragId, wartend: true, druckerSteht };
   });
 
   /**
@@ -419,6 +442,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         id: e.ausgabeId,
         erstellt: e.erstellt,
         verborgen: e.verborgen,
+        // Wie viele Ausdrucke Gaeste von diesem Foto noch anstossen koennen.
+        restKopien: Math.max(0, event.einstellungen.kopienMax - gastKopienVon(e.ausgabeId)),
       })),
     };
   });

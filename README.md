@@ -43,7 +43,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 96 Tests, alle ohne Hardware
+npm test             # 97 Tests, alle ohne Hardware
 npm run typecheck
 ```
 

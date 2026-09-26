@@ -10,7 +10,7 @@ import { api } from '../api.js';
  * Rueckmeldung schob als Textzeile das Layout zur Seite.
  */
 
-export type Druckquelle = 'kiosk' | 'galerie';
+export type Druckquelle = 'kiosk' | 'galerie' | 'servicemenue';
 
 export interface Druckzustand {
   beschaeftigt: boolean;
@@ -37,10 +37,18 @@ export function useDrucken(
       laeuft.current = true;
       setzeBeschaeftigt(true);
       try {
-        await api.sende('/api/kiosk/drucken', { ausgabeId, kopien, quelle });
+        const antwort = await api.sende<{ druckerSteht?: boolean }>('/api/kiosk/drucken', {
+          ausgabeId,
+          kopien,
+          quelle,
+        });
+        const eins = kopien === 1;
         setzeQuittung({
-          text:
-            kopien === 1
+          // Steht der Drucker, stimmt "gleich abholen" nicht - dann die Ansage
+          // aus dem Plan: gespeichert, wird nachgeholt, bitte Bescheid sagen.
+          text: antwort?.druckerSteht
+            ? `${eins ? 'Dein Bild ist' : `${kopien} Bilder sind`} gespeichert und ${eins ? 'wird' : 'werden'} gedruckt, sobald der Drucker wieder bereit ist. Sag bitte kurz jemandem Bescheid.`
+            : eins
               ? 'Dein Bild wird gedruckt. Du kannst es gleich am Drucker abholen.'
               : `${kopien} Bilder werden gedruckt. Du kannst sie gleich am Drucker abholen.`,
           fehlgeschlagen: false,

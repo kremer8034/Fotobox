@@ -352,7 +352,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               />
             </div>
             <div className="feld feld--klein">
-              <label>Kopien höchstens</label>
+              <label title="Gilt je Foto: Ergebnisseite und Nachdrucke in der Galerie zusammen. Der Betreuer kann im Servicemenü darüber hinaus nachdrucken.">Kopien je Foto höchstens</label>
               <input
                 className="zahl"
                 type="number"
