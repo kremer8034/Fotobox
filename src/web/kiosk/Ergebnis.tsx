@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
 import { toene } from './toene.js';
+import { EmailEingabe } from './Email.js';
+import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
+import { useZeitgeber } from './zeitgeber.js';
 
 /**
  * Ergebnis und Ausgabe auf einer Seite: das fertige Layout gross oben, darunter
@@ -22,56 +24,65 @@ export function Ergebnis({
   ausgabe: {
     druckAktiv: boolean;
     emailAktiv: boolean;
+    einwilligungstext: string;
     kopienVorgabe: number;
     kopienMax: number;
     druckLimitErreicht: boolean;
+    druckRest?: number | null;
   };
   rueckkehrSekunden: number;
   tonAn: boolean;
   beiFertig: () => void;
 }) {
-  const [kopien, setzeKopien] = useState(ausgabe.kopienVorgabe);
-  const [meldung, setzeMeldung] = useState<string | null>(null);
-  const [beschaeftigt, setzeBeschaeftigt] = useState(false);
+  // Nie mehr anbieten, als das Druck-Limit der Feier noch hergibt.
+  const hoechstens = Math.min(ausgabe.kopienMax, ausgabe.druckRest ?? Infinity);
+  const [kopien, setzeKopien] = useState(Math.max(1, Math.min(ausgabe.kopienVorgabe, hoechstens)));
+  const [emailOffen, setzeEmailOffen] = useState(false);
+  // Jede Beruehrung zaehlt als Eingabe. Vorher lief die Uhr auch weiter,
+  // waehrend der Gast an der Kopienzahl drehte - und die Seite verschwand
+  // unter seinem Finger.
+  const [beruehrt, setzeBeruehrt] = useState(0);
+  // Nach dem Drucken ging es vorher sofort zum Start - wer danach das Foto
+  // noch per E-Mail wollte, kam nicht mehr heran. Gibt es E-Mail, bleibt die
+  // Seite stehen (ohne Druckknopf, damit niemand aus Versehen nachlegt), und
+  // die normale Rueckkehr-Uhr uebernimmt.
+  const [gedruckt, setzeGedruckt] = useState(false);
+  const druck = useDrucken(ausgabeId, 'kiosk', () => {
+    if (ausgabe.emailAktiv) setzeGedruckt(true);
+    else beiFertig();
+  });
 
   useEffect(() => {
     if (tonAn) toene.ergebnis();
   }, [tonAn]);
 
-  // Rueckkehr zum Startbildschirm, wenn der Gast gar nichts tut.
-  useEffect(() => {
-    const uhr = setTimeout(beiFertig, rueckkehrSekunden * 1000);
-    return () => clearTimeout(uhr);
-  }, [rueckkehrSekunden, beiFertig, meldung]);
+  // Rueckkehr zum Startbildschirm, wenn der Gast gar nichts tut. Das lief
+  // vorher nie ab (siehe zeitgeber.ts) - der naechste Gast stand vor dem Foto
+  // seines Vorgaengers, mit aktivem Druckknopf. Waehrend der E-Mail-Eingabe
+  // steht die Uhr: Wer eine Adresse tippt, braucht laenger als 20 Sekunden,
+  // und die Eingabe hat ihren eigenen Leerlauf.
+  useZeitgeber(beiFertig, emailOffen ? null : rueckkehrSekunden * 1000, [druck.quittung, beruehrt]);
 
-  const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht;
+  const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht && hoechstens >= 1 && !gedruckt;
 
   return (
-    <div className="seite kiosk">
+    <div
+      className="seite kiosk"
+      style={{ position: 'relative' }}
+      onPointerDown={() => setzeBeruehrt((n) => n + 1)}
+    >
       <img className="ergebnis__bild" src={`/medien/ausgabe/${ausgabeId}.jpg`} alt="Dein Foto" />
 
       <div className="ergebnis__leiste">
         {druckMoeglich && (
           <>
-            <div className="menge">
-              <button
-                className="knopf knopf--neben"
-                onClick={() => setzeKopien((k) => Math.max(1, k - 1))}
-                disabled={kopien <= 1}
-              >
-                −
-              </button>
-              <span className="menge__zahl">{kopien}</span>
-              <button
-                className="knopf knopf--neben"
-                onClick={() => setzeKopien((k) => Math.min(ausgabe.kopienMax, k + 1))}
-                disabled={kopien >= ausgabe.kopienMax}
-              >
-                +
-              </button>
-            </div>
-            <button className="knopf knopf--haupt" onClick={() => void drucke()} disabled={beschaeftigt}>
-              {kopien === 1 ? 'Drucken' : `${kopien}× drucken`}
+            <Mengenwahl kopien={Math.min(kopien, hoechstens)} max={hoechstens} beiAendern={setzeKopien} />
+            <button
+              className="knopf knopf--haupt"
+              onClick={() => void druck.drucke(Math.min(kopien, hoechstens))}
+              disabled={druck.beschaeftigt}
+            >
+              {Math.min(kopien, hoechstens) === 1 ? 'Drucken' : `${Math.min(kopien, hoechstens)}× drucken`}
             </button>
           </>
         )}
@@ -79,7 +90,7 @@ export function Ergebnis({
         {/* Ist der E-Mail-Versand aus, ist der Knopf nicht ausgegraut,
             sondern gar nicht da. */}
         {ausgabe.emailAktiv && (
-          <button className="knopf" onClick={() => setzeMeldung('E-Mail-Versand folgt.')}>
+          <button className="knopf" onClick={() => setzeEmailOffen(true)}>
             Per E-Mail schicken
           </button>
         )}
@@ -89,21 +100,21 @@ export function Ergebnis({
         </button>
       </div>
 
-      {meldung && <p className="untertitel" style={{ textAlign: 'center' }}>{meldung}</p>}
+      {emailOffen && (
+        <EmailEingabe
+          ausgabeId={ausgabeId}
+          einwilligungstext={ausgabe.einwilligungstext}
+          beiSchliessen={() => setzeEmailOffen(false)}
+        />
+      )}
+
+      {druck.quittung && (
+        <Quittung
+          text={druck.quittung.text}
+          fehlgeschlagen={druck.quittung.fehlgeschlagen}
+          beiZurueck={druck.schliesseQuittung}
+        />
+      )}
     </div>
   );
-
-  async function drucke() {
-    setzeBeschaeftigt(true);
-    try {
-      await api.sende('/api/kiosk/drucken', { ausgabeId, kopien, quelle: 'kiosk' });
-      // Der Gast bekommt sofort Rueckmeldung und macht Platz - der Druck
-      // laeuft im Hintergrund weiter.
-      setzeMeldung('Dein Bild wird gedruckt. Du kannst es gleich am Drucker abholen.');
-      setTimeout(beiFertig, 3500);
-    } catch (fehler) {
-      setzeMeldung(fehler instanceof Error ? fehler.message : 'Drucken hat nicht geklappt.');
-      setzeBeschaeftigt(false);
-    }
-  }
 }

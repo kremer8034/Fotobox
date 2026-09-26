@@ -3,6 +3,7 @@ import { api } from '../../api.js';
 import { Leinwand } from './Leinwand.js';
 import { richteAus, verteile, type Ausrichtung } from './einrasten.js';
 import type { Ebene, Vorlage } from './typen.js';
+import { SCHRIFTEN } from '../../../shared/typen.js';
 
 /**
  * Vorlagen-Editor.
@@ -26,7 +27,12 @@ export function VorlagenEditor({
   beiMeldung: (t: string | null) => void;
   meldung: string | null;
 }) {
-  const [entwurf, setzeEntwurf] = useState<Vorlage>(vorlage);
+  // Beim Laden luecklos nummerieren: Aeltere Vorlagen konnten Luecken oder
+  // doppelte Nummern haben, die im Editor nicht auffielen.
+  const [entwurf, setzeEntwurf] = useState<Vorlage>(() => ({
+    ...vorlage,
+    ebenen: nummeriereFotos(vorlage.ebenen),
+  }));
   const [gewaehlt, setzeGewaehlt] = useState<string | null>(null);
   const [gespeichert, setzeGespeichert] = useState(true);
 
@@ -65,6 +71,17 @@ export function VorlagenEditor({
   );
 
   const ebene = entwurf.ebenen.find((e) => e.id === gewaehlt) ?? null;
+
+  // Fenster schliessen oder neu laden mit ungespeicherter Arbeit: Der Browser fragt nach.
+  useEffect(() => {
+    if (gespeichert) return;
+    const warnen = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnen);
+    return () => window.removeEventListener('beforeunload', warnen);
+  }, [gespeichert]);
 
   // Tastatur: fein schieben, duplizieren, loeschen, rueckgaengig.
   useEffect(() => {
@@ -111,6 +128,43 @@ export function VorlagenEditor({
 
   const quer = entwurf.canvas.breiteMm >= entwurf.canvas.hoeheMm;
 
+  /*
+   * Eigene Schriften. Die feste Auswahl kommt aus den geteilten Typen; hier
+   * kommt dazu, was der Nutzer selbst hinzugefuegt hat. Damit die Vorschau sie
+   * auch zeigt, werden sie als @font-face in die Seite gehaengt - der Renderer
+   * findet dieselben Dateien ueber fontconfig.
+   */
+  const [eigeneSchriften, setzeEigeneSchriften] = useState<
+    { datei: string; familie: string }[]
+  >([]);
+
+  const ladeSchriften = useCallback(async () => {
+    setzeEigeneSchriften(
+      await api.hole<{ datei: string; familie: string }[]>('/api/admin/schriften').catch(() => []),
+    );
+  }, []);
+
+  useEffect(() => {
+    void ladeSchriften();
+  }, [ladeSchriften]);
+
+  useEffect(() => {
+    if (eigeneSchriften.length === 0) return;
+    const stil = document.createElement('style');
+    stil.textContent = eigeneSchriften
+      .map(
+        (s) =>
+          `@font-face { font-family: ${JSON.stringify(s.familie)};` +
+          ` src: url("/api/admin/schriften/${encodeURIComponent(s.datei)}"); font-display: block; }`,
+      )
+      .join('\n');
+    document.head.appendChild(stil);
+    return () => stil.remove();
+  }, [eigeneSchriften]);
+
+  const fotoAnzahl = entwurf.ebenen.filter((e) => e.typ === 'foto' && e.sichtbar !== false).length;
+  const ausgeblendeteFotos = entwurf.ebenen.filter((e) => e.typ === 'foto' && e.sichtbar === false).length;
+
   return (
     <>
       <div className="zeile" style={{ justifyContent: 'space-between' }}>
@@ -119,25 +173,40 @@ export function VorlagenEditor({
           {!gespeichert && <span className="marke">ungespeichert</span>}
         </h1>
         <div className="zeile">
-          <button className="knopf knopf--neben" onClick={() => void speichern()}>
+          <button className="knopf knopf--haupt" onClick={() => void speichern()}>
             Speichern
           </button>
           <button className="knopf knopf--neben" onClick={() => void testdruck()} disabled={!entwurf.id}>
             Layout-Testdruck
           </button>
-          <button className="knopf knopf--neben" onClick={beiSchliessen}>
+          <button
+            className="knopf knopf--neben"
+            onClick={() => {
+              if (gespeichert || window.confirm('Die Änderungen sind nicht gespeichert. Trotzdem zurück?')) {
+                beiSchliessen();
+              }
+            }}
+          >
             Zurück
           </button>
         </div>
       </div>
-      {meldung && <p style={{ color: 'var(--akzent)' }}>{meldung}</p>}
+      {meldung && <div className="hinweis-fest">{meldung}</div>}
 
-      <div className="zeile" style={{ alignItems: 'flex-start', gap: '1.2rem' }}>
-        <div>
-          <div className="karte" style={{ display: 'inline-block' }}>
+      {/*
+        Zweispalter: Leinwand links, Ebenen und Eigenschaften rechts.
+        Vorher stand die Leinwandkarte auf "inline-block" und wuchs damit auf
+        die Maximalbreite ihres Hilfetextes - rund 1200 px. Fuer die rechte
+        Spalte blieb nichts uebrig, sie rutschte unter die Leinwand, und man
+        scrollte zwischen Bild und Eigenschaften hin und her. Ein Raster mit
+        fester Spaltenbreite kann das nicht passieren.
+      */}
+      <div className="editor">
+        <div className="editor__leinwand">
+          <div className="karte">
             <Werkzeugleiste
               aktiv={ebene !== null}
-              mehrereFotos={entwurf.ebenen.filter((e) => e.typ === 'foto').length >= 3}
+              mehrereFotos={fotoAnzahl >= 3}
               beiAusrichten={ausrichten}
               beiVerteilen={verteilen}
               beiDuplizieren={dupliziere}
@@ -155,10 +224,19 @@ export function VorlagenEditor({
               beiAenderung={aendere}
               beiAbschluss={schliesseZugAb}
             />
-            <p style={{ fontSize: '0.72rem', color: 'var(--schrift-leise)', margin: '0.6rem 0 0' }}>
+            <p className="editor__hilfe">
               {entwurf.canvas.breiteMm} × {entwurf.canvas.hoeheMm} mm ·{' '}
-              {entwurf.ebenen.filter((e) => e.typ === 'foto').length} Foto-Ebenen bestimmen, wie viele
-              Fotos aufgenommen werden.
+              {fotoAnzahl === 0 ? (
+                <strong style={{ color: 'var(--warnung)' }}>
+                  Noch keine sichtbare Foto-Ebene — mit dieser Vorlage würde kein Foto gemacht.
+                </strong>
+              ) : fotoAnzahl === 1 ? (
+                'Eine Foto-Ebene, also ein Foto.'
+              ) : (
+                `${fotoAnzahl} Foto-Ebenen bestimmen, dass ${fotoAnzahl} Fotos aufgenommen werden.`
+              )}
+              {ausgeblendeteFotos > 0 &&
+                ` Ausgeblendete Foto-Ebenen (${ausgeblendeteFotos}) bekommen kein Foto.`}
               <br />
               Ziehen zum Verschieben, Griffe für die Größe, Pfeiltasten fein (mit Umschalt gröber).
               Alt hält das Einrasten an. Strg+D dupliziert, Entf löscht, Strg+Z macht rückgängig.
@@ -166,7 +244,7 @@ export function VorlagenEditor({
           </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: '20rem' }}>
+        <div className="editor__spalte">
           <div className="karte">
             <h2>Grunddaten</h2>
             <div className="zeile">
@@ -221,7 +299,24 @@ export function VorlagenEditor({
           {ebene && (
             <EbenenFelder
               ebene={ebene}
+              fotoAnzahl={entwurf.ebenen.filter((e) => e.typ === 'foto').length}
+              beiReihenfolge={(nummer) => tauscheReihenfolge(ebene.id, nummer)}
               canvas={entwurf.canvas}
+              eigeneSchriften={eigeneSchriften}
+              beiSchriftDatei={async (datei) => {
+                try {
+                  const neu = await api.sendeDatei<{ datei: string; familie: string }>(
+                    '/api/admin/schriften',
+                    datei,
+                  );
+                  await ladeSchriften();
+                  aendere(ebene.id, { schrift: neu.familie, schriftDatei: neu.datei });
+                  schliesseZugAb();
+                  beiMeldung(`Schrift "${neu.familie}" hinzugefügt.`);
+                } catch (fehler) {
+                  beiMeldung(fehler instanceof Error ? fehler.message : 'Schrift ging nicht.');
+                }
+              }}
               beiAendern={(teil) => {
                 aendere(ebene.id, teil);
                 schliesseZugAb();
@@ -234,6 +329,17 @@ export function VorlagenEditor({
   );
 
   function wechsleFormat(preset: string) {
+    // Die Ebenen behalten ihre Lage relativ zur Seite - aus einem breiten
+    // Foto wird im Hochformat ein schmales. Das soll niemanden ueberraschen.
+    if (
+      entwurf.ebenen.length > 0 &&
+      !window.confirm(
+        'Beim Formatwechsel werden alle Ebenen auf das neue Format gestreckt. ' +
+          'Rückgängig geht mit Strg+Z. Wechseln?',
+      )
+    ) {
+      return;
+    }
     merkeVorZug();
     setzeEntwurf({
       ...entwurf,
@@ -248,14 +354,17 @@ export function VorlagenEditor({
   function fuegeEin(typ: 'foto' | 'text') {
     merkeVorZug();
     const fotoAnzahl = entwurf.ebenen.filter((e) => e.typ === 'foto').length;
+    // Jede neue Foto-Ebene ein Stueck versetzt - vorher lagen sie deckungsgleich
+    // uebereinander, und man sah nur die oberste.
+    const versatz = (fotoAnzahl % 6) * 0.05;
     const neu: Ebene =
       typ === 'foto'
         ? {
             id: kennung(),
             typ: 'foto',
             index: fotoAnzahl + 1,
-            x: 0.1,
-            y: 0.1,
+            x: 0.1 + versatz,
+            y: 0.1 + versatz,
             w: 0.4,
             h: 0.5,
             einpassung: 'cover',
@@ -278,22 +387,40 @@ export function VorlagenEditor({
   }
 
   async function bildHochladen(datei: File) {
-    const formular = new FormData();
-    formular.append('datei', datei);
-    const antwort = await fetch('/api/admin/vorlagen/bild', { method: 'POST', body: formular });
-    if (!antwort.ok) {
-      beiMeldung('Bild konnte nicht hochgeladen werden.');
+    let name: string;
+    let masse: { breite: number; hoehe: number };
+    try {
+      const antwort = await api.sendeDatei<{ datei: string; breite: number; hoehe: number }>(
+        '/api/admin/vorlagen/bild',
+        datei,
+      );
+      name = antwort.datei;
+      masse = { breite: antwort.breite, hoehe: antwort.hoehe };
+    } catch (fehler) {
+      beiMeldung(fehler instanceof Error ? fehler.message : 'Bild konnte nicht hochgeladen werden.');
       return;
     }
-    const { datei: name } = (await antwort.json()) as { datei: string };
     merkeVorZug();
     // Neue Bilder kommen ganz nach unten in den Stapel - das ist fast immer
     // ein Hintergrund. Nach oben schieben geht mit einem Klick.
-    const neu: Ebene = { id: kennung(), typ: 'bild', datei: name, x: 0, y: 0, w: 1, h: 1 };
+    const lage = bildLage(masse, entwurf.canvas);
+    // Der Originalname der Datei als Anzeigename - gespeichert wird sie unter
+    // einer Kennung, und "ea5b4f98-..." sagt in der Ebenenliste niemandem etwas.
+    const neu: Ebene = {
+      id: kennung(),
+      typ: 'bild',
+      datei: name,
+      name: datei.name.slice(0, 100),
+      ...lage.rechteck,
+    };
     setzeEntwurf({ ...entwurf, ebenen: [neu, ...entwurf.ebenen] });
     setzeGewaehlt(neu.id);
     schliesseZugAb();
-    beiMeldung('Bild eingefügt — liegt ganz unten im Stapel.');
+    beiMeldung(
+      lage.formatfuellend
+        ? 'Bild eingefügt — füllt die Seite und liegt ganz unten im Stapel.'
+        : 'Bild eingefügt, unverzerrt in der Mitte — liegt ganz unten im Stapel.',
+    );
   }
 
   function dupliziere() {
@@ -315,11 +442,9 @@ export function VorlagenEditor({
 
   function entferne(id: string) {
     merkeVorZug();
-    const uebrig = entwurf.ebenen.filter((e) => e.id !== id);
-    // Foto-Ebenen luecklos neu nummerieren, sonst fehlt in der Aufnahme ein Schritt.
-    let zaehler = 0;
-    const neu = uebrig.map((e) => (e.typ === 'foto' ? { ...e, index: ++zaehler } : e));
-    setzeEntwurf({ ...entwurf, ebenen: neu });
+    // Foto-Ebenen luecklos neu nummerieren - in ihrer bisherigen Reihenfolge,
+    // nicht in der des Stapels.
+    setzeEntwurf({ ...entwurf, ebenen: nummeriereFotos(entwurf.ebenen.filter((e) => e.id !== id)) });
     if (gewaehlt === id) setzeGewaehlt(null);
     schliesseZugAb();
   }
@@ -355,16 +480,26 @@ export function VorlagenEditor({
   }
 
   async function speichern() {
-    const gespeichertVorlage = await api.aendere<Vorlage>('/api/admin/vorlagen', {
-      id: entwurf.id || undefined,
-      name: entwurf.name,
-      preset: entwurf.canvas.preset,
-      hintergrundFarbe: entwurf.hintergrundFarbe,
-      ebenen: entwurf.ebenen,
-    });
-    setzeEntwurf(gespeichertVorlage);
-    setzeGespeichert(true);
-    beiMeldung('Vorlage gespeichert.');
+    // Vorher blieb ein Fehler beim Speichern stumm: Der Knopf tat scheinbar
+    // nichts, die Marke "ungespeichert" blieb, und niemand wusste, warum.
+    try {
+      const gespeichertVorlage = await api.aendere<Vorlage>('/api/admin/vorlagen', {
+        id: entwurf.id || undefined,
+        name: entwurf.name,
+        preset: entwurf.canvas.preset,
+        hintergrundFarbe: entwurf.hintergrundFarbe,
+        ebenen: entwurf.ebenen,
+      });
+      setzeEntwurf(gespeichertVorlage);
+      setzeGespeichert(true);
+      beiMeldung(
+        fotoAnzahl === 0
+          ? 'Gespeichert — aber ohne sichtbare Foto-Ebene. Der Kiosk bietet diese Vorlage nicht an.'
+          : 'Vorlage gespeichert.',
+      );
+    } catch (fehler) {
+      beiMeldung(`Nicht gespeichert: ${fehler instanceof Error ? fehler.message : 'unbekannter Fehler'}`);
+    }
   }
 
   async function testdruck() {
@@ -372,8 +507,30 @@ export function VorlagenEditor({
       beiMeldung('Bitte erst speichern — sonst druckt der Testdruck den alten Stand.');
       return;
     }
-    await api.sende(`/api/admin/vorlagen/${entwurf.id}/testdruck`, {});
-    beiMeldung('Testdruck in der Warteschlange. Er zählt nicht in den Auslagenersatz.');
+    try {
+      await api.sende(`/api/admin/vorlagen/${entwurf.id}/testdruck`, {});
+      beiMeldung('Testdruck in der Warteschlange. Er zählt nicht in den Auslagenersatz.');
+    } catch (fehler) {
+      beiMeldung(`Testdruck ging nicht: ${fehler instanceof Error ? fehler.message : 'unbekannter Fehler'}`);
+    }
+  }
+
+  /**
+   * Aufnahmereihenfolge aendern, indem zwei Foto-Ebenen die Nummer tauschen.
+   * Vorher war es ein freies Zahlenfeld: Zwei Ebenen mit der 2 oder eine 5 bei
+   * drei Fotos liessen sich eintragen, ohne dass es auffiel.
+   */
+  function tauscheReihenfolge(id: string, nummer: number) {
+    const bisher = entwurf.ebenen.find((e) => e.id === id)?.index;
+    if (bisher === undefined || bisher === nummer) return;
+    merkeVorZug();
+    setzeEntwurf({
+      ...entwurf,
+      ebenen: entwurf.ebenen.map((e) =>
+        e.typ !== 'foto' ? e : e.id === id ? { ...e, index: nummer } : e.index === nummer ? { ...e, index: bisher } : e,
+      ),
+    });
+    schliesseZugAb();
   }
 }
 
@@ -493,15 +650,17 @@ function Ebenenliste({
                 {ebene.typ === 'foto' ? '📷' : ebene.typ === 'text' ? 'T' : '🖼'}
               </td>
               <td>
-                {ebene.typ === 'foto'
-                  ? `Foto ${ebene.index}`
-                  : ebene.typ === 'text'
-                    ? (ebene.text ?? '')
-                    : (ebene.datei ?? '')}
+                <div className="ebenen-name">
+                  {ebene.typ === 'foto'
+                    ? `Foto ${ebene.index}${ebene.sichtbar === false ? ' — ausgeblendet, kein Foto' : ''}`
+                    : ebene.typ === 'text'
+                      ? (ebene.text ?? '')
+                      : (ebene.name ?? ebene.datei ?? '')}
+                </div>
               </td>
               <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title="nach vorne"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -511,7 +670,7 @@ function Ebenenliste({
                   ↑
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title="nach hinten"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -521,7 +680,7 @@ function Ebenenliste({
                   ↓
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title={ebene.sichtbar === false ? 'einblenden' : 'ausblenden'}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -531,7 +690,7 @@ function Ebenenliste({
                   {ebene.sichtbar === false ? '🚫' : '👁'}
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title={ebene.gesperrt ? 'entsperren' : 'sperren'}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -541,7 +700,7 @@ function Ebenenliste({
                   {ebene.gesperrt ? '🔒' : '🔓'}
                 </button>
                 <button
-                  className="knopf knopf--neben"
+                  className="ebenen-knopf"
                   title="löschen"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -569,11 +728,19 @@ function Ebenenliste({
 /** Zahlenfelder in Millimetern - beim Druck denkt man in Millimetern. */
 function EbenenFelder({
   ebene,
+  fotoAnzahl,
+  beiReihenfolge,
   canvas,
+  eigeneSchriften,
+  beiSchriftDatei,
   beiAendern,
 }: {
   ebene: Ebene;
+  fotoAnzahl: number;
+  beiReihenfolge: (nummer: number) => void;
   canvas: { breiteMm: number; hoeheMm: number };
+  eigeneSchriften: { datei: string; familie: string }[];
+  beiSchriftDatei: (datei: File) => void;
   beiAendern: (teil: Partial<Ebene>) => void;
 }) {
   const feldMm = (
@@ -586,8 +753,16 @@ function EbenenFelder({
       <input
         type="number"
         step={0.5}
+        min={name === 'w' || name === 'h' ? 1 : undefined}
         value={Number(((ebene[name] ?? 0) * bezug).toFixed(1))}
-        onChange={(e) => beiAendern({ [name]: Number(e.target.value) / bezug } as Partial<Ebene>)}
+        onChange={(e) => {
+          // Ein geleertes Feld ist "noch am Tippen", keine Null. Und Breite oder
+          // Hoehe unter einem Millimeter ergibt keine Ebene mehr, die man sieht.
+          if (e.target.value === '') return;
+          const mm = Number(e.target.value);
+          if (!Number.isFinite(mm) || ((name === 'w' || name === 'h') && mm < 1)) return;
+          beiAendern({ [name]: mm / bezug } as Partial<Ebene>);
+        }}
       />
     </div>
   );
@@ -608,8 +783,13 @@ function EbenenFelder({
           <input
             type="number"
             step={1}
+            min={-360}
+            max={360}
             value={ebene.rotation ?? 0}
-            onChange={(e) => beiAendern({ rotation: Number(e.target.value) })}
+            onChange={(e) => {
+              const grad = Number(e.target.value);
+              if (Number.isFinite(grad)) beiAendern({ rotation: Math.max(-360, Math.min(360, grad)) });
+            }}
           />
         </div>
       </div>
@@ -618,15 +798,25 @@ function EbenenFelder({
         <div className="zeile">
           <div className="feld" style={{ flex: 1 }}>
             <label>Text — Platzhalter: {'{veranstaltung} {datum} {uhrzeit} {nummer}'}</label>
-            <input value={ebene.text ?? ''} onChange={(e) => beiAendern({ text: e.target.value })} />
+            {/* Mehrzeilig: Der Druck kann Zeilenumbrueche, das Eingabefeld konnte sie nicht. */}
+            <textarea
+              rows={2}
+              maxLength={500}
+              value={ebene.text ?? ''}
+              onChange={(e) => beiAendern({ text: e.target.value })}
+            />
           </div>
           <div className="feld feld--klein">
             <label>Schriftgröße (mm)</label>
             <input
               type="number"
               step={0.5}
+              min={1}
               value={Number(((ebene.groesse ?? 0.06) * canvas.hoeheMm).toFixed(1))}
-              onChange={(e) => beiAendern({ groesse: Number(e.target.value) / canvas.hoeheMm })}
+              onChange={(e) => {
+                const mm = Number(e.target.value);
+                if (e.target.value !== '' && mm >= 1) beiAendern({ groesse: mm / canvas.hoeheMm });
+              }}
             />
           </div>
           <div className="feld feld--klein">
@@ -651,17 +841,77 @@ function EbenenFelder({
         </div>
       )}
 
+      {ebene.typ === 'text' && (
+        <div className="zeile">
+          <div className="feld" style={{ flex: 1, maxWidth: '18rem' }}>
+            <label htmlFor="schriftwahl">Schriftart</label>
+            {/*
+              Jeder Eintrag wird in seiner eigenen Schrift angezeigt - eine
+              Liste aus Namen in Einheitsschrift zwingt sonst zum Durchprobieren.
+            */}
+            <select
+              id="schriftwahl"
+              value={ebene.schrift ?? ''}
+              style={{ fontFamily: ebene.schrift || undefined, fontSize: '1rem' }}
+              onChange={(e) => {
+                const familie = e.target.value;
+                const eigene = eigeneSchriften.find((s) => s.familie === familie);
+                beiAendern({
+                  schrift: familie || undefined,
+                  // Nur eigene Schriften haengen an einer Datei; der
+                  // Startbereit-Check prueft damit, ob sie noch da ist.
+                  schriftDatei: eigene ? eigene.datei : undefined,
+                });
+              }}
+            >
+              <option value="">Vorgabe</option>
+              {SCHRIFTEN.map((s) => (
+                <option key={s.name} value={s.familie} style={{ fontFamily: s.familie }}>
+                  {s.name}
+                </option>
+              ))}
+              {eigeneSchriften.length > 0 && (
+                <optgroup label="Eigene Schriften">
+                  {eigeneSchriften.map((s) => (
+                    <option key={s.datei} value={s.familie} style={{ fontFamily: s.familie }}>
+                      {s.familie}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </div>
+          <label className="knopf knopf--neben" style={{ cursor: 'pointer' }}>
+            Schriftdatei hinzufügen
+            <input
+              type="file"
+              accept=".ttf,.otf,font/ttf,font/otf"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const datei = e.target.files?.[0];
+                if (datei) void beiSchriftDatei(datei);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <span style={{ fontSize: '0.74rem', color: 'var(--schrift-leise)', maxWidth: '20rem' }}>
+            TTF oder OTF. Die Schrift landet in <code>Fotobox-Daten/schriften</code> und steht
+            danach in allen Vorlagen zur Verfügung — auch im Ausdruck.
+          </span>
+        </div>
+      )}
+
       {ebene.typ === 'foto' && (
         <div className="zeile">
           <div className="feld feld--klein">
-            <label>Aufnahmereihenfolge</label>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={ebene.index ?? 1}
-              onChange={(e) => beiAendern({ index: Number(e.target.value) })}
-            />
+            <label>Wird als … aufgenommen</label>
+            <select value={ebene.index ?? 1} onChange={(e) => beiReihenfolge(Number(e.target.value))}>
+              {Array.from({ length: fotoAnzahl }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}. Foto
+                </option>
+              ))}
+            </select>
           </div>
           <div className="feld feld--klein">
             <label>Einpassung</label>
@@ -682,7 +932,8 @@ function EbenenFelder({
               value={Number(((ebene.radius ?? 0) * Math.min(canvas.breiteMm, canvas.hoeheMm)).toFixed(1))}
               onChange={(e) =>
                 beiAendern({
-                  radius: Number(e.target.value) / Math.min(canvas.breiteMm, canvas.hoeheMm),
+                  radius:
+                    Math.max(0, Number(e.target.value) || 0) / Math.min(canvas.breiteMm, canvas.hoeheMm),
                 })
               }
             />
@@ -700,7 +951,9 @@ function EbenenFelder({
               max={100}
               step={5}
               value={Math.round((ebene.deckkraft ?? 1) * 100)}
-              onChange={(e) => beiAendern({ deckkraft: Number(e.target.value) / 100 })}
+              onChange={(e) =>
+                beiAendern({ deckkraft: Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100 })
+              }
             />
           </div>
           <div className="feld" style={{ flex: 1 }}>
@@ -711,6 +964,47 @@ function EbenenFelder({
       )}
     </div>
   );
+}
+
+/**
+ * Foto-Ebenen luecklos 1..n nummerieren, in ihrer bisherigen Reihenfolge
+ * (gleiche Nummer: nach Stapel). Dieselbe Regel wie beim Druck, siehe
+ * fotoEbenen() in den geteilten Typen.
+ */
+function nummeriereFotos(ebenen: Ebene[]): Ebene[] {
+  const reihenfolge = ebenen
+    .map((e, stapel) => ({ e, stapel }))
+    .filter((x) => x.e.typ === 'foto')
+    .sort((a, b) => (a.e.index ?? 99) - (b.e.index ?? 99) || a.stapel - b.stapel);
+  const nummer = new Map(reihenfolge.map((x, i) => [x.e.id, i + 1]));
+  return ebenen.map((e) => (e.typ === 'foto' ? { ...e, index: nummer.get(e.id)! } : e));
+}
+
+/**
+ * Wo ein frisch eingefuegtes Bild landet. Vorher immer auf der ganzen Seite -
+ * ein quadratisches Logo wurde dabei zum Querbalken verzerrt. Jetzt: Hat das
+ * Bild (fast) das Seitenformat, fuellt es die Seite (der Canva-Export); sonst
+ * steht es unverzerrt in der Mitte.
+ */
+function bildLage(
+  bild: { breite: number; hoehe: number },
+  canvas: { breiteMm: number; hoeheMm: number },
+): { rechteck: { x: number; y: number; w: number; h: number }; formatfuellend: boolean } {
+  const bildVerhaeltnis = bild.breite / bild.hoehe;
+  const seitenVerhaeltnis = canvas.breiteMm / canvas.hoeheMm;
+  if (Math.abs(bildVerhaeltnis / seitenVerhaeltnis - 1) < 0.03) {
+    return { rechteck: { x: 0, y: 0, w: 1, h: 1 }, formatfuellend: true };
+  }
+  // In 80 % der Seite einpassen, Seitenverhaeltnis in Millimetern gerechnet.
+  let breiteMm = canvas.breiteMm * 0.8;
+  let hoeheMm = breiteMm / bildVerhaeltnis;
+  if (hoeheMm > canvas.hoeheMm * 0.8) {
+    hoeheMm = canvas.hoeheMm * 0.8;
+    breiteMm = hoeheMm * bildVerhaeltnis;
+  }
+  const w = breiteMm / canvas.breiteMm;
+  const h = hoeheMm / canvas.hoeheMm;
+  return { rechteck: { x: (1 - w) / 2, y: (1 - h) / 2, w, h }, formatfuellend: false };
 }
 
 function kennung(): string {

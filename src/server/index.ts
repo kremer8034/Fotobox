@@ -1,3 +1,6 @@
+// Ganz oben mit Absicht: Der Schriftenordner muss fontconfig bekannt sein,
+// bevor sharp geladen wird. Siehe schriften-start.ts.
+import './schriften-start.js';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
@@ -10,14 +13,19 @@ import { wurzelpfade } from './fach/pfade.js';
 import { findeDigiCamControl, findeSumatra } from './fach/hilfsprogramme.js';
 import { legeStandardvorlagenAn } from './fach/vorlagen.js';
 import { legeEingebauteFilterAn } from './fach/filter.js';
-import { holeAktivesEvent } from './fach/events.js';
+import { holeAktivesEvent, listeEvents } from './fach/events.js';
+import { raeumeAlleAdressenAuf } from './fach/email.js';
+import { stelleUnterbrocheneWiederAn } from './fach/druckwarteschlange.js';
+import { brichSitzungAb } from './fach/sitzungen.js';
 import { Betrieb, protokolliere } from './betrieb.js';
 import { registriereKiosk } from './routen/kiosk.js';
 import { registriereAdmin } from './routen/admin.js';
 import { registriereOeffentlich } from './routen/oeffentlich.js';
 import { registriereMedien } from './routen/medien.js';
 import { registriereStream } from './routen/stream.js';
+import { registriereEntwicklung } from './routen/entwicklung.js';
 import { lanAdresse } from './netzwerk.js';
+import { beantworteFehler, haerteOeffentlich, schuetzeLokal } from './sicherheit.js';
 
 /**
  * Einstiegspunkt.
@@ -58,6 +66,11 @@ if (!existsSync(geraet.digicamcontrolPfad)) {
 legeEingebauteFilterAn();
 legeStandardvorlagenAn();
 
+const wiederAngestellt = stelleUnterbrocheneWiederAn();
+if (wiederAngestellt > 0) {
+  protokolliere('warnung', 'druck', `${wiederAngestellt} unterbrochene(r) Druckauftrag/-auftraege nach Neustart wieder angestellt.`);
+}
+
 const betrieb = new Betrieb({
   echteHardware: konfig.echteHardware,
   mockDruckOrdner: resolve(konfig.datenpfad, 'mock-drucke'),
@@ -69,12 +82,15 @@ betrieb.starte();
 // --------------------------------------------------------------------------
 const lokal = Fastify({ logger: false, bodyLimit: 20 * 1024 * 1024 });
 await lokal.register(fastifyMultipart, { limits: { fileSize: 30 * 1024 * 1024 } });
+schuetzeLokal(lokal);
+beantworteFehler(lokal, (text) => protokolliere('fehler', 'server', text));
 
 registriereKiosk(lokal, betrieb, konfig);
 registriereAdmin(lokal, betrieb, konfig);
 registriereMedien(lokal);
 registriereStream(lokal, betrieb);
 registriereOeffentlich(lokal, betrieb);
+if (!konfig.echteHardware) registriereEntwicklung(lokal, betrieb);
 await registriereWeb(lokal);
 
 await lokal.listen({ host: '127.0.0.1', port: konfig.portLokal });
@@ -93,7 +109,11 @@ async function galerieAn(): Promise<void> {
     protokolliere('warnung', 'server', 'Galerie gewuenscht, aber keine Netzwerkadresse gefunden.');
     return;
   }
-  const app = Fastify({ logger: false });
+  // Nur lesende Anfragen, keine Uploads: ein kleines Limit fuer den Rumpf
+  // genuegt, und nach 10 s ohne Antwort ist eine Verbindung zu.
+  const app = Fastify({ logger: false, bodyLimit: 16 * 1024, connectionTimeout: 10_000 });
+  haerteOeffentlich(app);
+  beantworteFehler(app, (text) => protokolliere('fehler', 'galerie', text));
   registriereOeffentlich(app, betrieb);
   await registriereWeb(app);
   await app.listen({ host: adresse, port: konfig.portOeffentlich });
@@ -122,6 +142,22 @@ async function pruefeGalerie(): Promise<void> {
 await pruefeGalerie();
 const galerieUhr = setInterval(() => void pruefeGalerie().catch(() => undefined), 5000);
 
+/**
+ * Datenschutz: E-Mail-Adressen nach der zugesagten Frist loeschen - beim Start
+ * und danach stuendlich. Vorher gab es dafuer nur eine Funktion, die nie
+ * aufgerufen wurde; die Adressen blieben fuer immer.
+ */
+function raeumeAdressenAuf(): void {
+  try {
+    const geloescht = raeumeAlleAdressenAuf(listeEvents());
+    if (geloescht > 0) protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) nach Ablauf der Frist geloescht.`);
+  } catch (fehler) {
+    protokolliere('fehler', 'email', `Loeschen alter Adressen: ${(fehler as Error).message}`);
+  }
+}
+raeumeAdressenAuf();
+const loeschUhr = setInterval(raeumeAdressenAuf, 3600_000);
+
 /** Rettungsleine: Sitzungen, die haengen bleiben, werden verworfen. */
 const abbruchUhr = setInterval(() => {
   const sitzung = betrieb.aktiveSitzung;
@@ -130,6 +166,7 @@ const abbruchUhr = setInterval(() => {
   const grenzeMs = (event?.einstellungen.zeiten.sitzungAbbruch ?? 180) * 1000;
   if (Date.now() - betrieb.letzteBeruehrung > grenzeMs) {
     protokolliere('info', 'kiosk', 'Sitzung nach Untaetigkeit verworfen.');
+    brichSitzungAb(sitzung.id);
     betrieb.aktiveSitzung = null;
   }
 }, 5000);
@@ -151,6 +188,7 @@ async function registriereWeb(app: FastifyInstance): Promise<void> {
 async function beende(): Promise<void> {
   clearInterval(galerieUhr);
   clearInterval(abbruchUhr);
+  clearInterval(loeschUhr);
   await betrieb.beende();
   await oeffentlich?.close();
   await lokal.close();
@@ -160,3 +198,27 @@ async function beende(): Promise<void> {
 
 process.on('SIGINT', () => void beende());
 process.on('SIGTERM', () => void beende());
+
+/*
+ * Sicherheitsnetz. Ein vergessenes await irgendwo darf nicht die ganze Box
+ * lahmlegen: Eine unbehandelte Ablehnung wird protokolliert, der Betrieb laeuft
+ * weiter. Eine unbehandelte Ausnahme dagegen hinterlaesst den Prozess in
+ * ungewissem Zustand - dann lieber sauber beenden; "Fotobox starten.bat"
+ * startet den Server nach wenigen Sekunden neu, und die Datenbank hat jeden
+ * Schritt schon festgehalten.
+ */
+process.on('unhandledRejection', (grund) => {
+  protokolliere('fehler', 'server', `Unbehandelter Fehler (Betrieb laeuft weiter): ${beschreibe(grund)}`);
+});
+process.on('uncaughtException', (fehler) => {
+  protokolliere('fehler', 'server', `Absturz, Neustart folgt: ${beschreibe(fehler)}`);
+  try {
+    schliesseDb();
+  } finally {
+    process.exit(1);
+  }
+});
+
+function beschreibe(grund: unknown): string {
+  return grund instanceof Error ? `${grund.message}\n${grund.stack ?? ''}` : String(grund);
+}

@@ -1,10 +1,38 @@
 /** Schmaler Zugriff auf die Server-Schnittstelle. */
 
+/**
+ * Ein Fehler samt HTTP-Status. Status 0 heisst: Der Server hat gar nicht
+ * geantwortet - er startet gerade neu, oder die Verbindung ist weg. Der Kiosk
+ * unterscheidet daran "kurz warten" von "das hat wirklich nicht geklappt".
+ */
+export class ApiFehler extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+export const KEINE_VERBINDUNG = 0;
+
 async function anfrage<T>(pfad: string, optionen?: RequestInit): Promise<T> {
-  const antwort = await fetch(pfad, {
-    ...optionen,
-    headers: { 'content-type': 'application/json', ...optionen?.headers },
-  });
+  let antwort: Response;
+  try {
+    antwort = await fetch(pfad, {
+      ...optionen,
+      // Die JSON-Kopfzeile nur, wenn auch etwas mitgeht. Ein DELETE ohne
+      // Inhalt, aber mit dieser Kopfzeile lehnt der Server ab ("Body cannot be
+      // empty") - daran scheiterte vorher jedes Loeschen in der Verwaltung,
+      // auch das von Vorlagen.
+      headers: {
+        ...(optionen?.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...optionen?.headers,
+      },
+    });
+  } catch {
+    throw new ApiFehler('Keine Verbindung zur Fotobox.', KEINE_VERBINDUNG);
+  }
   if (!antwort.ok) {
     let text = `HTTP ${antwort.status}`;
     try {
@@ -13,7 +41,7 @@ async function anfrage<T>(pfad: string, optionen?: RequestInit): Promise<T> {
     } catch {
       // Keine JSON-Antwort.
     }
-    throw new Error(text);
+    throw new ApiFehler(text, antwort.status);
   }
   if (antwort.status === 204) return undefined as T;
   return (await antwort.json()) as T;
@@ -25,7 +53,28 @@ export const api = {
     anfrage<T>(pfad, { method: 'POST', body: JSON.stringify(koerper ?? {}) }),
   aendere: <T>(pfad: string, koerper: unknown) =>
     anfrage<T>(pfad, { method: 'PUT', body: JSON.stringify(koerper) }),
-  loesche: <T>(pfad: string) => anfrage<T>(pfad, { method: 'DELETE' }),
+  loesche: <T>(pfad: string, koerper?: unknown) =>
+    anfrage<T>(pfad, koerper === undefined ? { method: 'DELETE' } : { method: 'DELETE', body: JSON.stringify(koerper) }),
+  /**
+   * Datei-Upload. Bewusst ohne den JSON-Kopf von "anfrage": Bei FormData muss
+   * der Browser den content-type samt boundary selbst setzen.
+   */
+  sendeDatei: async <T>(pfad: string, datei: File): Promise<T> => {
+    const formular = new FormData();
+    formular.append('datei', datei);
+    const antwort = await fetch(pfad, { method: 'POST', body: formular });
+    if (!antwort.ok) {
+      let text = `HTTP ${antwort.status}`;
+      try {
+        const daten = (await antwort.json()) as { fehler?: string };
+        if (daten.fehler) text = daten.fehler;
+      } catch {
+        // Keine JSON-Antwort.
+      }
+      throw new Error(text);
+    }
+    return (await antwort.json()) as T;
+  },
 };
 
 // --------------------------------------------------------------------- Typen
@@ -55,8 +104,11 @@ export interface Stoerungstext {
 
 export interface KioskStart {
   bereit: boolean;
+  aktiveSitzungId?: string | null;
   pausiert?: boolean;
   grund?: string;
+  /** Noch keine Besitzer-PIN - der Kiosk zeigt den Weg in die Verwaltung. */
+  ersteinrichtung?: boolean;
   status: {
     kamera: string;
     drucker: string;
@@ -71,16 +123,19 @@ export interface KioskStart {
     untertitel: string;
     akzent: string;
     qrAufStartseite: boolean;
-    galerieToken: string | null;
+    galerieUrl: string | null;
   };
   zeiten?: Zeiten;
   toene?: Toene;
   ausgabe?: {
     druckAktiv: boolean;
     emailAktiv: boolean;
+    einwilligungstext: string;
     kopienVorgabe: number;
     kopienMax: number;
     druckLimitErreicht: boolean;
+    /** Blatt bis zum Druck-Limit; null ohne Limit. */
+    druckRest?: number | null;
   };
   vorlagen?: { id: string; name: string; fotos: number; canvas: { breiteMm: number; hoeheMm: number } }[];
   filter?: { id: string; name: string }[];

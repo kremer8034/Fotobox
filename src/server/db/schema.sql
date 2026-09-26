@@ -76,7 +76,10 @@ CREATE TABLE IF NOT EXISTS ausgaben (
   sitzung_id     TEXT NOT NULL REFERENCES sitzungen(id) ON DELETE CASCADE,
   pfad_layout    TEXT NOT NULL,
   pfad_druck_pdf TEXT,
-  erstellt       TEXT NOT NULL
+  erstellt       TEXT NOT NULL,
+  -- 1 = aus der Galerie genommen (Handy und Touchscreen). Die Dateien bleiben;
+  -- der Gastgeber bekommt sie bei der Uebergabe trotzdem.
+  verborgen      INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_ausgaben_sitzung ON ausgaben(sitzung_id);
 
@@ -103,6 +106,9 @@ CREATE TABLE IF NOT EXISTS versand (
   kanal            TEXT NOT NULL,
   ziel             TEXT NOT NULL,
   einwilligung_am  TEXT,
+  -- Der Wortlaut, dem der Gast zugestimmt hat - als Nachweis, auch nachdem
+  -- die Adresse selbst geloescht ist.
+  einwilligung_text TEXT,
   status           TEXT NOT NULL DEFAULT 'wartend',
   gesendet_am      TEXT,
   geloescht_am     TEXT
@@ -117,3 +123,14 @@ CREATE TABLE IF NOT EXISTS protokoll (
   text     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_protokoll_zeit ON protokoll(zeit);
+
+-- Gespeicherte Einstellungen einer Veranstaltung ("Kinderparty", "Hochzeit"),
+-- aus denen eine neue Veranstaltung angelegt werden kann. Der Name ist die
+-- Kennung fuer den Menschen: Speichern unter demselben Namen ueberschreibt.
+CREATE TABLE IF NOT EXISTS voreinstellungen (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  einstellungen TEXT NOT NULL,
+  erstellt      TEXT NOT NULL,
+  geaendert     TEXT NOT NULL
+);

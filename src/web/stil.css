@@ -25,17 +25,35 @@
   --abstand-gross: calc(8 * var(--mm));
   --rand-sicher: calc(5 * var(--mm));
 
-  --grund: #14161a;
-  --flaeche: #1e2128;
-  --flaeche-hell: #2a2e37;
+  /*
+   * Vier Grautoene statt drei: Die Kacheln standen vorher fast auf demselben
+   * Wert wie der Grund und sahen aus wie aufgemalt statt wie etwas, das man
+   * antippen kann. Mit einer eigenen Kante darum liest sich jede Kachel als
+   * Gegenstand - das ist auf einem Touchscreen der Unterschied zwischen
+   * "Da steht etwas" und "Da kann ich draufdruecken".
+   */
+  --grund: #101216;
+  --flaeche: #191c22;
+  --flaeche-hell: #252932;
+  --kante: #333844;
   --schrift: #f4f5f7;
-  --schrift-leise: #a8adb8;
-  --akzent: #c8963e;
+  --schrift-leise: #9aa1ae;
+
+  /*
+   * Der Akzent kommt aus der Veranstaltung: Die Farbe steht im Admin und wird
+   * beim Start als Variable gesetzt. Die Schriftfarbe darauf wird mitgerechnet,
+   * damit ein dunkler Akzent nicht dunkle Schrift bekommt.
+   */
+  --akzent: #d0a04a;
+  --akzent-schrift: #191307;
+  --akzent-schimmer: rgba(208, 160, 74, 0.28);
+
   --warnung: #d9793f;
   --fehler: #cf5555;
   --gut: #5fa463;
 
   --radius: calc(2.5 * var(--mm));
+  --radius-klein: calc(1.5 * var(--mm));
   color-scheme: dark;
 }
 
@@ -81,6 +99,17 @@ button {
   cursor: pointer;
 }
 
+/* Tastaturbedienung gehoert dem Admin - im Kiosk stoert der Fokusring nur,
+   weil dort ohnehin nur Finger unterwegs sind. */
+:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+.kiosk :focus-visible {
+  outline: none;
+}
+
 /* --------------------------------------------------------------- Bausteine */
 
 .seite {
@@ -105,28 +134,35 @@ button {
   align-items: center;
   justify-content: center;
   gap: calc(2 * var(--mm));
-  transition: transform 80ms ease;
+  border: 2px solid var(--kante);
+  transition: transform 80ms ease, filter 120ms ease;
 }
 
 .knopf:active {
   transform: scale(0.97);
+  filter: brightness(1.15);
 }
 
 .knopf--haupt {
   background: var(--akzent);
-  color: #191307;
+  color: var(--akzent-schrift);
+  border-color: transparent;
   font-size: 1.25rem;
+  /* Der Hauptknopf ist der einzige, der leuchtet - damit ist auf jedem
+     Bildschirm ohne Nachdenken klar, wo es weitergeht. */
+  box-shadow: 0 0 calc(6 * var(--mm)) var(--akzent-schimmer);
 }
 
 .knopf--neben {
   min-height: var(--knopf-neben);
   font-size: 0.85rem;
   background: transparent;
-  border: 2px solid var(--flaeche-hell);
 }
 
 .knopf:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
+  box-shadow: none;
+  filter: grayscale(0.6);
 }
 
 .knopf--riesig {
@@ -137,6 +173,7 @@ button {
 .titel {
   font-size: 2rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -173,31 +210,176 @@ button {
 
 /* ------------------------------------------------------------------ Kiosk */
 
+/*
+ * Der Kopf einer Auswahlseite. Ueberschrift und Erklaerzeile stehen zusammen
+ * oben links statt mittig - so beginnt der Blick immer an derselben Stelle und
+ * springt von dort in die Kacheln.
+ */
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1 * var(--mm));
+  padding-bottom: calc(1 * var(--mm));
+}
+
+/*
+ * Auswahlkacheln fuer Vorlagen und Filter.
+ *
+ * Die Kachel zeigt jetzt ein Bild statt nur einen Namen. "Hochzeit 3er" sagt
+ * einem Gast, der zum ersten Mal vor der Box steht, nichts - das Bild schon.
+ */
 .kachel {
   background: var(--flaeche);
-  border: 3px solid transparent;
+  border: 3px solid var(--kante);
   border-radius: var(--radius);
-  padding: var(--abstand);
-  min-height: calc(30 * var(--mm));
+  padding: calc(2 * var(--mm));
+  min-height: var(--ziel-min);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: calc(2 * var(--mm));
+  overflow: hidden;
+  transition: transform 90ms ease, border-color 120ms ease;
+}
+
+.kachel:active {
+  transform: scale(0.98);
+  border-color: var(--akzent);
 }
 
 .kachel--gewaehlt {
   border-color: var(--akzent);
+  box-shadow: 0 0 calc(4 * var(--mm)) var(--akzent-schimmer);
+}
+
+/* Das Vorschaubild traegt die Kachel und bekommt deshalb den Platz. */
+.kachel__bild {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-klein);
+  /* Durchsichtig statt schwarz: Eine hochformatige Vorlage bekam sonst breite
+     schwarze Balken in einer querformatigen Kachel. Jetzt sitzt sie einfach
+     auf dem Kachelgrund. */
+  background: transparent;
+}
+
+/* Beim Filter zaehlt der Farbeindruck, nicht der Bildausschnitt - deshalb
+   fuellend statt eingepasst. */
+.kachel__bild--fuellend {
+  object-fit: cover;
 }
 
 .kachel__name {
   font-size: 0.95rem;
   font-weight: 600;
+  text-align: center;
 }
 
 .kachel__info {
   font-size: 0.7rem;
   color: var(--schrift-leise);
+}
+
+/* Galerie am Touchscreen. Jede Kachel hat denselben 3:2-Bildkasten, das
+   Layout wird darin eingepasst - Hoch- wie Querformat, ohne Abschneiden. */
+.galerie-raster {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--abstand);
+  align-content: start;
+  /* Blaettern mit dem Finger, aber kein Zoomen. */
+  touch-action: pan-y;
+}
+
+.galerie-kachel {
+  display: block;
+  padding: calc(1.5 * var(--mm));
+  background: var(--flaeche);
+  border: 2px solid var(--kante);
+  border-radius: var(--radius);
+}
+
+.galerie-kachel:active {
+  border-color: var(--akzent);
+}
+
+/* Das Seitenverhaeltnis sitzt auf einem inneren Kasten, nicht auf dem
+   Rasterelement selbst: Dort bestimmte es nicht die Zeilenhoehe des Rasters,
+   und jede Reihe schnitt die untere Kante der vorigen ab. */
+.galerie-kachel__bild {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
+
+.galerie-kachel__bild img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/*
+ * Rueckmeldung beim Antippen. Die angetippte Kachel leuchtet sofort, die
+ * anderen treten zurueck - der Gast sieht, dass sein Tipper angekommen ist,
+ * auch wenn die Box noch einen Moment rechnet.
+ */
+.raster--wartet .kachel:not(.kachel--wartet) {
+  opacity: 0.35;
+  transition: opacity 150ms ease;
+}
+
+.kachel--wartet {
+  border-color: var(--akzent);
+  box-shadow: 0 0 calc(5 * var(--mm)) var(--akzent-schimmer);
+}
+
+.zusammensetzen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(16, 18, 22, 0.78);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand-gross);
+  /* Erst nach einer Viertelsekunde einblenden: Geht es schneller, flackert
+     sonst nur kurz ein Schleier auf. */
+  animation: zusammensetzen-ein 200ms ease 250ms both;
+}
+
+@keyframes zusammensetzen-ein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.zusammensetzen__text {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+/* Nur transform wird animiert - das rechnet die Grafikkarte, der Prozessor
+   bleibt frei fuer das Bild, das gerade entsteht. */
+.kreisel {
+  width: calc(18 * var(--mm));
+  height: calc(18 * var(--mm));
+  border-radius: 50%;
+  border: calc(2 * var(--mm)) solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--akzent);
+  animation: kreisel-dreh 0.9s linear infinite;
+}
+
+@keyframes kreisel-dreh {
+  to { transform: rotate(360deg); }
 }
 
 /* Aufnahmebildschirm: Live-Bild als Vollbild, Countdown direkt darueber. */
@@ -226,16 +408,53 @@ button {
   box-shadow: 0 0 calc(6 * var(--mm)) rgba(0, 0, 0, 0.8);
 }
 
+/*
+ * Die Countdown-Zahl. Feste Groesse statt Innenabstand, sonst wird aus dem
+ * Kreis eine Ellipse, sobald die Zahl schmaler wird. Gleichbreite Ziffern,
+ * damit die 1 nicht schmaler steht als die 3, und ein Puls je Sekunde - auf
+ * einer lauten Feier sieht man den Takt eher, als man ihn hoert.
+ */
 .countdown {
   position: absolute;
-  font-size: calc(60 * var(--mm));
+  width: calc(72 * var(--mm));
+  height: calc(72 * var(--mm));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(46 * var(--mm));
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   color: #fff;
   text-shadow: 0 0 calc(4 * var(--mm)) rgba(0, 0, 0, 0.85);
-  padding: calc(3 * var(--mm)) calc(8 * var(--mm));
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.32);
+  border: calc(0.6 * var(--mm)) solid rgba(255, 255, 255, 0.25);
+  animation: countdown-puls 1s ease-out;
+}
+
+@keyframes countdown-puls {
+  0% { transform: scale(1.14); opacity: 0.75; }
+  35% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/*
+ * Der Auslöseblitz. Kostet nichts und ist das Signal, das jeder aus jeder
+ * Fotobox kennt: Jetzt war es soweit. Ohne ihn ist der Moment der Aufnahme
+ * auf dem Bildschirm gar nicht zu erkennen.
+ */
+.blitz {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: blitz-ab 420ms ease-out forwards;
+}
+
+@keyframes blitz-ab {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
 }
 
 .hinweis-oben {
@@ -243,10 +462,35 @@ button {
   top: var(--abstand);
   left: 0;
   right: 0;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(3 * var(--mm));
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 0 calc(2 * var(--mm)) rgba(0, 0, 0, 0.9);
+}
+
+/* Fortschritt als Punkte: auf einen Blick lesbar, ohne Zahlen zu vergleichen. */
+.fortschritt {
+  display: flex;
+  gap: calc(1.5 * var(--mm));
+}
+
+.fortschritt__punkt {
+  width: calc(2.5 * var(--mm));
+  height: calc(2.5 * var(--mm));
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.fortschritt__punkt--fertig {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.fortschritt__punkt--jetzt {
+  background: var(--akzent);
+  box-shadow: 0 0 calc(2 * var(--mm)) var(--akzent);
 }
 
 .bereitmachen {
@@ -257,6 +501,14 @@ button {
   background: rgba(0, 0, 0, 0.55);
   padding: calc(3 * var(--mm)) calc(6 * var(--mm));
   border-radius: var(--radius);
+  text-align: center;
+}
+
+/* Die Bestaetigung ist eine Feststellung, kein Aufruf - deshalb ruhiger. */
+.bereitmachen--ruhig {
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.45);
 }
 
 /* Ergebnisseite: Bild oben, darunter die Knopfreihe. Bei 174 mm Bauhoehe
@@ -282,6 +534,7 @@ button {
   align-items: center;
   gap: var(--abstand);
   background: var(--flaeche);
+  border: 2px solid var(--kante);
   border-radius: var(--radius);
   padding: 0 var(--abstand);
 }
@@ -289,8 +542,374 @@ button {
 .menge__zahl {
   font-size: 1.6rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   min-width: calc(10 * var(--mm));
   text-align: center;
+}
+
+/*
+ * Die Rueckmeldung nach dem Drucken lag vorher als Textzeile unter der
+ * Knopfreihe und hat beim Erscheinen das ganze Layout verschoben - genau in dem
+ * Moment, in dem der Gast noch die Finger auf dem Schirm hat. Jetzt legt sie
+ * sich darueber und laesst darunter alles stehen.
+ */
+.quittung {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 18, 22, 0.82);
+  backdrop-filter: blur(calc(1.5 * var(--mm)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rand-sicher);
+  z-index: 20;
+}
+
+/* Eine richtige Karte statt Text quer ueber dem Bild: Vorher lagen die Zeilen
+   auf dem Layout und dessen eigener Schrift, und die Knopfreihe schimmerte
+   halb lesbar durch - was zum Danebentippen einlaedt. */
+.quittung__karte {
+  background: var(--flaeche);
+  border: 2px solid var(--kante);
+  border-radius: var(--radius);
+  padding: var(--abstand-gross);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--abstand);
+  text-align: center;
+  max-width: calc(150 * var(--mm));
+  box-shadow: 0 calc(2 * var(--mm)) calc(10 * var(--mm)) rgba(0, 0, 0, 0.55);
+}
+
+/* Gezeichnet statt als Emoji: Ein Emoji haengt an der Schriftart des Systems
+   und kommt auf einem nackten Windows als leeres Kaestchen heraus. */
+.quittung__zeichen {
+  width: calc(20 * var(--mm));
+  height: calc(20 * var(--mm));
+  color: var(--akzent);
+}
+
+.quittung__text {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+/*
+ * E-Mail-Eingabe mit eigener Bildschirmtastatur.
+ *
+ * Rechnung fuer 174 mm Bauhoehe: 14 mm oben (Schlossecke plus 4 mm Abstand), Kopfzeile 25 mm,
+ * Einwilligung 16 mm, fuenf Tastenreihen zu 15 mm mit 4 mm Abstand (91 mm),
+ * 5 mm unten - zusammen rund 159 mm, der Rest bleibt fuer eine Fehlerzeile.
+ * Zehn Tasten nebeneinander sind je rund 26 mm breit.
+ */
+.email {
+  position: absolute;
+  inset: 0;
+  background: var(--grund);
+  padding: var(--rand-sicher);
+  /* Oben mehr Abstand: Die obere rechte Ecke gehoert dem Schloss (10 x 10 mm).
+     Stuende "Senden" dort, fiele ein Tipper auf die Ecke ins Schloss - das
+     nur auf langes Druecken reagiert - und der Knopf taete scheinbar nichts. */
+  padding-top: calc(14 * var(--mm));
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand);
+  z-index: 20;
+}
+
+.email__kopf {
+  display: flex;
+  gap: var(--abstand);
+  align-items: stretch;
+}
+
+.email__feld {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--abstand);
+  background: var(--flaeche);
+  border: 3px solid var(--akzent);
+  border-radius: var(--radius);
+  font-size: 1.35rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.email__feld--leer {
+  color: var(--schrift-leise);
+  font-weight: 400;
+  border-color: var(--kante);
+}
+
+/* Eine blinkende Schreibmarke zeigt, dass hier getippt wird - ohne sie wirkt
+   die Anzeige wie ein Schild, nicht wie ein Feld. */
+.email__schreibmarke {
+  display: inline-block;
+  width: 3px;
+  height: 1.2em;
+  margin-left: 2px;
+  background: var(--akzent);
+  animation: schreibmarke 1s steps(1) infinite;
+}
+
+@keyframes schreibmarke {
+  50% { opacity: 0; }
+}
+
+.email__fehler {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--warnung);
+}
+
+/* Die Einwilligung ist eine grosse Flaeche, kein 13-px-Kaestchen: Sie muss
+   aktiv angetippt werden, also muss man sie auch treffen koennen. */
+.einwilligung {
+  flex: 1;
+  min-height: var(--knopf-neben);
+  display: flex;
+  align-items: center;
+  gap: var(--abstand);
+  padding: calc(2 * var(--mm)) var(--abstand);
+  background: var(--flaeche);
+  border: 2px solid var(--kante);
+  border-radius: var(--radius);
+  text-align: left;
+}
+
+.einwilligung--an {
+  border-color: var(--gut);
+}
+
+.einwilligung__kasten {
+  flex: none;
+  width: calc(9 * var(--mm));
+  height: calc(9 * var(--mm));
+  border: 3px solid var(--schrift-leise);
+  border-radius: calc(1.5 * var(--mm));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #08210a;
+}
+
+.einwilligung--an .einwilligung__kasten {
+  background: var(--gut);
+  border-color: var(--gut);
+}
+
+.einwilligung__text {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--schrift);
+}
+
+.tastatur {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--abstand);
+}
+
+.tastatur__reihe {
+  display: flex;
+  justify-content: center;
+  gap: var(--abstand);
+}
+
+/* Alle Buchstabentasten gleich breit - ein Zehntel der Reihe. Kuerzere Reihen
+   stehen dadurch mittig, statt ihre Tasten breit zu ziehen. */
+.taste {
+  width: calc((100% - 9 * var(--abstand)) / 10);
+  /* 15 statt der Mindest-13 mm: Der Platz ist da, und auf einer Tastatur
+     tippt man schnell und daneben. */
+  height: calc(15 * var(--mm));
+  background: var(--flaeche-hell);
+  border: 2px solid var(--kante);
+  border-radius: var(--radius-klein);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.taste:active {
+  background: var(--kante);
+  transform: scale(0.96);
+}
+
+.taste--breit {
+  width: auto;
+  flex: 1;
+  font-size: 0.8rem;
+}
+
+.taste--loeschen {
+  background: var(--flaeche);
+  font-size: 1.2rem;
+}
+
+/*
+ * Statusampel. rem-basiert, damit sie im Kiosk (26 px) wie am Handy (16 px)
+ * in der jeweils richtigen Groesse steht.
+ */
+.statusliste__fazit {
+  margin: 0 0 0.6em;
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.statusliste__fazit--gut { color: #9fd3a2; }
+.statusliste__fazit--warnung { color: #e8a878; }
+.statusliste__fazit--fehler { color: #e88a8a; }
+
+.statusliste__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+
+.statusliste__eintrag {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.55em 0.8em;
+  background: var(--flaeche);
+  border: 1px solid var(--kante);
+  border-left-width: 0.35em;
+  border-radius: 0.5em;
+}
+
+.statusliste__eintrag--gut { border-left-color: var(--gut); }
+.statusliste__eintrag--warnung { border-left-color: var(--warnung); }
+.statusliste__eintrag--fehler { border-left-color: var(--fehler); }
+
+.statusliste__punkt {
+  flex: none;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  font-weight: 800;
+}
+
+.statusliste__eintrag--gut .statusliste__punkt { background: var(--gut); color: #08210a; }
+.statusliste__eintrag--warnung .statusliste__punkt { background: var(--warnung); color: #2a1405; }
+.statusliste__eintrag--fehler .statusliste__punkt { background: var(--fehler); color: #2a0808; }
+
+.statusliste__zahlen {
+  margin: 0.8em 0 0;
+  font-size: 0.85em;
+  color: var(--schrift-leise);
+}
+
+/* Handlungsanweisung fuer den Betreuer - der naechste Handgriff, nicht die
+   Beschreibung des Problems. */
+.betreuer-hinweis {
+  margin: 0;
+  padding: 0.7em 0.9em;
+  background: rgba(217, 121, 63, 0.12);
+  border: 1px solid var(--warnung);
+  border-radius: 0.5em;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+/* Servicemenue: links der Zustand, rechts die Handgriffe. */
+.service {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: var(--abstand-gross);
+}
+
+.service__spalte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Handgriffe zweispaltig: Beim Besitzer sind es acht, untereinander passten
+   sie nicht auf 174 mm Bauhoehe. */
+.service__knoepfe {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--abstand);
+  align-content: start;
+}
+
+.service__knoepfe > .knopf--haupt,
+.service__knoepfe > .service__trenner {
+  grid-column: 1 / -1;
+}
+
+.service__knopf {
+  min-height: var(--knopf-neben);
+  justify-content: flex-start;
+  text-align: left;
+  padding: calc(2 * var(--mm)) var(--abstand);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(0.5 * var(--mm));
+}
+
+.service__knopf small {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--schrift-leise);
+}
+
+.service__trenner {
+  margin: calc(2 * var(--mm)) 0 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--schrift-leise);
+}
+
+/* Rueckfrage vor Handgriffen, die sich nicht zuruecknehmen lassen. */
+.rueckfrage {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(16, 18, 22, 0.88);
+  backdrop-filter: blur(calc(1.5 * var(--mm)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rand-sicher);
+}
+
+.rueckfrage__karte {
+  background: var(--flaeche);
+  border: 2px solid var(--kante);
+  border-radius: var(--radius);
+  padding: var(--abstand-gross);
+  max-width: calc(170 * var(--mm));
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand);
+}
+
+.rueckfrage__titel {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
 /* Kaum sichtbares Schloss oben rechts, rund 10 x 10 mm. */
@@ -319,8 +938,14 @@ button {
   height: calc(20 * var(--mm));
   border-radius: var(--radius);
   background: var(--flaeche-hell);
+  border: 2px solid var(--kante);
   font-size: 1.3rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pinfeld button:active {
+  background: var(--kante);
 }
 
 .pin-punkte {
@@ -333,6 +958,7 @@ button {
    Alltagssprache - was ist los, was passiert mit meinem Foto, was kann ich tun. */
 .stoerung {
   background: var(--flaeche);
+  border: 2px solid var(--kante);
   border-left: calc(2 * var(--mm)) solid var(--warnung);
   border-radius: var(--radius);
   padding: var(--abstand-gross);
@@ -363,7 +989,9 @@ button {
   bottom: var(--rand-sicher);
   right: var(--rand-sicher);
   text-align: center;
-  font-size: 0.6rem;
+  /* 0,6 rem waren 2,5 mm Schrifthoehe - aus einem halben Meter Abstand kaum
+     zu lesen, und ohne die Zeile weiss niemand, wozu der Code gut ist. */
+  font-size: 0.8rem;
   color: var(--schrift-leise);
 }
 
@@ -377,6 +1005,30 @@ button {
 }
 
 /* ------------------------------------------------------------------ Admin */
+
+/*
+ * Die Millimeter-Masse gelten fuer Finger auf dem 14-Zoll-Touchscreen. Der
+ * Admin wird mit der Maus bedient - dort war ein Knopf dadurch 155 px hoch und
+ * verschob die halbe Karte. Hier zaehlt wieder die Schriftgroesse.
+ */
+html.admin .knopf {
+  min-height: 2.2rem;
+  min-width: 0;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+  border-radius: 0.4rem;
+  box-shadow: none;
+}
+
+html.admin .knopf--haupt {
+  font-size: 0.9rem;
+}
+
+html.admin .knopf--riesig {
+  min-height: 2.6rem;
+  font-size: 1rem;
+}
+
 
 .admin-huelle {
   display: grid;
@@ -479,9 +1131,18 @@ table.liste td {
   background: var(--flaeche-hell);
 }
 
+/*
+ * Jeder Zustand bekommt seine Farbe. Vorher hatten nur drei von sechs eine -
+ * "entwurf" und "startbereit" sahen in der Liste gleich aus wie
+ * "abgeschlossen", obwohl das der Unterschied zwischen "noch nichts fertig"
+ * und "der Abend ist gelaufen" ist.
+ */
+.marke--entwurf { background: transparent; border: 1px solid var(--kante); color: var(--schrift-leise); }
+.marke--startbereit { background: rgba(95, 164, 99, 0.18); color: #9fd3a2; border: 1px solid rgba(95, 164, 99, 0.5); }
 .marke--aktiv { background: var(--gut); color: #08210a; }
 .marke--pausiert { background: var(--warnung); color: #2a1405; }
-.marke--abgeschlossen { background: var(--flaeche-hell); }
+.marke--abgeschlossen { background: var(--flaeche-hell); color: var(--schrift); }
+.marke--archiviert { background: transparent; border: 1px dashed var(--kante); color: var(--schrift-leise); }
 
 .pruef {
   display: flex;
@@ -509,19 +1170,350 @@ table.liste td {
 .kennzahl__wert { font-size: 1.5rem; font-weight: 700; }
 .kennzahl__name { font-size: 0.72rem; color: var(--schrift-leise); }
 
+/* -------------------------------------------------------- Admin: Reiter */
+
+/*
+ * Das Event-Detail war ein Stapel aus neun Karten und 2645 px Hoehe - man
+ * scrollte an allem vorbei, um an eine Zahl zu kommen. Reiter trennen das in
+ * die Bereiche, die der Plan vorsieht.
+ */
+.reiter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  border-bottom: 1px solid var(--kante);
+  margin-bottom: 1rem;
+}
+
+.reiter button {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--schrift-leise);
+  border-bottom: 2px solid transparent;
+  border-radius: 0.35rem 0.35rem 0 0;
+  white-space: nowrap;
+}
+
+.reiter button:hover {
+  color: var(--schrift);
+  background: var(--flaeche);
+}
+
+.reiter button.aktiv {
+  color: var(--schrift);
+  border-bottom-color: var(--akzent);
+}
+
+/* Ein Reiter, der noch Arbeit enthaelt, sagt das - sonst muesste man ihn
+   aufmachen, um es zu merken. */
+.reiter__hinweis {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--warnung);
+  margin-left: 0.35rem;
+  vertical-align: 0.1rem;
+}
+
+/*
+ * Die acht Zeitfelder standen in einer flex-Zeile aus 9-rem-Kaestchen: Die
+ * langen Beschriftungen brachen auf drei Zeilen um und die Felder sassen auf
+ * unterschiedlicher Hoehe. Ein Raster mit fester Spaltenbreite gibt jedem
+ * Feld denselben Platz.
+ */
+.zeitraster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.4rem 1rem;
+}
+
+.zeitraster .feld {
+  margin-bottom: 0.4rem;
+}
+
+.zeitraster label {
+  min-height: 2.2em;
+}
+
+/* ------------------------------------------------- Admin: Bedienelemente */
+
+/*
+ * Native Kontrollkaestchen sind bei 20 px Grundgroesse rund 13 px gross. Der
+ * Admin wird zwar mit der Maus bedient, aber im Notfall auch mal vor Ort mit
+ * dem Finger - und ein 13-px-Ziel trifft niemand.
+ */
+html.admin input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--akzent);
+  margin: 0;
+  flex: none;
+}
+
+html.admin input[type='color'] {
+  width: 3rem;
+  height: 2.2rem;
+  padding: 0.15rem;
+  background: var(--grund);
+  border: 1px solid var(--kante);
+  border-radius: 0.35rem;
+}
+
+.feld input,
+.feld select,
+.feld textarea {
+  border-color: var(--kante);
+}
+
+.feld input:focus,
+.feld select:focus,
+.feld textarea:focus {
+  outline: none;
+  border-color: var(--akzent);
+}
+
+/* Zahlen gehoeren rechtsbuendig und gleich breit, damit man Spalten
+   uebereinander vergleichen kann statt sie zu lesen. */
+.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kennzahl__wert {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Der Zustand einer Kennzahl - gut, Warnung, Fehler - als Farbe statt als
+   blosses Wort. Eine Uebersicht, die man lesen muss, ist keine. */
+.kennzahl--gut { border-left: 3px solid var(--gut); }
+.kennzahl--warnung { border-left: 3px solid var(--warnung); }
+.kennzahl--fehler { border-left: 3px solid var(--fehler); }
+
+.kennzahl--gut .kennzahl__wert { color: #9fd3a2; }
+.kennzahl--warnung .kennzahl__wert { color: #e8a878; }
+.kennzahl--fehler .kennzahl__wert { color: #e88a8a; }
+
+/*
+ * Die Bestaetigung "Gespeichert." stand ganz oben auf der Seite. Wer unten die
+ * PIN eintippt, sieht sie nie. Jetzt liegt sie fest in der Ecke.
+ */
+.hinweis-fest {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  z-index: 60;
+  background: var(--flaeche-hell);
+  border: 1px solid var(--kante);
+  border-left: 3px solid var(--akzent);
+  border-radius: 0.4rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  max-width: 26rem;
+  box-shadow: 0 0.4rem 1.4rem rgba(0, 0, 0, 0.5);
+}
+
+/* -------------------------------------------------- Admin: Vorlagenliste */
+
+.vorlagen-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+
+.vorlagen-kachel {
+  background: var(--flaeche-hell);
+  border: 1px solid var(--kante);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Die Bibliothek war eine Tabelle aus Namen und Zahlen. Eine Vorlage ist aber
+   etwas, das man ansieht - das Vorschaubild sagt mehr als "4 Ebenen". */
+.vorlagen-kachel__bild {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
+  background: var(--grund);
+  display: block;
+}
+
+.vorlagen-kachel__leiste {
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: space-between;
+}
+
+/* Drei Knoepfe in einer Zeile statt umgebrochen: In der Kachel zaehlt jede
+   Zeile, und "Loeschen" allein in der zweiten sah aus wie ein eigener Bereich. */
+.vorlagen-kachel .knopf {
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.vorlagen-kachel__name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.vorlagen-kachel__info {
+  font-size: 0.74rem;
+  color: var(--schrift-leise);
+}
+
+/* ------------------------------------------------ Admin: Vorlagen-Editor */
+
+/*
+ * Der Editor war als Zweispalter gedacht, kippte aber immer in eine Spalte:
+ * Die Leinwandkarte stand auf "inline-block" und wuchs damit auf die
+ * Maximalbreite ihres Hilfetextes - rund 1200 px, womit fuer die rechte Spalte
+ * nichts mehr uebrig war. Ein Raster mit fester Spaltenbreite kann das nicht
+ * passieren.
+ */
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Die Werkzeuge des Gestaltens bleiben stehen, waehrend die Eigenschaften
+   darunter scrollen - sonst verliert man beim Blaettern die Leinwand aus dem
+   Blick, an der man gerade arbeitet. */
+.editor__leinwand {
+  position: sticky;
+  top: 0;
+}
+
+.editor__spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.editor__spalte .karte {
+  margin-bottom: 0;
+}
+
+/*
+ * Die Ebenenzeile hatte fuenf normale Knoepfe nebeneinander - zusammen breiter
+ * als die Spalte, sodass der Loeschknopf rechts abgeschnitten wurde. Quadratische
+ * Symbolknoepfe passen; die Trefferflaeche bleibt mit 1,9 rem fuer die Maus
+ * reichlich.
+ */
+.ebenen-knopf {
+  width: 1.9rem;
+  height: 1.9rem;
+  min-height: 0;
+  padding: 0;
+  font-size: 0.82rem;
+  border-radius: 0.3rem;
+  background: transparent;
+  border: 1px solid var(--kante);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.2rem;
+}
+
+.ebenen-knopf:hover {
+  background: var(--flaeche-hell);
+}
+
+/* Ein langer Text als Ebenenname darf die Knoepfe nicht aus der Zeile
+   schieben - er wird abgekuerzt statt die Spalte zu sprengen. */
+.ebenen-name {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor__hilfe {
+  font-size: 0.72rem;
+  color: var(--schrift-leise);
+  margin: 0.6rem 0 0;
+  /* Der Hilfetext darf die Spalte nicht auseinanderdruecken. */
+  max-width: 100%;
+}
+
+@media (max-width: 1150px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor__leinwand {
+    position: static;
+  }
+}
+
 /* ------------------------------------------------------- Handy-Galerie */
 
-.handy {
-  height: 100vh;
-  overflow-y: auto;
-  padding: 1rem;
+/*
+ * Das Handy bekommt seine eigene Grundgroesse. Vorher erbte es die 26 px des
+ * Kiosks: "Aufs Handy laden" brach auf drei Zeilen um, von zweihundert Fotos
+ * passte eines pro Zeile, und der Hinweistext stand groesser da als der
+ * Status, um den es ging.
+ */
+html.handy-ansicht {
   font-size: 16px;
 }
 
+/* Die Seite rollt selbst, nicht ein Kasten darin. Mit einem inneren
+   Rollbereich funktioniert "zum Aktualisieren nach unten ziehen" am Handy
+   nicht - und das ist der Weg, auf dem Gaeste neue Fotos erwarten. */
+html.handy-ansicht body {
+  overflow: auto;
+}
+
+.handy {
+  min-height: 100vh;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  font-size: 1rem;
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.handy h1 {
+  font-size: 1.6rem;
+  line-height: 1.2;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.handy__unterzeile {
+  color: var(--schrift-leise);
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+/* Zwei Spalten auf dem Telefon, mehr auf dem Tablet. */
 .handy__raster {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+}
+
+.handy__kachel {
+  display: block;
+  padding: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--flaeche);
+  border: 1px solid var(--kante);
+}
+
+/* Wie am Kiosk: Seitenverhaeltnis auf dem inneren Kasten. */
+.handy__kachel img {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
+  display: block;
 }
 
 .handy__bild {
@@ -529,4 +1521,177 @@ table.liste td {
   border-radius: 0.5rem;
   display: block;
   background: var(--flaeche);
+}
+
+/* Der Hauptknopf ueber die volle Breite: Er ist der Grund, warum der Gast
+   auf dieser Seite ist. Mindestens 48 px hoch - die Grenze, ab der ein
+   Daumen auf dem Handy sicher trifft. */
+.handy__laden {
+  display: flex;
+  width: 100%;
+  min-height: 3.25rem;
+  margin-top: 0.9rem;
+  font-size: 1.1rem;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.handy__zurueck {
+  min-height: 3rem;
+  padding: 0 0.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--akzent);
+}
+
+.handy__tipp {
+  margin: 0.7rem 0 0;
+  font-size: 0.85rem;
+  color: var(--schrift-leise);
+  text-align: center;
+}
+
+.handy .statusliste {
+  margin-top: 0.5rem;
+}
+
+/* Keine Verbindung zum Server: ruhiger Hinweis ueber allem, bis er wieder
+   antwortet. Deckend genug, dass niemand die Knoepfe darunter noch antippt. */
+.verbindung {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(16, 18, 22, 0.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand-gross);
+  text-align: center;
+  padding: var(--rand-sicher);
+  /* Kurze Aussetzer (eine einzelne verlorene Abfrage) sollen nicht aufblitzen. */
+  animation: zusammensetzen-ein 200ms ease 600ms both;
+}
+
+.verbindung__titel {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.verbindung__text {
+  font-size: 1.2rem;
+  color: var(--schrift-leise);
+  margin: 0;
+}
+
+/* Der Absturzschutz: dieselbe Ruhe, falls die Oberflaeche selbst stolpert. */
+.absturz {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 2rem;
+  background: var(--grund);
+  color: var(--schrift);
+}
+
+/* Verwaltung: Liste der letzten Warnungen und Fehler. */
+.vorfaelle {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.vorfaelle__eintrag {
+  display: grid;
+  grid-template-columns: 7.5rem 7rem 1fr;
+  gap: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-left: 3px solid var(--warnung);
+  background: var(--flaeche-hell);
+  border-radius: var(--radius-klein);
+  font-size: 0.9rem;
+}
+
+.vorfaelle__eintrag--fehler {
+  border-left-color: var(--fehler);
+}
+
+.vorfaelle__zeit,
+.vorfaelle__bereich {
+  color: var(--schrift-leise);
+}
+
+/* Servicemenue-Galerie: herausgenommene Fotos bleiben sichtbar, aber gedaempft. */
+.galerie-kachel {
+  position: relative;
+}
+
+.galerie-kachel--verborgen .galerie-kachel__bild {
+  opacity: 0.35;
+}
+
+.galerie-kachel__marke {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-klein);
+  background: var(--fehler);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Handy ohne Verbindung zur Box: Hinweis oben, die Fotos bleiben stehen. */
+.handy__hinweis {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 0 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: var(--warnung);
+  color: #1b1208;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Verwaltung: Filterbibliothek. */
+.filter-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.filter-kachel img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-klein);
+  display: block;
+}
+
+/* Schlichter Textknopf, etwa das Kreuz zum Loeschen einer Voreinstellung. */
+.knopf-text {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0.15rem;
+  opacity: 0.7;
+}
+.knopf-text:hover {
+  opacity: 1;
 }

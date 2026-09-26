@@ -84,10 +84,62 @@ export interface TextEbene extends EbeneBasis {
   groesse: number;
   farbe: string;
   ausrichtung?: TextAusrichtung;
+  /**
+   * Schriftfamilie, wie sie an den Renderer und den Browser geht. Leer heisst
+   * die Vorgabe. Bei einer selbst hinzugefuegten Schrift steht hier der Name
+   * aus der Datei, nicht der Dateiname.
+   */
+  schrift?: string;
+  /**
+   * Nur bei selbst hinzugefuegten Schriften: die Datei in Fotobox-Daten/schriften.
+   * Der Startbereit-Check prueft damit, ob sie noch da ist - eine Vorlage mit
+   * verschwundener Schrift faellt sonst erst beim Druck auf.
+   */
   schriftDatei?: string;
 }
 
 export type Ebene = BildEbene | FotoEbene | TextEbene;
+
+/**
+ * Auswahlschriften fuer Textebenen.
+ *
+ * Alles Schriften, die Windows seit Jahren mitbringt - der Editor und der
+ * Renderer laufen auf demselben Rechner, also sieht der Ausdruck aus wie die
+ * Vorschau. Die Ersatzangaben dahinter sind fuer die Entwicklung unter Linux,
+ * wo die Windows-Schriften fehlen.
+ *
+ * Reicht die Liste nicht, laesst sich unter Vorlagen eine eigene Schriftdatei
+ * hinzufuegen; sie erscheint dann zusaetzlich in dieser Auswahl.
+ */
+export interface Schriftwahl {
+  /** Was in der Auswahl steht. */
+  name: string;
+  /** Was an SVG und CSS geht, mit Ersatzangaben. */
+  familie: string;
+}
+
+export const SCHRIFT_VORGABE = 'Segoe UI, DejaVu Sans, sans-serif';
+
+export const SCHRIFTEN: Schriftwahl[] = [
+  { name: 'Segoe UI (Vorgabe)', familie: SCHRIFT_VORGABE },
+  { name: 'Arial', familie: 'Arial, Liberation Sans, DejaVu Sans, sans-serif' },
+  { name: 'Verdana', familie: 'Verdana, DejaVu Sans, sans-serif' },
+  { name: 'Tahoma', familie: 'Tahoma, DejaVu Sans, sans-serif' },
+  { name: 'Trebuchet MS', familie: 'Trebuchet MS, DejaVu Sans, sans-serif' },
+  { name: 'Century Gothic', familie: 'Century Gothic, URW Gothic, DejaVu Sans, sans-serif' },
+  { name: 'Franklin Gothic', familie: 'Franklin Gothic Medium, DejaVu Sans, sans-serif' },
+  { name: 'Georgia', familie: 'Georgia, DejaVu Serif, serif' },
+  { name: 'Times New Roman', familie: 'Times New Roman, Liberation Serif, DejaVu Serif, serif' },
+  { name: 'Garamond', familie: 'Garamond, EB Garamond, DejaVu Serif, serif' },
+  { name: 'Palatino', familie: 'Palatino Linotype, Book Antiqua, DejaVu Serif, serif' },
+  { name: 'Courier New', familie: 'Courier New, Liberation Mono, DejaVu Sans Mono, monospace' },
+  { name: 'Impact', familie: 'Impact, DejaVu Sans, sans-serif' },
+  { name: 'Comic Sans MS', familie: 'Comic Sans MS, DejaVu Sans, sans-serif' },
+  { name: 'Brush Script', familie: 'Brush Script MT, DejaVu Serif, cursive' },
+  { name: 'Segoe Script', familie: 'Segoe Script, DejaVu Serif, cursive' },
+  { name: 'Segoe Print', familie: 'Segoe Print, DejaVu Sans, cursive' },
+  { name: 'Lucida Handwriting', familie: 'Lucida Handwriting, DejaVu Serif, cursive' },
+];
 
 export interface Vorlage {
   id: string;
@@ -102,14 +154,32 @@ export interface Vorlage {
 
 /** Die Anzahl der Foto-Ebenen bestimmt, wie viele Fotos aufgenommen werden. */
 export function anzahlFotos(vorlage: Vorlage): number {
-  return vorlage.ebenen.filter((e): e is FotoEbene => e.typ === 'foto').length;
+  return fotoEbenen(vorlage).length;
 }
 
-/** Foto-Ebenen in Aufnahmereihenfolge, unabhaengig von der Stapelreihenfolge. */
-export function fotoEbenen(vorlage: Vorlage): FotoEbene[] {
+/**
+ * Die Foto-Ebenen, die tatsaechlich ein Foto bekommen, in Aufnahmereihenfolge.
+ * Das k-te aufgenommene Foto landet in der k-ten Ebene dieser Liste.
+ *
+ * Ausgeblendete Foto-Ebenen zaehlen nicht mit. Vorher nahm die Box fuer sie
+ * trotzdem ein Foto auf - die Gruppe posierte fuer ein Bild, das nirgends
+ * erschien. Die eingetragene Nummer bestimmt nur die Reihenfolge: Eine Luecke
+ * (1, 3) oder eine doppelte Nummer (2, 2) liess vorher einen Platz leer
+ * beziehungsweise ein Foto verschwinden. Bei gleicher Nummer entscheidet der
+ * Stapel.
+ */
+export function fotoEbenen(vorlage: Pick<Vorlage, 'ebenen'>): FotoEbene[] {
+  const nummer = (e: FotoEbene) => (Number.isFinite(e.index) ? e.index : Number.MAX_SAFE_INTEGER);
   return vorlage.ebenen
-    .filter((e): e is FotoEbene => e.typ === 'foto')
-    .sort((a, b) => a.index - b.index);
+    .map((ebene, stapel) => ({ ebene, stapel }))
+    .filter((x): x is { ebene: FotoEbene; stapel: number } => x.ebene.typ === 'foto' && x.ebene.sichtbar !== false)
+    .sort((a, b) => nummer(a.ebene) - nummer(b.ebene) || a.stapel - b.stapel)
+    .map((x) => x.ebene);
+}
+
+/** Welche Foto-Ebene (nach ID) das wievielte Foto bekommt - 1-basiert. */
+export function fotoPlaetze(vorlage: Pick<Vorlage, 'ebenen'>): Map<string, number> {
+  return new Map(fotoEbenen(vorlage).map((ebene, i) => [ebene.id, i + 1]));
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +270,42 @@ export type EventStatus =
   | 'abgeschlossen'
   | 'archiviert';
 
+/**
+ * Erlaubte Statuswechsel. Alles andere wird abgewiesen.
+ *
+ * Steht hier und nicht im Server, damit die Verwaltung dieselben Regeln kennt:
+ * Sie kann damit nur die Wechsel anbieten, die auch durchgehen, statt den
+ * Nutzer in eine Fehlermeldung laufen zu lassen.
+ */
+export const UEBERGAENGE: Record<EventStatus, EventStatus[]> = {
+  entwurf: ['startbereit', 'archiviert'],
+  startbereit: ['aktiv', 'entwurf', 'archiviert'],
+  aktiv: ['pausiert', 'abgeschlossen'],
+  pausiert: ['aktiv', 'abgeschlossen'],
+  abgeschlossen: ['archiviert', 'aktiv'],
+  archiviert: ['entwurf'],
+};
+
+/** Was der Status im Klartext heisst - "entwurf" ist ein Datenbankwert, kein Wort fuer eine Oberflaeche. */
+export const STATUS_NAME: Record<EventStatus, string> = {
+  entwurf: 'Entwurf',
+  startbereit: 'Startbereit',
+  aktiv: 'Aktiv',
+  pausiert: 'Pausiert',
+  abgeschlossen: 'Abgeschlossen',
+  archiviert: 'Archiviert',
+};
+
+/** Die Beschriftung des Knopfes, der dorthin fuehrt - ein Wechsel ist eine Handlung, kein Zustand. */
+export const STATUS_WECHSEL: Record<EventStatus, string> = {
+  entwurf: 'Zurück in den Entwurf',
+  startbereit: 'Als startbereit markieren',
+  aktiv: 'Veranstaltung starten',
+  pausiert: 'Pause einlegen',
+  abgeschlossen: 'Veranstaltung abschließen',
+  archiviert: 'Archivieren',
+};
+
 export type Fokusverhalten = 'fest' | 'vor-jedem-foto';
 
 export interface EventEinstellungen {
@@ -253,9 +359,12 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   startUntertitel: 'Tippt auf den Knopf und los geht es!',
   farbeAkzent: '#c8963e',
   fokus: 'fest',
+  // {loeschfrist} wird durch die eingestellte Zahl von Tagen ersetzt - der Text
+  // hatte vorher "nach der Veranstaltung" versprochen, geloescht wurde aber
+  // erst nach 30 Tagen. Eine Einwilligung muss stimmen.
   einwilligungstext:
-    'Ich moechte mein Foto per E-Mail erhalten und bin damit einverstanden, ' +
-    'dass meine Adresse dafuer gespeichert und nach der Veranstaltung geloescht wird.',
+    'Ich möchte mein Foto per E-Mail bekommen. Meine Adresse wird nur dafür ' +
+    'gespeichert und spätestens {loeschfrist} Tage nach der Feier gelöscht.',
   emailLoeschfristTage: 30,
   vorlagen: [],
   filter: [FILTER_OHNE, 'schwarzweiss', 'sepia', 'warm', 'pop'],
@@ -370,6 +479,17 @@ export interface Geraeteeinstellungen {
   speicherWarnungGb: number;
   digicamcontrolPfad: string;
   sumatraPfad: string;
+  /** Postausgangsserver fuer "Foto per E-Mail". Das Passwort steht bewusst
+   *  nicht hier, sondern getrennt - es verlaesst den Server nie. */
+  mail: MailEinstellungen | null;
+}
+
+export interface MailEinstellungen {
+  host: string;
+  port: number;
+  benutzer: string;
+  /** Absenderadresse, etwa "Fotobox <fotobox@example.de>". */
+  absender: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +530,7 @@ export const STOERUNGSTEXTE: Record<Stoerung, { titel: string; folge: string; tu
   },
   'drucker-offline': {
     titel: 'Der Drucker meldet sich gerade nicht.',
-    folge: 'Dein Foto ist gespeichert. Sobald er wieder laeuft, wird gedruckt.',
+    folge: 'Dein Foto ist gespeichert. Sobald er wieder läuft, wird gedruckt.',
     tun: 'Bitte gib jemandem Bescheid, dass der Drucker aus ist.',
   },
   'drucker-klappe': {
@@ -433,4 +553,28 @@ export const STOERUNGSTEXTE: Record<Stoerung, { titel: string; folge: string; tu
     folge: 'Gleich geht es weiter.',
     tun: '',
   },
+};
+
+/**
+ * Was der Betreuer im Servicemenue zu einer Stoerung liest.
+ *
+ * Der Gast bekommt "Sag bitte jemandem Bescheid" - der Betreuer ist dieser
+ * Jemand und braucht den naechsten Handgriff, nicht die Beschreibung des
+ * Problems. Deshalb getrennte Texte fuer getrennte Leser.
+ */
+export const BETREUER_HINWEISE: Record<Stoerung, string> = {
+  'papier-leer':
+    'Neue Rolle und neues Farbband einlegen. Danach hier „Neue Rolle eingelegt" ' +
+    'und „Papier gewechselt — weiter drucken" antippen.',
+  'drucker-offline':
+    'Prüfen, ob der Drucker eingeschaltet ist und das USB-Kabel steckt. Danach ' +
+    '„Papier gewechselt — weiter drucken" antippen.',
+  'drucker-klappe':
+    'Druckerklappe öffnen, Papier gerade einlegen, Klappe fest schließen. Danach ' +
+    '„Papier gewechselt — weiter drucken" antippen.',
+  'kamera-offline':
+    'Prüfen, ob die Kamera eingeschaltet ist und das USB-Kabel steckt. Die Box ' +
+    'verbindet sich danach von selbst neu.',
+  'speicher-voll': 'Der Besitzer der Fotobox sollte Bescheid bekommen. Fotografieren geht weiter.',
+  aussetzer: 'Nichts zu tun — die Box fängt sich von selbst.',
 };

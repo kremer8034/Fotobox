@@ -12,50 +12,40 @@ Vorbereitung einer Veranstaltung eine Sache von zehn Minuten.
 
 ## Teil 1 — Software auf den PC
 
-### 1.1 Projekt holen
+### 1.1 Setup-Datei installieren
 
-Am einfachsten über Git:
+`Fotobox-Setup-<Version>.exe` von
+[github.com/kremer8034/fotobox/releases](https://github.com/kremer8034/fotobox/releases)
+laden (oder per USB-Stick mitbringen), doppelklicken, SmartScreen mit
+„Weitere Informationen → Trotzdem ausführen“ bestätigen, UAC „Ja“,
+„Installieren“.
 
-```
-git clone https://github.com/kremer8034/Fotobox.git
-cd Fotobox
-git checkout claude/fotobox-software-plan-naq4i6
-```
+Das Setup legt das Programm nach `C:\Program Files\Fotobox` (mit eigenem
+Node.js und SumatraPDF), den Datenordner nach `C:\Users\Public\Fotobox-Daten`,
+richtet den Autostart für den angemeldeten Benutzer ein, legt die
+Firewall-Freigabe für Port 8787 (nur privates Netz) an, schaltet
+Energiesparen am Netzteil ab und unterdrückt Update-Neustarts bei angemeldeten
+Benutzern. Einzelheiten: [Installation und Updates](Installation-und-Updates.md).
 
-Ohne Git: Auf GitHub oben rechts auf **Code → Download ZIP**, entpacken, und im
-entpackten Ordner weitermachen.
+**Die Box braucht dafür kein Internet.**
 
-### 1.2 Ein Skript, das den Rest erledigt
+### 1.2 Zusatzprogramm digiCamControl
 
-Rechtsklick auf `windows\Installieren.ps1` → **Mit PowerShell ausführen**.
-Beim ersten Mal am besten als Administrator, dann wird auch die
-Firewall-Freigabe gleich mit angelegt.
-
-Das Skript prüft Node.js (und installiert es bei Bedarf über winget), holt die
-Abhängigkeiten, baut die Oberfläche, lässt die Tests laufen, legt den
-Datenordner an, sucht digiCamControl, SumatraPDF und den DNP-Drucker und
-richtet den Autostart ein.
-
-**Dafür braucht der PC einmalig Internet.** Danach nie wieder.
-
-Meldet das Skript fehlende Zusatzprogramme, hole sie nach:
+Das einzige, was das Setup nicht mitbringt:
 
 | Programm | Wofür | Woher |
 |---|---|---|
 | digiCamControl | Kamera auslösen und Live-View | digicamcontrol.com/download |
-| SumatraPDF | dialogfrei drucken | sumatrapdfreader.org (portable Fassung genügt) |
 
-Die portable SumatraPDF-Datei kannst du einfach nach `windows\SumatraPDF.exe`
-legen — dort sucht die Software von selbst.
+Fehlt es, bietet die letzte Seite des Setups den Download an.
 
 ### 1.3 Läuft es?
 
-```
-windows\Fotobox starten.bat
-```
-
-Dann `windows\Fotobox oeffnen.bat` — die Verwaltung muss erscheinen. Wenn ja,
-ist die Software fertig und der Rest ist Hardware.
+Nach „Fertigstellen“ öffnet sich die Verwaltung im Browser. Als Erstes unter
+**Gerät** die Besitzer-PIN setzen — ab dem nächsten Windows-Start geht der
+Kiosk im Vollbild auf. Unter *Gerät → Software* steht die installierte
+Version. Wenn die Verwaltung erscheint, ist die Software fertig und der Rest
+ist Hardware.
 
 ---
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 
 interface Geraet {
@@ -8,6 +8,8 @@ interface Geraet {
   digicamcontrolPfad: string;
   speicherWarnungGb: number;
   besitzerPinGesetzt: boolean;
+  mail: Mail | null;
+  mailPasswortGesetzt: boolean;
   lanAdresse: string | null;
   hardware: string;
   kamera: { iso: string; blende: string; verschlusszeit: string };
@@ -18,6 +20,19 @@ interface Geraet {
     skalierungYProzent: number;
   };
 }
+
+interface Mail {
+  host: string;
+  port: number;
+  benutzer: string;
+  absender: string;
+}
+
+const KAMERA_BESCHRIFTUNG = {
+  iso: 'ISO',
+  blende: 'Blende',
+  verschlusszeit: 'Verschlusszeit',
+} as const;
 
 /**
  * Geraeteeinstellungen.
@@ -154,7 +169,9 @@ export function GeraetSeite() {
         <div className="zeile">
           {(['iso', 'blende', 'verschlusszeit'] as const).map((feld) => (
             <div className="feld feld--klein" key={feld}>
-              <label>{feld}</label>
+              {/* Die Schluesselnamen standen vorher unveraendert als Beschriftung
+                  auf dem Schirm - "iso" und "verschlusszeit" klein geschrieben. */}
+              <label>{KAMERA_BESCHRIFTUNG[feld]}</label>
               <input
                 value={geraet.kamera[feld]}
                 onChange={(e) => setzeGeraet({ ...geraet, kamera: { ...geraet.kamera, [feld]: e.target.value } })}
@@ -176,7 +193,13 @@ export function GeraetSeite() {
         <div className="zeile">
           <div className="feld feld--klein">
             <label>Neue PIN (4–8 Ziffern)</label>
-            <input value={pin} onChange={(e) => setzePin(e.target.value)} />
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="new-password"
+              value={pin}
+              onChange={(e) => setzePin(e.target.value)}
+            />
           </div>
           <button
             className="knopf knopf--neben"
@@ -187,6 +210,14 @@ export function GeraetSeite() {
           </button>
         </div>
       </div>
+
+      <MailKarte
+        mail={geraet.mail}
+        passwortGesetzt={geraet.mailPasswortGesetzt}
+        beiSpeichern={(teil) => speichere(teil)}
+      />
+
+      <SoftwareKarte />
 
       <div className="karte">
         <h2>Speicher</h2>
@@ -221,6 +252,109 @@ export function GeraetSeite() {
   }
 }
 
+/**
+ * Der Postausgangsserver fuer "Foto per E-Mail".
+ *
+ * Das Passwortfeld ist immer leer: Das gespeicherte Passwort verlaesst den
+ * Server nie, auch nicht in die Verwaltung. Leer lassen heisst "unveraendert".
+ */
+function MailKarte({
+  mail,
+  passwortGesetzt,
+  beiSpeichern,
+}: {
+  mail: Mail | null;
+  passwortGesetzt: boolean;
+  beiSpeichern: (teil: Record<string, unknown>) => Promise<void>;
+}) {
+  const [entwurf, setzeEntwurf] = useState<Mail>(
+    mail ?? { host: '', port: 587, benutzer: '', absender: '' },
+  );
+  const [passwort, setzePasswort] = useState('');
+  const [testAn, setzeTestAn] = useState('');
+  const [ergebnis, setzeErgebnis] = useState<string | null>(null);
+  const feld = (name: keyof Mail, text: string, art = 'text') => (
+    <div className="feld">
+      <label>{text}</label>
+      <input
+        type={art}
+        value={entwurf[name]}
+        onChange={(e) =>
+          setzeEntwurf({ ...entwurf, [name]: art === 'number' ? Number(e.target.value) : e.target.value })
+        }
+      />
+    </div>
+  );
+
+  return (
+    <div className="karte">
+      <h2>E-Mail-Versand</h2>
+      <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+        Nötig für „Foto per E-Mail". Nimm ein <strong>eigenes Konto für die Fotobox</strong> und
+        dort ein <strong>App-Passwort</strong> — nie das Passwort deines privaten Postfachs: Es liegt
+        auf der Box. Die Verbindung ist immer verschlüsselt (Port 465 oder 587).
+      </p>
+      <div className="zeile">
+        {feld('host', 'Postausgangsserver, etwa smtp.gmail.com')}
+        {feld('port', 'Port', 'number')}
+      </div>
+      <div className="zeile">
+        {feld('benutzer', 'Benutzername')}
+        <div className="feld">
+          <label>Passwort {passwortGesetzt ? '(gespeichert — leer lassen zum Behalten)' : ''}</label>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={passwort}
+            onChange={(e) => setzePasswort(e.target.value)}
+          />
+        </div>
+      </div>
+      {feld('absender', 'Absender, etwa Fotobox <fotobox@example.de>')}
+      <div className="zeile">
+        <button
+          className="knopf"
+          disabled={!entwurf.host || !entwurf.absender}
+          onClick={() =>
+            void beiSpeichern({ mail: entwurf, ...(passwort ? { mailPasswort: passwort } : {}) }).then(() =>
+              setzePasswort(''),
+            )
+          }
+        >
+          Speichern
+        </button>
+        {mail && (
+          <button className="knopf knopf--neben" onClick={() => void beiSpeichern({ mail: null })}>
+            Zugang entfernen
+          </button>
+        )}
+      </div>
+      {mail && (
+        <div className="zeile" style={{ marginTop: '1rem' }}>
+          <div className="feld">
+            <label>Testmail an</label>
+            <input type="email" value={testAn} onChange={(e) => setzeTestAn(e.target.value)} />
+          </div>
+          <button className="knopf knopf--neben" disabled={!testAn} onClick={() => void testmail()}>
+            Testmail senden
+          </button>
+        </div>
+      )}
+      {ergebnis && <p style={{ marginBottom: 0 }}>{ergebnis}</p>}
+    </div>
+  );
+
+  async function testmail() {
+    setzeErgebnis('Wird verschickt …');
+    try {
+      await api.sende('/api/admin/geraet/testmail', { an: testAn });
+      setzeErgebnis('Die Testmail ist raus. Schau ins Postfach.');
+    } catch (fehler) {
+      setzeErgebnis(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
+  }
+}
+
 function Wert({
   name,
   wert,
@@ -249,4 +383,167 @@ function Wert({
       />
     </div>
   );
+}
+
+interface UpdateInfo {
+  aktuell: string;
+  neueste: string | null;
+  neuerVerfuegbar: boolean;
+  titel: string | null;
+  hinweise: string | null;
+  veroeffentlicht: string | null;
+  setup: { name: string; groesse: number } | null;
+}
+
+interface UpdateStand {
+  phase: 'bereit' | 'laedt' | 'prueft' | 'startet' | 'gestartet' | 'simuliert' | 'fehler';
+  version: string | null;
+  geladen: number;
+  gesamt: number;
+  meldung: string | null;
+  aktuell: string;
+}
+
+/**
+ * Software-Update. Gesucht und installiert wird nur auf Knopfdruck; die Box
+ * schaut nie von selbst nach. Ohne Internet geht dasselbe per USB-Stick: die
+ * Setup-Datei der neuen Version auf der Box starten.
+ */
+function SoftwareKarte() {
+  const [stand, setzeStand] = useState<UpdateStand | null>(null);
+  const [info, setzeInfo] = useState<UpdateInfo | null>(null);
+  const [meldung, setzeMeldung] = useState<string | null>(null);
+  const [sucht, setzeSucht] = useState(false);
+  // Mit welcher Version das Update begann - daran erkennt die Seite, dass die
+  // neue Version laeuft.
+  const vorher = useRef<string | null>(null);
+  const [beobachten, setzeBeobachten] = useState(false);
+
+  useEffect(() => {
+    void api.hole<UpdateStand>('/api/admin/update/stand').then((s) => {
+      setzeStand(s);
+      if (['laedt', 'prueft', 'startet', 'gestartet'].includes(s.phase)) {
+        vorher.current = s.aktuell;
+        setzeBeobachten(true);
+      }
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!beobachten) return;
+    const uhr = setInterval(() => {
+      api
+        .hole<UpdateStand>('/api/admin/update/stand')
+        .then((s) => {
+          setzeStand(s);
+          if (vorher.current && s.aktuell !== vorher.current) {
+            setzeMeldung(`Fertig - die Fotobox läuft jetzt mit Version ${s.aktuell}.`);
+            setzeInfo(null);
+            setzeBeobachten(false);
+          } else if (s.phase === 'fehler' || s.phase === 'simuliert') {
+            setzeBeobachten(false);
+          }
+        })
+        // Keine Antwort: Der Installer hat den Server beendet und tauscht
+        // gerade die Dateien aus.
+        .catch(() => setzeMeldung('Die Fotobox wird gerade aktualisiert und startet gleich neu …'));
+    }, 1500);
+    return () => clearInterval(uhr);
+  }, [beobachten]);
+
+  const laeuft = stand !== null && ['laedt', 'prueft', 'startet'].includes(stand.phase);
+  const prozent = stand && stand.gesamt > 0 ? Math.min(100, Math.round((stand.geladen / stand.gesamt) * 100)) : 0;
+
+  return (
+    <div className="karte">
+      <h2>Software</h2>
+      <p style={{ marginTop: 0 }}>
+        Installiert: <strong>Version {stand?.aktuell ?? '…'}</strong>
+      </p>
+      <div className="zeile">
+        <button className="knopf knopf--neben" disabled={sucht || laeuft} onClick={() => void suche()}>
+          {sucht ? 'Suche …' : 'Nach Updates suchen'}
+        </button>
+      </div>
+
+      {info && !info.neuerVerfuegbar && (
+        <p>{info.neueste ? `Das ist die neueste Version (${info.neueste}).` : 'Es ist noch keine Version veröffentlicht.'}</p>
+      )}
+
+      {info?.neuerVerfuegbar && (
+        <div style={{ marginTop: '0.8rem' }}>
+          <p style={{ margin: 0 }}>
+            <strong>Version {info.neueste}</strong> ist verfügbar
+            {info.veroeffentlicht && ` (veröffentlicht am ${new Date(info.veroeffentlicht).toLocaleDateString('de-DE')})`}
+            {info.setup && `, ${Math.round(info.setup.groesse / 1024 / 1024)} MB`}.
+          </p>
+          {info.hinweise && (
+            <pre
+              style={{
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'inherit',
+                fontSize: '0.82rem',
+                maxHeight: '12rem',
+                overflow: 'auto',
+                background: 'var(--flaeche-2, rgba(127,127,127,0.1))',
+                padding: '0.6rem',
+                borderRadius: '0.4rem',
+              }}
+            >
+              {info.hinweise}
+            </pre>
+          )}
+          <button className="knopf" disabled={laeuft || beobachten} onClick={() => void installiere()}>
+            Jetzt installieren
+          </button>
+        </div>
+      )}
+
+      {stand && stand.phase === 'laedt' && <p>Wird geladen … {prozent} %</p>}
+      {stand && stand.phase === 'prueft' && <p>Prüfsumme wird kontrolliert …</p>}
+      {stand && ['gestartet', 'simuliert', 'fehler'].includes(stand.phase) && stand.meldung && !meldung && (
+        <p style={{ color: stand.phase === 'fehler' ? 'var(--fehler, #c33)' : undefined }}>{stand.meldung}</p>
+      )}
+      {meldung && <p>{meldung}</p>}
+
+      <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)', marginBottom: 0 }}>
+        Ohne Internet: die Datei „Fotobox-Setup-…exe“ der neuen Version per USB-Stick auf die Box bringen und
+        doppelklicken. Fotos, Veranstaltungen und Einstellungen bleiben dabei erhalten; die Datenbank wird
+        vorher gesichert.
+      </p>
+    </div>
+  );
+
+  async function suche() {
+    setzeSucht(true);
+    setzeMeldung(null);
+    try {
+      setzeInfo(await api.sende<UpdateInfo>('/api/admin/update/pruefen', {}));
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Die Suche hat nicht geklappt.');
+    } finally {
+      setzeSucht(false);
+    }
+  }
+
+  async function installiere() {
+    if (
+      !window.confirm(
+        `Version ${info?.neueste} jetzt installieren?\n\n` +
+          'Die Fotobox wird dafür kurz beendet (Kiosk und Server) und startet danach von selbst neu. ' +
+          'Windows fragt einmal nach Administratorrechten - bitte mit „Ja“ bestätigen.\n\n' +
+          'Nicht während einer laufenden Feier.',
+      )
+    ) {
+      return;
+    }
+    setzeMeldung(null);
+    try {
+      vorher.current = stand?.aktuell ?? null;
+      await api.sende('/api/admin/update/installieren', {});
+      setzeBeobachten(true);
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Das Update ließ sich nicht starten.');
+    }
+  }
 }

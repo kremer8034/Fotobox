@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import sharp from 'sharp';
 import { holeDb, jetzt } from '../db/index.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { wendeFilterAn } from '../bild/filter.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
+import { miniatur } from '../bild/vorschau.js';
 import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
 import { holeVorlage } from './vorlagen.js';
@@ -23,6 +24,96 @@ import { fotoEbenen, type Ausgabe, type Veranstaltung, type Vorlage } from '../.
 /** Arbeitsgroesse: lange Kante 2000 px reicht fuer 300 dpi auf 10x15 und fuer
  *  den Handy-Download. Der Filter laeuft NACH dem Verkleinern. */
 const ARBEITSGROESSE = 2000;
+
+/*
+ * Vorverkleinern, solange der Gast noch schaut.
+ *
+ * Ein 18-Megapixel-Original zu dekodieren und auf Arbeitsgroesse zu bringen,
+ * ist der teuerste Einzelschritt der ganzen Pipeline - gemessen rund eine
+ * Viertelsekunde je Foto, auf dem N100 eher eine halbe. Bisher geschah das
+ * dreimal hintereinander NACH dem Filter-Tipp, waehrend der Gast wartete.
+ *
+ * Jetzt beginnt es, sobald ein Foto verbucht ist - in den zwei Sekunden, in
+ * denen der Gast es zur Bestaetigung sieht, und im Bereitmachen fuer das
+ * naechste. Bis er einen Filter waehlt, liegen alle Fotos laengst klein im
+ * Speicher. Dieselbe Fassung speist die Filtervorschau, die bisher fuenfmal
+ * das volle Original las.
+ */
+interface Vorbereitet {
+  pfad: string;
+  arbeitsbild: Promise<Buffer>;
+}
+const vorbereitet = new Map<string, Vorbereitet>();
+const vorschauBasen = new Map<string, Promise<Buffer | null>>();
+/** Obergrenze fuer Sitzungen, die nie sauber endeten - etwa nach einem Absturz des Browsers. */
+const HOECHSTENS_VORBEREITET = 24;
+
+function verkleinere(pfad: string): Promise<Buffer> {
+  return sharp(pfad)
+    .rotate()
+    .resize(ARBEITSGROESSE, ARBEITSGROESSE, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+function bereiteVor(sitzungId: string, ebeneIndex: number, pfad: string): void {
+  const arbeitsbild = verkleinere(pfad);
+  // Ein Fehler hier ist nicht endgueltig: arbeitsbild() versucht es beim
+  // Fertigstellen noch einmal direkt vom Original.
+  arbeitsbild.catch(() => undefined);
+  if (vorbereitet.size >= HOECHSTENS_VORBEREITET) {
+    vorbereitet.delete(vorbereitet.keys().next().value!);
+  }
+  vorbereitet.set(`${sitzungId}:${ebeneIndex}`, { pfad, arbeitsbild });
+}
+
+async function arbeitsbild(sitzungId: string, ebeneIndex: number, pfad: string): Promise<Buffer> {
+  const eintrag = vorbereitet.get(`${sitzungId}:${ebeneIndex}`);
+  if (eintrag && eintrag.pfad === pfad) {
+    try {
+      return await eintrag.arbeitsbild;
+    } catch {
+      // weiter unten neu
+    }
+  }
+  return verkleinere(pfad);
+}
+
+function vergiss(sitzungId: string): void {
+  for (const schluessel of vorbereitet.keys()) {
+    if (schluessel.startsWith(`${sitzungId}:`)) vorbereitet.delete(schluessel);
+  }
+  vorschauBasen.delete(sitzungId);
+}
+
+/**
+ * Das erste Foto der Sitzung als kleine Kachel - die Grundlage der
+ * Filtervorschau. Einmal je Sitzung gerechnet, nicht einmal je Filter.
+ */
+export function vorschauBasis(sitzungId: string): Promise<Buffer | null> {
+  const vorhanden = vorschauBasen.get(sitzungId);
+  if (vorhanden) return vorhanden;
+
+  const zeile = holeDb()
+    .prepare(
+      'SELECT ebene_index, pfad_original FROM fotos WHERE sitzung_id = ? ORDER BY ebene_index LIMIT 1',
+    )
+    .get(sitzungId) as { ebene_index: number; pfad_original: string } | undefined;
+  if (!zeile) return Promise.resolve(null);
+
+  const basis = arbeitsbild(sitzungId, zeile.ebene_index, zeile.pfad_original)
+    .then((bild) => miniatur(bild))
+    .catch(() => {
+      // Nicht als endgueltig merken: Die naechste Kachel versucht es erneut.
+      vorschauBasen.delete(sitzungId);
+      return null;
+    });
+  if (vorschauBasen.size >= HOECHSTENS_VORBEREITET) {
+    vorschauBasen.delete(vorschauBasen.keys().next().value!);
+  }
+  vorschauBasen.set(sitzungId, basis);
+  return basis;
+}
 
 export interface SitzungZustand {
   id: string;
@@ -62,6 +153,7 @@ export function brichSitzungAb(sitzungId: string): void {
   // Die bereits gemachten Fotos bleiben im Ordner; nur die Sitzung wird
   // beendet, damit die Box wieder frei ist.
   holeDb().prepare('UPDATE sitzungen SET beendet = ? WHERE id = ?').run(jetzt(), sitzungId);
+  vergiss(sitzungId);
 }
 
 /**
@@ -82,13 +174,47 @@ export async function verbucheFoto(
   const ziel = join(pfade.originale, zielName);
   if (quellPfad !== ziel) await verschiebe(quellPfad, ziel);
 
-  holeDb()
-    .prepare(
+  const db = holeDb();
+  db.transaction(() => {
+    // Ein Platz, ein Foto. Kam die Antwort auf ein gelungenes Foto nicht beim
+    // Kiosk an und er loeste noch einmal aus, stand der Platz sonst doppelt in
+    // der Datenbank - und beim Fertigstellen schrieben zwei Durchlaeufe
+    // gleichzeitig in dieselbe Datei.
+    db.prepare('DELETE FROM fotos WHERE sitzung_id = ? AND ebene_index = ?').run(sitzung.id, ebeneIndex);
+    db.prepare(
       'INSERT INTO fotos (id, sitzung_id, ebene_index, pfad_original, pfad_bearbeitet) VALUES (?, ?, ?, ?, NULL)',
-    )
-    .run(randomUUID(), sitzung.id, ebeneIndex, ziel);
+    ).run(randomUUID(), sitzung.id, ebeneIndex, ziel);
+  })();
 
+  bereiteVor(sitzung.id, ebeneIndex, ziel);
   return ziel;
+}
+
+/** Wie viele verschiedene Plaetze der Sitzung schon ein Foto haben. */
+export function zahlDerFotos(sitzungId: string): number {
+  return (
+    holeDb().prepare('SELECT COUNT(DISTINCT ebene_index) AS n FROM fotos WHERE sitzung_id = ?').get(sitzungId) as {
+      n: number;
+    }
+  ).n;
+}
+
+/**
+ * Das eben gemachte Foto fuer "So sieht es aus!" - in Bildschirmgroesse, aus
+ * der ohnehin vorbereiteten Arbeitsfassung.
+ *
+ * Vorher zeigte die Bestaetigung ein Standbild des Live-Views, also das, was
+ * die Kamera eine Sekunde NACH dem Ausloesen sah: Die Gruppe beim
+ * Auseinandergehen, bei der 600D oft gar nichts, weil der Live-View nach der
+ * Aufnahme erst wieder anlaeuft. Das eigentliche Foto bekam niemand zu sehen.
+ */
+export async function bestaetigungsbild(sitzungId: string, ebeneIndex: number): Promise<Buffer | null> {
+  const zeile = holeDb()
+    .prepare('SELECT pfad_original FROM fotos WHERE sitzung_id = ? AND ebene_index = ?')
+    .get(sitzungId, ebeneIndex) as { pfad_original: string } | undefined;
+  if (!zeile) return null;
+  const bild = await arbeitsbild(sitzungId, ebeneIndex, zeile.pfad_original);
+  return sharp(bild).resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
 }
 
 /**
@@ -114,25 +240,28 @@ export async function stelleFertig(
     .prepare('SELECT id, ebene_index, pfad_original FROM fotos WHERE sitzung_id = ? ORDER BY ebene_index')
     .all(sitzung.id) as { id: string; ebene_index: number; pfad_original: string }[];
 
+  // Alle Fotos gleichzeitig: sharp rechnet ohnehin in eigenen Threads, und
+  // der N100 hat vier Kerne, die sonst nacheinander auf einen warteten.
   const fotos = new Map<number, Buffer>();
-  for (const zeile of zeilen) {
-    const original = await readFile(zeile.pfad_original);
-    // Erst verkleinern, dann filtern: Damit rechnet auch eine 3D-LUT ueber
-    // wenige hunderttausend Pixel statt ueber achtzehn Millionen.
-    const verkleinert = await sharp(original)
-      .rotate()
-      .resize(ARBEITSGROESSE, ARBEITSGROESSE, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 92 })
-      .toBuffer();
-    const gefiltert = await wendeFilterAn(verkleinert, preset, { lutOrdner: kontext.lutOrdner });
+  try {
+    await Promise.all(
+      zeilen.map(async (zeile) => {
+        // Erst verkleinern, dann filtern: Damit rechnet auch eine 3D-LUT ueber
+        // wenige hunderttausend Pixel statt ueber achtzehn Millionen.
+        const verkleinert = await arbeitsbild(sitzung.id, zeile.ebene_index, zeile.pfad_original);
+        const gefiltert = await wendeFilterAn(verkleinert, preset, { lutOrdner: kontext.lutOrdner });
 
-    const bearbeitetPfad = join(pfade.bearbeitet, `${sitzung.id}_${zeile.ebene_index}.jpg`);
-    await writeFile(bearbeitetPfad, gefiltert);
-    holeDb()
-      .prepare('UPDATE fotos SET pfad_bearbeitet = ? WHERE id = ?')
-      .run(bearbeitetPfad, zeile.id);
+        const bearbeitetPfad = join(pfade.bearbeitet, `${sitzung.id}_${zeile.ebene_index}.jpg`);
+        await writeFile(bearbeitetPfad, gefiltert);
+        holeDb()
+          .prepare('UPDATE fotos SET pfad_bearbeitet = ? WHERE id = ?')
+          .run(bearbeitetPfad, zeile.id);
 
-    fotos.set(zeile.ebene_index, gefiltert);
+        fotos.set(zeile.ebene_index, gefiltert);
+      }),
+    );
+  } finally {
+    vergiss(sitzung.id);
   }
 
   const layout = await baueLayout(
@@ -188,38 +317,50 @@ export function platzhalterFuer(event: Veranstaltung): Record<string, string> {
   };
 }
 
-/** Fertige Layouts einer Veranstaltung - das ist der Galerie-Inhalt. */
-export function galerieEintraege(eventId: string): {
+/**
+ * Fertige Layouts einer Veranstaltung - das ist der Galerie-Inhalt. Aus der
+ * Galerie genommene Bilder fehlen, ausser fuer das Servicemenue, das sie zum
+ * Zurueckholen braucht.
+ */
+export function galerieEintraege(
+  eventId: string,
+  optionen: { mitVerborgenen?: boolean } = {},
+): {
   ausgabeId: string;
   sitzungId: string;
   pfadLayout: string;
   erstellt: string;
+  verborgen: boolean;
 }[] {
   const zeilen = holeDb()
     .prepare(
-      `SELECT a.id AS ausgabe_id, a.sitzung_id, a.pfad_layout, a.erstellt
+      `SELECT a.id AS ausgabe_id, a.sitzung_id, a.pfad_layout, a.erstellt, a.verborgen
          FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id
-        WHERE s.event_id = ? AND s.ist_test = 0
+        WHERE s.event_id = ? AND s.ist_test = 0 AND (a.verborgen = 0 OR ?)
         ORDER BY a.erstellt DESC`,
     )
-    .all(eventId) as {
+    .all(eventId, optionen.mitVerborgenen ? 1 : 0) as {
     ausgabe_id: string;
     sitzung_id: string;
     pfad_layout: string;
     erstellt: string;
+    verborgen: number;
   }[];
   return zeilen.map((z) => ({
     ausgabeId: z.ausgabe_id,
     sitzungId: z.sitzung_id,
     pfadLayout: z.pfad_layout,
     erstellt: z.erstellt,
+    verborgen: z.verborgen === 1,
   }));
 }
 
-export function holeAusgabe(id: string): (Ausgabe & { eventId: string }) | null {
+export function holeAusgabe(
+  id: string,
+): (Ausgabe & { eventId: string; istTest: boolean; verborgen: boolean }) | null {
   const zeile = holeDb()
     .prepare(
-      `SELECT a.*, s.event_id FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id WHERE a.id = ?`,
+      `SELECT a.*, s.event_id, s.ist_test FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id WHERE a.id = ?`,
     )
     .get(id) as
     | {
@@ -229,6 +370,8 @@ export function holeAusgabe(id: string): (Ausgabe & { eventId: string }) | null 
         pfad_druck_pdf: string | null;
         erstellt: string;
         event_id: string;
+        ist_test: number;
+        verborgen: number;
       }
     | undefined;
   if (!zeile) return null;
@@ -239,7 +382,21 @@ export function holeAusgabe(id: string): (Ausgabe & { eventId: string }) | null 
     pfadDruckPdf: zeile.pfad_druck_pdf,
     erstellt: zeile.erstellt,
     eventId: zeile.event_id,
+    istTest: zeile.ist_test === 1,
+    verborgen: zeile.verborgen === 1,
   };
+}
+
+/**
+ * Ein Bild aus der Galerie nehmen oder zurueckholen - etwa ein Foto, das dem
+ * Gastgeber nicht gefaellt. Es verschwindet von den Handys und vom
+ * Touchscreen; die Dateien bleiben im Ordner und gehen mit der Uebergabe mit.
+ */
+export function setzeVerborgen(ausgabeId: string, verborgen: boolean): boolean {
+  return (
+    holeDb().prepare('UPDATE ausgaben SET verborgen = ? WHERE id = ?').run(verborgen ? 1 : 0, ausgabeId)
+      .changes > 0
+  );
 }
 
 /**

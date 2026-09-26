@@ -4,14 +4,14 @@ Diese Anleitung setzt keinerlei Computerkenntnisse voraus. Jeder Schritt sagt,
 was du tun sollst und was danach zu sehen sein muss. Wenn etwas anders aussieht
 als beschrieben, steht am Ende jedes Teils, was dann zu tun ist.
 
-**Zeit:** Für Teil A rechne mit 20 bis 30 Minuten. Teil B bis D dauern noch
+**Zeit:** Für Teil A rechne mit 10 Minuten. Teil B bis D dauern noch
 einmal ein bis zwei Stunden. Danach ist die Vorbereitung einer Veranstaltung
 eine Sache von zehn Minuten.
 
 **Das brauchst du:**
 
 - den Fotobox-PC mit Windows 10 oder 11
-- eine Internetverbindung — **nur für die Installation**, danach nie wieder
+- die Setup-Datei `Fotobox-Setup-….exe` (aus dem Internet oder per USB-Stick)
 - die Canon EOS 600D mit USB-Kabel und Netzteil
 - den DNP-Drucker mit USB-Kabel
 - etwa 20 Blatt Papier zum Testen
@@ -20,104 +20,58 @@ eine Sache von zehn Minuten.
 
 # Teil A — Die Software auf den PC bringen
 
-## Schritt 1: Die Dateien herunterladen
+## Schritt 1: Die Setup-Datei herunterladen
 
 1. Öffne am Fotobox-PC den Browser (Edge oder Chrome).
 2. Gib diese Adresse ein:
-   `https://github.com/kremer8034/Fotobox`
-3. Oben rechts über der Dateiliste ist ein grüner Knopf **„Code"**. Klicke ihn an.
-4. Im aufklappenden Menü klickst du auf **„Download ZIP"**.
-5. Der Browser lädt eine Datei namens `Fotobox-main.zip` herunter, meist in den
-   Ordner **Downloads**.
+   `https://github.com/kremer8034/fotobox/releases`
+3. Beim obersten Eintrag (der neuesten Version) steht unten **„Assets“**.
+   Klicke dort auf **`Fotobox-Setup-1.0.0.exe`** (die Nummer kann höher sein).
+4. Der Browser lädt die Datei in den Ordner **Downloads**. Fragt er nach, ob du
+   die Datei behalten willst: **„Behalten“**.
 
-> **Wichtig, sonst geht es später schief:** Der Branch mit der fertigen
-> Software heißt `claude/fotobox-software-plan-naq4i6`. Wenn oben links über
-> der Dateiliste ein Knopf mit einem anderen Namen steht (z. B. `main`),
-> klicke ihn an und wähle den Branch mit `fotobox-software-plan` im Namen aus.
-> **Erst danach** auf „Code → Download ZIP".
+Die Datei ohne Internet an der Box? Lade sie an einem anderen PC herunter und
+bring sie per USB-Stick mit — sie enthält alles, was die Box braucht.
 
-## Schritt 2: Die Sperre von Windows aufheben
+## Schritt 2: Die Setup-Datei starten
 
-Windows markiert alles, was aus dem Internet kommt, als „gesperrt". Wenn du das
-nicht aufhebst, verweigert der Rechner später den Start.
+Doppelklick auf `Fotobox-Setup-1.0.0.exe`. Jetzt kommen zwei Fragen von Windows:
 
-1. Öffne den Ordner **Downloads**.
-2. Klicke die Datei `Fotobox-main.zip` mit der **rechten** Maustaste an.
-3. Wähle ganz unten **„Eigenschaften"**.
-4. Unten im Fenster steht eventuell ein Kästchen **„Zulassen"** oder
-   **„Blockierung aufheben"**. Setze dort einen Haken.
-5. Klicke auf **„OK"**.
+**a) „Der Computer wurde durch Windows geschützt“** (blaues Fenster)
+- Klicke auf den kleinen Text **„Weitere Informationen“**.
+- Klicke dann auf **„Trotzdem ausführen“**.
 
-Steht dort kein solches Kästchen, ist alles in Ordnung — weiter.
+Das erscheint, weil die Datei nicht mit einem gekauften Zertifikat signiert
+ist — nicht, weil etwas nicht stimmt.
 
-## Schritt 3: Auspacken
+**b) „Möchten Sie zulassen, dass durch diese App Änderungen …“**
+- Klicke auf **„Ja“**.
 
-1. Klicke die ZIP-Datei mit der **rechten** Maustaste an.
-2. Wähle **„Alle extrahieren…"**.
-3. Klicke auf **„Extrahieren"**.
-4. Es öffnet sich ein Ordner. Darin liegt ein weiterer Ordner, der ebenfalls
-   „Fotobox" heißt (mit einem Zusatz). **Öffne ihn mit einem Doppelklick.**
+## Schritt 3: Durch den Assistenten klicken
 
-Du bist am richtigen Ort, wenn du hier unter anderem Folgendes siehst:
-`README.md`, `package.json` und einen Ordner namens `windows`.
+1. **„Weiter“**.
+2. Den Ordner vorschlagen lassen (`C:\Program Files\Fotobox`) → **„Weiter“**.
+3. Den Haken **„Verknüpfungen auf dem Desktop anlegen“** setzen → **„Weiter“**.
+4. **„Installieren“**. Das dauert etwa eine Minute.
 
-## Schritt 4: Den Ordner an einen guten Platz legen
+## Schritt 4: Fertigstellen
 
-Der Ordner sollte nicht in „Downloads" bleiben.
+Auf der letzten Seite stehen ein oder zwei Haken:
 
-1. Gehe einen Ordner zurück, bis du den Fotobox-Ordner als Ganzes siehst.
-2. Klicke ihn an und drücke **Strg + X** (ausschneiden).
-3. Öffne im linken Bereich **„Dieser PC"** und dort das Laufwerk **C:**.
-4. Drücke **Strg + V** (einfügen).
+- **„Fotobox starten und die Verwaltung öffnen“** — angehakt lassen.
+- **„digiCamControl herunterladen“** — erscheint nur, wenn das Kameraprogramm
+  noch fehlt. Haken setzen, dann öffnet sich gleich die Download-Seite
+  (siehe Schritt 5).
 
-Der Ordner liegt jetzt unter `C:\Fotobox-main` oder ähnlich. Öffne ihn.
+Klicke auf **„Fertigstellen“**. Nach ein paar Sekunden öffnet sich der Browser
+mit einer dunklen Seite: links oben **„Fotobox“**, darunter Übersicht,
+Veranstaltungen, Vorlagen, Filter und Gerät. **Das ist die Verwaltung — die
+Software ist installiert.**
 
-## Schritt 5: Die Installation starten
+## Schritt 5: digiCamControl (für die Kamera)
 
-1. Öffne im Fotobox-Ordner den Unterordner **`windows`**.
-2. Mache einen **Doppelklick** auf die Datei **`Installieren`**
-   (sie hat ein Zahnrad-Symbol und ist vom Typ „Windows-Batchdatei").
-
-Jetzt passieren nacheinander drei Dinge:
-
-**a) Windows warnt vor unbekannter Software.**
-Es erscheint ein blaues Fenster: *„Der Computer wurde durch Windows geschützt"*.
-- Klicke auf den kleinen Text **„Weitere Informationen"**.
-- Klicke dann auf **„Trotzdem ausführen"**.
-
-**b) Windows fragt nach Administratorrechten.**
-Es erscheint ein Fenster mit der Frage, ob Änderungen zugelassen werden sollen.
-- Klicke auf **„Ja"**.
-
-**c) Ein schwarzes Fenster öffnet sich und arbeitet.**
-Das ist normal. Es lädt Bausteine aus dem Internet, das dauert je nach
-Verbindung **5 bis 15 Minuten**. Zwischendurch sieht es aus, als würde nichts
-passieren — bitte einfach warten und das Fenster nicht schließen.
-
-## Schritt 6: Das Ergebnis lesen
-
-Wenn das schwarze Fenster fertig ist, steht am Ende ein Kasten:
-
-```
-============================================
- Fertig. So geht es weiter:
-============================================
-```
-
-Scrolle im Fenster **nach oben** und suche nach gelben Zeilen. Gelb heißt:
-„Das fehlt noch." Grün heißt: „Alles gut."
-
-Wahrscheinlich stehen dort zwei gelbe Hinweise — die beiden Zusatzprogramme aus
-dem nächsten Schritt. Das ist normal.
-
-Drücke eine Taste, um das Fenster zu schließen.
-
-## Schritt 7: Die zwei Zusatzprogramme
-
-Die Fotobox braucht zwei fremde Programme. Ohne sie löst die Kamera nicht aus
-und der Drucker druckt nicht.
-
-### digiCamControl (für die Kamera)
+Die Fotobox braucht ein fremdes Programm, um die Kamera zu steuern. Das Setup
+darf es nicht mitbringen, deshalb einmal von Hand:
 
 1. Öffne im Browser: `https://digicamcontrol.com/download`
 2. Lade die normale Version herunter (der große Knopf **„Download"**).
@@ -130,48 +84,53 @@ und der Drucker druckt nicht.
    - Der Port muss **5513** sein.
    - Schließe digiCamControl und starte es noch einmal neu.
 
-### SumatraPDF (für den Drucker)
+## Schritt 6: SumatraPDF (für den Drucker) — schon erledigt
 
-1. Öffne im Browser: `https://www.sumatrapdfreader.org/download-free-pdf-viewer`
-2. Lade die **portable** Fassung herunter (64-bit).
-3. Du bekommst eine einzelne Datei namens `SumatraPDF-…-64.exe`.
-4. Benenne sie um in genau **`SumatraPDF.exe`**:
-   Rechtsklick → **„Umbenennen"**.
-5. Verschiebe diese Datei in deinen Fotobox-Ordner, dort in den Unterordner
-   **`windows`**.
+Das Programm, mit dem die Fotobox ohne Druckdialog druckt, bringt das Setup
+selbst mit. In der Verwaltung unter **Gerät → Drucker** steht sein Pfad
+(`C:\Program Files\Fotobox\windows\SumatraPDF.exe`) schon eingetragen.
 
-Die Fotobox findet sie dort von allein.
+## Schritt 7: Was das Setup sonst noch erledigt hat
 
-## Schritt 8: Zum ersten Mal starten
+Du musst davon nichts tun — nur wissen, dass es passiert ist:
 
-1. Gehe in den Ordner **`windows`** deines Fotobox-Ordners.
-2. Doppelklick auf **`Fotobox starten`**.
+- **Autostart:** Beim Anmelden an Windows starten Fotobox-Server und Kiosk von
+  selbst. Das Fenster des Servers liegt klein in der Taskleiste.
+- **Energiesparen aus:** Bildschirm und PC schlafen am Netzteil nicht ein.
+- **Keine Update-Neustarts**, solange jemand angemeldet ist.
+- **Firewall-Freigabe** für die Handy-Galerie (nur im privaten Netzwerk).
+- **Desktop:** **„Fotobox starten“** (startet alles, was fehlt, und öffnet den
+  Kiosk) und **„Fotobox Verwaltung“**.
+- **Startmenü → Fotobox:** dieselben beiden, dazu „Fotobox beenden“,
+  „Nur den Server starten“, Datenordner, Anleitungen.
 
-Ein schwarzes Fenster öffnet sich und bleibt offen. Darin steht eine Zeile wie:
+Alle Fotos, Veranstaltungen und Einstellungen liegen in
+`C:\Users\Public\Fotobox-Daten` — getrennt vom Programm. Deshalb bleiben
+sie bei jedem Update erhalten.
 
-```
-[info] server: Kiosk und Admin laufen auf http://127.0.0.1:8787
-```
+## Schritt 8: Die Besitzer-PIN festlegen — sofort
 
-**Dieses Fenster muss offen bleiben.** Es ist die Fotobox. Schließt du es, ist
-die Fotobox aus.
+In der Verwaltung links auf **Gerät**, dann bei **Besitzer-PIN** vier bis acht
+Ziffern eintippen und speichern (mehr dazu in Schritt 17).
 
-3. Doppelklick auf **`Verwaltung oeffnen`**.
-
-Der Browser öffnet sich und zeigt eine dunkle Seite mit dem Wort **„Fotobox"**
-links oben und den Punkten Übersicht, Veranstaltungen, Vorlagen und Gerät.
-
-**Wenn du das siehst, ist die Software fertig installiert.**
+Das gehört an den Anfang, weil ab dem nächsten Windows-Start der Kiosk im
+Vollbild aufgeht. Ohne PIN lässt sich das Schloss nicht öffnen; solange noch
+keine PIN existiert, zeigt der Kiosk deshalb einen Knopf **„Einrichtung
+fortsetzen“**, der zurück in die Verwaltung führt.
 
 ## Wenn in Teil A etwas nicht klappt
 
 | Was du siehst | Was zu tun ist |
 |---|---|
-| Das schwarze Fenster schließt sich sofort wieder | Schritt 2 vergessen — ZIP-Datei war gesperrt. Noch einmal von vorn ab Schritt 1. |
-| „node wird nicht als Befehl erkannt" | Den PC einmal neu starten und `Installieren` erneut doppelklicken. |
-| Rote Zeilen mit „npm install ist fehlgeschlagen" | Keine Internetverbindung. Verbindung prüfen und erneut starten. |
-| Der Browser zeigt „Diese Seite kann nicht angezeigt werden" | Das Fenster von `Fotobox starten` ist zu. Noch einmal doppelklicken und 10 Sekunden warten. |
-| Weiße leere Seite im Browser | Die Installation ist nicht durchgelaufen. `Installieren` erneut doppelklicken. |
+| Kein „Trotzdem ausführen“, nur „Nicht ausführen“ | Erst auf „Weitere Informationen“ klicken — dann erscheint der Knopf. |
+| „Diese App kann auf dem PC nicht ausgeführt werden“ | Der PC hat ein 32-Bit-Windows oder Windows älter als 10. Die Fotobox braucht Windows 10/11 in 64 Bit. |
+| Nach „Fertigstellen“ öffnet sich kein Browser | Startmenü → Fotobox → **„Fotobox Verwaltung“**. Kommt „Seite nicht erreichbar“: einen Moment warten und neu laden. |
+| Die Verwaltung bleibt „nicht erreichbar“ | Desktop-Verknüpfung **„Fotobox Verwaltung“** noch einmal doppelklicken — sie startet den Server mit. |
+| Beim Setup „Datei wird verwendet“ | Startmenü → Fotobox → „Fotobox beenden“, dann das Setup erneut starten. |
+
+Später auf eine neue Version aktualisieren: siehe
+[Installation und Updates](Installation-und-Updates.md) — aus der Verwaltung
+mit einem Knopf, oder mit der neuen Setup-Datei per USB-Stick.
 
 ---
 
@@ -237,8 +196,9 @@ prüfe, ob der Webserver in digiCamControl wirklich eingeschaltet und der Port
 
 ## Schritt 12: Die Fotobox sieht die Kamera
 
-1. `Fotobox starten` doppelklicken (falls das Fenster zu ist).
-2. `Verwaltung oeffnen` doppelklicken.
+1. Die Verwaltung öffnen: Desktop-Verknüpfung **„Fotobox Verwaltung“** (oder
+   Startmenü → Fotobox). Läuft der Server nicht, startet die Verknüpfung ihn
+   mit — das dauert dann ein paar Sekunden länger.
 3. Links auf **„Gerät"** klicken.
 
 Oben steht der Zustand. Die Kamera muss als **bereit** gemeldet sein.
@@ -267,8 +227,8 @@ Rot spürbar daneben.
 1. In der Verwaltung links auf **„Gerät"**.
 2. Unter **Drucker** eintragen:
    - **Windows-Druckername**: genau der Name aus Schritt 13
-   - **Pfad zu SumatraPDF.exe**: falls du die Datei wie beschrieben in den
-     `windows`-Ordner gelegt hast, steht der Pfad schon da
+   - **Pfad zu SumatraPDF.exe**: steht schon da — das Setup bringt
+     SumatraPDF mit
 3. Klicke einmal irgendwo daneben — es speichert von selbst.
 
 ## Schritt 15: Trocken testen (ohne Papier zu verbrauchen)
@@ -325,6 +285,19 @@ voreingestellte PIN gibt es aus gutem Grund nicht.
 
 Du landest automatisch auf der Detailseite.
 
+**Ab der zweiten Veranstaltung geht es schneller:**
+
+- **Duplizieren:** In der Liste bei einer bisherigen Veranstaltung auf
+  **„Duplizieren"** klicken, Namen und Datum anpassen, **„Anlegen"**. Die neue
+  übernimmt alle Einstellungen (Vorlagen, Filter, Zeiten, Texte, Kopien,
+  Limits) — aber keine Fotos, keine Zahlen, keine Galerie-Links und keine
+  Betreuer-PIN.
+- **Voreinstellung:** Auf der Detailseite einer gut eingestellten Veranstaltung
+  unter **„Als Voreinstellung speichern"** einen Namen vergeben, etwa
+  „Kinderparty" oder „Hochzeit". Beim Anlegen der nächsten dann unter
+  **„Einstellungen"** auswählen. Speichern unter demselben Namen überschreibt;
+  gelöscht wird eine Voreinstellung über das ✕ in der Liste.
+
 ## Schritt 19: Einstellen, was die Gäste dürfen
 
 Scrolle auf der Detailseite nach unten und setze Haken bei den Vorlagen, die zur
@@ -350,7 +323,8 @@ Arbeite die roten Zeilen ab. Der Text daneben sagt, was fehlt.
 ## Schritt 21: Losgehen
 
 1. Auf der Detailseite oben auf **„startbereit"** klicken, dann auf **„aktiv"**.
-2. Im Ordner `windows` auf **`Kiosk starten`** doppelklicken.
+2. Desktop-Verknüpfung **„Fotobox starten“** doppelklicken (oder Startmenü →
+   Fotobox → „Fotobox starten“).
 
 Der Bildschirm wird zum Vollbild und zeigt „Fotobox" mit einem großen Knopf
 **„Foto starten"**. Das sehen deine Gäste.
@@ -378,7 +352,85 @@ verstellen.
    Sekunden gedrückt**. Kurzes Antippen tut nichts.
 2. Ein Zahlenfeld erscheint. Gib deine Besitzer-PIN ein und tippe auf **OK**.
 3. Du landest im Servicemenü, nicht auf dem Windows-Desktop. Dort kannst du
-   zurück zum Kiosk, die Verwaltung öffnen oder das Vollbild verlassen.
+   zurück zum Kiosk, die Verwaltung öffnen oder mit **„Kiosk schließen"** zum
+   Windows-Desktop wechseln.
+
+Zurück ins Vollbild kommst du mit einem Doppelklick auf **„Fotobox starten“**
+(Desktop oder Startmenü) — oder einfach mit dem nächsten Start des PCs.
+
+## Foto per E-Mail (nur wenn die Box Internet hat)
+
+Die Box kann Gästen ihr Foto per E-Mail schicken — aber nur, wenn sie am Abend
+wirklich online ist. Im eigenen Reise-Router-WLAN ohne Internet erscheint der
+Knopf gar nicht.
+
+**Einmal einrichten** (Verwaltung → **Gerät** → **E-Mail-Versand**):
+
+1. Lege dir ein **eigenes E-Mail-Konto nur für die Fotobox** an — nicht dein
+   privates Postfach.
+2. Erzeuge dort ein **App-Passwort** (bei Gmail: Google-Konto → Sicherheit →
+   App-Passwörter). Das normale Passwort gehört hier nicht hin: Das
+   App-Passwort liegt auf der Box, und wer den PC in der Hand hat, könnte es
+   finden.
+3. Postausgangsserver, Port (465 oder 587), Benutzername, App-Passwort und
+   Absender eintragen, **Speichern**.
+4. **Testmail senden** an dich selbst. Kommt sie an, passt alles.
+
+Die Verbindung zum Mailserver ist immer verschlüsselt; ohne Verschlüsselung
+verschickt die Box nichts.
+
+**Je Veranstaltung** (Detailseite → Reiter **Ausgabe**): E-Mail einschalten,
+Einwilligungstext prüfen und die Frist setzen, nach der die Adressen gelöscht
+werden. Die Box löscht sie danach selbst. Darunter stehen alle erfassten
+Adressen; bittet ein Gast um Löschung, reicht ein Klick auf **Löschen**.
+
+Damit niemand die Box zum Verschicken von Massenmails missbraucht, gilt: nur das
+gerade eben fertig gewordene Foto, höchstens drei Mails je Adresse und Tag,
+fünf Versuche je Minute, 200 Mails je Feier und Tag.
+
+## Ein Foto aus der Galerie nehmen
+
+Landet ein Foto in der Galerie, das dort nicht hingehört, kann der Gastgeber es
+selbst herausnehmen:
+
+1. Oben rechts in die Ecke tippen und zwei Sekunden halten, Betreuer-PIN
+   eingeben.
+2. Im Servicemenü auf **„Galerie"** tippen.
+3. Das Foto antippen und **„Aus der Galerie nehmen"** wählen.
+
+Es verschwindet sofort von allen Handys und vom Bildschirm der Box. Gelöscht
+ist es nicht: Mit **„Wieder zeigen"** kommt es zurück, und bei der Übergabe
+liegt es im Ordner.
+
+Die Handy-Galerie ist nur erreichbar, solange die Veranstaltung läuft. Nach dem
+Abschließen zeigt der alte Link nichts mehr — auch nicht, wenn ein Gast ihn auf
+der nächsten Feier wieder aufruft.
+
+## Wenn etwas ausfällt
+
+Die Box ist dafür gebaut, allein beim Gastgeber zu stehen. Das meiste regelt
+sie selbst:
+
+- **Kamera abgesteckt oder ausgeschaltet:** Die Gäste lesen „Die Kamera meldet
+  sich gerade nicht". Eine laufende Aufnahme wartet bis zu anderthalb Minuten,
+  dass die Kamera zurückkommt, und macht dann einfach weiter.
+- **Ein Foto klappt nicht** (etwa weil der Autofokus nicht greift): Die Box sagt
+  „Gleich noch einmal!" und wiederholt das Foto — bis zu dreimal.
+- **digiCamControl stürzt ab oder hängt:** Die Fotobox startet es selbst neu.
+- **Papier leer, Drucker aus:** Die Fotos warten in der Warteschlange. Sobald
+  neues Papier drin ist bzw. der Drucker wieder an ist, druckt die Box von
+  selbst weiter.
+- **Die Fotobox-Software stürzt ab:** `Fotobox starten` startet sie nach fünf
+  Sekunden neu. Der Bildschirm zeigt so lange „Kleine Pause".
+- **Der Browser wird geschlossen oder stürzt ab:** `Kiosk starten` öffnet ihn
+  wieder.
+
+Nur wenn der Druckbefehl selbst scheitert (etwa weil SumatraPDF fehlt), hält
+die Warteschlange an. Dann im Servicemenü auf **„Papier gewechselt —
+weiterdrucken"** tippen, nachdem die Ursache behoben ist.
+
+Jeden Neustart der Software notiert die Box in `neustarts.txt` im Datenordner.
+Was genau passiert ist, steht im Protokoll in der Verwaltung.
 
 Auf dem Zahlenfeld gibt es außerdem den Knopf **„Was ist los?"**. Der braucht
 keine PIN und zeigt in normalen Worten, was die Fotobox gerade meldet. Den darf
@@ -402,6 +454,22 @@ ist. Erst dann meldet sie Vollzug.
 Auf dem Stick liegt unter anderem eine Datei **`galerie.html`**. Der Gastgeber
 kann sie doppelklicken und bekommt alle Bilder als Übersicht — ohne irgendetwas
 zu installieren.
+
+**Danach von der Box löschen:** Die Fotos gehören jetzt dem Gastgeber, nicht
+der Box, die du weiterverleihst. Wenn der Stick geprüft ist: Veranstaltung
+auf **„Abschließen"**, dann im Reiter **Übergabe** ganz unten **„Veranstaltung
+löschen"**. Zur Sicherheit musst du den Namen der Feier eintippen — gelöscht ist
+danach alles: Originale, Layouts und E-Mail-Adressen.
+
+## Eigene Filter (LUTs) hinzufügen
+
+Wer in Lightroom, Photoshop oder DaVinci Resolve einen eigenen Look hat, kann
+ihn als **`.cube`-Datei** exportieren und in die Fotobox holen:
+
+1. Verwaltung → **Filter** → **„LUT importieren (.cube)"**.
+2. Die Datei wählen. Der neue Filter erscheint mit Vorschau in der Liste.
+3. In der Veranstaltung unter **„Vorlagen & Filter"** anhaken — erst dann sehen
+   ihn die Gäste.
 
 ## Was du bekommen hast
 

@@ -4,6 +4,7 @@ import {
   type Druckkalibrierung,
   type Geraeteeinstellungen,
   type Kameraeinstellungen,
+  type MailEinstellungen,
 } from '../../shared/typen.js';
 
 /**
@@ -42,7 +43,44 @@ export function leseGeraet(): Geraeteeinstellungen {
     speicherWarnungGb: lies('speicherWarnungGb', 5),
     digicamcontrolPfad: lies('digicamcontrolPfad', 'C:\\Program Files (x86)\\digiCamControl'),
     sumatraPfad: lies('sumatraPfad', ''),
+    mail: lies<MailEinstellungen | null>('mail', null),
   };
+}
+
+/*
+ * Das Passwort des Mailkontos liegt unter einem eigenen Schluessel und wird
+ * nur hier gelesen - nie von leseGeraet(). So kann es nicht versehentlich mit
+ * den Geraeteeinstellungen an die Verwaltung im Browser gehen oder in einer
+ * Antwort landen.
+ *
+ * Ehrlich zur Grenze: Es steht unverschluesselt in der Datenbank auf der Box.
+ * Die Datenbank geht bei der Uebergabe nicht mit, aber wer den PC in der Hand
+ * hat, kommt heran. Deshalb gehoert hier ein App-Passwort eines eigenen
+ * Fotobox-Kontos hin, nie das Passwort des privaten Postfachs.
+ */
+export function leseMailPasswort(): string {
+  const zeile = holeDb().prepare("SELECT wert FROM geraet WHERE schluessel = 'mailPasswort'").get() as
+    | { wert: string }
+    | undefined;
+  if (!zeile) return '';
+  try {
+    return String(JSON.parse(zeile.wert));
+  } catch {
+    return '';
+  }
+}
+
+export function schreibeMailPasswort(passwort: string | null): void {
+  if (passwort === null) {
+    holeDb().prepare("DELETE FROM geraet WHERE schluessel = 'mailPasswort'").run();
+    return;
+  }
+  holeDb()
+    .prepare(
+      "INSERT INTO geraet (schluessel, wert) VALUES ('mailPasswort', ?) " +
+        'ON CONFLICT(schluessel) DO UPDATE SET wert = excluded.wert',
+    )
+    .run(JSON.stringify(passwort));
 }
 
 export function schreibeGeraet(teil: Partial<Geraeteeinstellungen>): void {

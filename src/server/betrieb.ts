@@ -8,7 +8,14 @@ import { DigiCamControlKamera } from './treiber/kamera-digicamcontrol.js';
 import { MockDrucker } from './treiber/drucker-mock.js';
 import { WindowsDrucker } from './treiber/drucker-windows.js';
 import type { KameraTreiber } from './treiber/kamera.js';
-import type { DruckerTreiber } from './treiber/drucker.js';
+import {
+  cameraControlExe,
+  DigiCamControlWaechter,
+  programmVorhanden,
+  windowsSteuerung,
+  type Massnahme,
+} from './treiber/digicamcontrol-waechter.js';
+import type { DruckerStatus, DruckerTreiber } from './treiber/drucker.js';
 import type { Betriebsstatus, Stoerung } from '../shared/typen.js';
 import type { SitzungZustand } from './fach/sitzungen.js';
 
@@ -43,6 +50,9 @@ export class Betrieb {
   private letztesLiveBildZeit = 0;
   private beobachtungLaeuft = false;
   private beendet = false;
+  /** Nur mit echter Hardware unter Windows: haelt digiCamControl am Leben. */
+  private readonly kameraProgramm: DigiCamControlWaechter | null;
+  private letzteMassnahme: Massnahme = 'nichts';
 
   constructor(private readonly optionen: BetriebOptionen) {
     const geraet = leseGeraet();
@@ -52,10 +62,30 @@ export class Betrieb {
     this.drucker = optionen.echteHardware
       ? new WindowsDrucker(geraet.druckerName, geraet.sumatraPfad)
       : new MockDrucker(optionen.mockDruckOrdner);
+    const exe = () => cameraControlExe(leseGeraet().digicamcontrolPfad);
+    this.kameraProgramm =
+      optionen.echteHardware && process.platform === 'win32'
+        ? new DigiCamControlWaechter(windowsSteuerung(exe), programmVorhanden(exe))
+        : null;
     this.druckschleife = new Druckschleife(
       () => this.drucker,
       (text) => protokolliere('warnung', 'druck', text),
+      (status) => this.uebernimmDruckerStatus(status),
     );
+  }
+
+  /** Ein frisch gelesener Druckerzustand - aus der Beobachtung oder vor einem Druck. */
+  private uebernimmDruckerStatus(status: DruckerStatus): void {
+    this.letzteDruckerPruefung = Date.now();
+    this.druckerBeschaeftigt = (status.auftraegeBeimSystem ?? 0) > 0;
+    this.druckerStoerung =
+      status.zustand === 'papier-leer'
+        ? 'papier-leer'
+        : status.zustand === 'offline'
+          ? 'drucker-offline'
+          : status.zustand === 'klappe'
+            ? 'drucker-klappe'
+            : null;
   }
 
   starte(): void {
@@ -78,6 +108,8 @@ export class Betrieb {
     if (this.optionen.echteHardware) {
       this.drucker = new WindowsDrucker(geraet.druckerName, geraet.sumatraPfad);
     }
+    // Der neue Drucker soll sofort gefragt werden, nicht erst in 20 Sekunden.
+    this.letzteDruckerPruefung = 0;
   }
 
   // -------------------------------------------------------------------------
@@ -103,9 +135,92 @@ export class Betrieb {
     return this.liveViewGewuenscht;
   }
 
-  /** Einzelbild fuer das MJPEG-Relais. Die JPEG-Daten gehen unveraendert
-   *  weiter - kein Neucodieren, keine Skalierung im Server. */
+  /**
+   * Liefert die Kamera gerade Bilder? Laeuft der Abholer, genuegt ein Blick auf
+   * sein letztes Bild; sonst wird die Kamera einmal direkt gefragt. Ein Bild,
+   * das Byte fuer Byte dem vorigen gleicht, zaehlt nicht - das ist ein
+   * eingefrorenes Bild, kein Live-Bild.
+   */
+  async liveBildDa(): Promise<boolean> {
+    if (Date.now() - this.letztesLiveBildZeit < 1500) return true;
+    if (this.abholerLaeuft) return false;
+    const bild = await this.kamera.liveBild().catch(() => null);
+    if (!bild || (this.letztesLiveBild && bild.equals(this.letztesLiveBild))) return false;
+    this.letztesLiveBild = bild;
+    this.letztesLiveBildZeit = Date.now();
+    return true;
+  }
+
+  /*
+   * Ein Abholer fuer alle Zuschauer.
+   *
+   * Vorher holte jede offene Verbindung ihre Bilder selbst: Bild abrufen, dann
+   * 100 ms schlafen. Das ergab zweierlei Aerger. Erstens kam der Takt nie auf
+   * zehn Bilder je Sekunde, weil die Abrufzeit obendrauf kam - bei einer
+   * Kamera am USB-Kabel, die 60 bis 80 ms je Bild braucht, waren es eher sechs.
+   * Zweitens fragte jeder Zuschauer die Kamera einzeln; ein zweites Fenster
+   * (oder ein Strom, der beim Bildschirmwechsel noch nicht zu war) halbierte
+   * so die Bildrate fuer alle.
+   *
+   * Jetzt holt genau eine Schleife in festem Takt und verteilt jedes Bild an
+   * alle, die gerade zuschauen. Schaut niemand zu, ruht sie.
+   */
+  private zuschauer = new Set<(bild: Buffer) => void>();
+  private abholerLaeuft = false;
+
+  /** Meldet einen Zuschauer an; die Rueckgabe meldet ihn wieder ab. */
+  schaueLiveBild(empfaenger: (bild: Buffer) => void): () => void {
+    this.zuschauer.add(empfaenger);
+    // Wer neu dazukommt, sieht sofort das letzte Bild statt einer leeren Flaeche.
+    if (this.letztesLiveBild && Date.now() - this.letztesLiveBildZeit < 2000) {
+      empfaenger(this.letztesLiveBild);
+    }
+    if (!this.abholerLaeuft) void this.holeLiveBilder();
+    return () => {
+      this.zuschauer.delete(empfaenger);
+    };
+  }
+
+  private async holeLiveBilder(): Promise<void> {
+    this.abholerLaeuft = true;
+    try {
+      while (this.zuschauer.size > 0 && !this.beendet) {
+        const beginn = Date.now();
+        const bild = await this.kamera.liveBild().catch(() => null);
+        // Liefert die Kamera dasselbe Bild noch einmal, muss es niemand erneut
+        // bekommen - das spart dem Browser das Dekodieren. Es zaehlt auch
+        // nicht als "frisch": Byte fuer Byte gleich ist ein echtes Kamerabild
+        // nie, das Rauschen des Sensors sorgt dafuer. Gleich heisst eingefroren.
+        if (bild && !(this.letztesLiveBild && bild.equals(this.letztesLiveBild))) {
+          this.letztesLiveBild = bild;
+          this.letztesLiveBildZeit = Date.now();
+          for (const empfaenger of this.zuschauer) {
+            try {
+              empfaenger(bild);
+            } catch {
+              // Ein kaputter Zuschauer darf die anderen nicht stoeren.
+            }
+          }
+        }
+        // Fester Takt: Die Abrufzeit zaehlt mit, statt obendrauf zu kommen.
+        // Ohne Bild wird gemaechlicher gefragt, damit eine abgesteckte Kamera
+        // nicht im Dauerfeuer angesprochen wird.
+        const takt = bild ? LIVE_TAKT_MS : 250;
+        await pause(Math.max(5, takt - (Date.now() - beginn)));
+      }
+    } finally {
+      this.abholerLaeuft = false;
+    }
+    // Hat sich zwischen letzter Pruefung und Ende jemand angemeldet?
+    if (this.zuschauer.size > 0 && !this.beendet) void this.holeLiveBilder();
+  }
+
+  /** Einzelbild, etwa fuer die Vorschau im Admin. Laeuft der Abholer, kommt
+   *  sein letztes Bild - die Kamera wird dafuer nicht zusaetzlich gefragt. */
   async liveBild(): Promise<Buffer | null> {
+    if (this.abholerLaeuft && this.letztesLiveBild && Date.now() - this.letztesLiveBildZeit < 500) {
+      return this.letztesLiveBild;
+    }
     const bild = await this.kamera.liveBild();
     if (bild) {
       this.letztesLiveBild = bild;
@@ -123,10 +238,20 @@ export class Betrieb {
    * Wartet, bis die Kamera wieder ein Live-Bild liefert. Der Countdown fuer das
    * naechste Foto startet erst danach - sonst zaehlt die Box vor einem
    * eingefrorenen Bild herunter.
+   *
+   * Laeuft der Abholer, genuegt es, auf sein naechstes Bild zu warten; die
+   * Kamera wird dann nicht noch zusaetzlich gefragt, gerade in dem Moment, in
+   * dem sie nach dem Ausloesen ohnehin zu tun hat.
    */
   async warteAufLiveBild(zeitlimitMs = 6000): Promise<boolean> {
-    const bis = Date.now() + zeitlimitMs;
+    const seit = Date.now();
+    const bis = seit + zeitlimitMs;
     while (Date.now() < bis) {
+      if (this.abholerLaeuft) {
+        if (this.letztesLiveBildZeit > seit) return true;
+        await pause(50);
+        continue;
+      }
       const bild = await this.kamera.liveBild();
       if (bild) {
         this.letztesLiveBild = bild;
@@ -149,26 +274,112 @@ export class Betrieb {
         const warVerbunden = this.kameraOk;
         this.kameraOk = kameraStatus.verbunden;
 
+        if (this.kameraProgramm) {
+          const massnahme = await this.kameraProgramm.pruefe(kameraStatus.antwortet);
+          if (massnahme === 'gestartet') protokolliere('info', 'kamera', 'digiCamControl gestartet.');
+          if (massnahme === 'neu-gestartet') {
+            protokolliere('warnung', 'kamera', 'digiCamControl antwortete nicht mehr und wurde neu gestartet.');
+          }
+          // Nur einmal melden, nicht alle drei Sekunden.
+          if (massnahme === 'programm-fehlt' && this.letzteMassnahme !== 'programm-fehlt') {
+            protokolliere('fehler', 'kamera', 'digiCamControl ist nicht installiert oder der Pfad unter Geraet stimmt nicht.');
+          }
+          if (massnahme !== 'nichts') this.letzteMassnahme = massnahme;
+          if (kameraStatus.antwortet) this.letzteMassnahme = 'nichts';
+        }
+
+        // Live-View nach Leerlauf abschalten. Die Einstellung stand in der
+        // Verwaltung, wirkte aber nirgends - die 600D blieb den ganzen Abend im
+        // Live-View, und der Sensor wird dabei warm (mehr Bildrauschen). Die
+        // naechste Sitzung schaltet ihn wieder ein; das Bereitmachen vor dem
+        // ersten Foto ueberbrueckt die Sekunde, die das dauert.
+        const abschaltenNachS = holeAktivesEvent()?.einstellungen.zeiten.liveViewAbschaltung ?? 0;
+        if (
+          this.liveViewGewuenscht &&
+          abschaltenNachS > 0 &&
+          !this.aktiveSitzung &&
+          this.zuschauer.size === 0 &&
+          Date.now() - this.letzteBeruehrung > abschaltenNachS * 1000
+        ) {
+          await this.stoppeLiveView();
+          protokolliere('info', 'kamera', 'Live-View nach Leerlauf abgeschaltet - schont den Sensor.');
+        }
+
+        // Speicher: guenstig zu lesen, also jede Runde.
+        // Laesst sich der Wert nicht lesen, wird nicht gewarnt - sonst stuende
+        // wegen eines Lesefehlers "Speicher voll" vor den Gaesten.
+        const frei = await statfs(leseGeraet().datenpfad)
+          .then((info) => (info.bavail * info.bsize) / 1024 ** 3)
+          .catch(() => null);
+        this.speicherKnapp = frei !== null && frei < SPEICHER_KNAPP_GB;
+
         // Verbindung war weg und ist wieder da: Live-View neu aufbauen.
         if (!warVerbunden && this.kameraOk && this.liveViewGewuenscht) {
           await this.kamera.starteLiveView().catch(() => undefined);
           protokolliere('info', 'kamera', 'Kamera ist wieder verbunden.');
         }
 
+        if (!this.druckerPruefungFaellig()) {
+          await pause(3000);
+          continue;
+        }
+        this.letzteDruckerPruefung = Date.now();
         const druckerStatus = await this.drucker.pruefe();
-        this.druckerStoerung =
-          druckerStatus.zustand === 'papier-leer'
-            ? 'papier-leer'
-            : druckerStatus.zustand === 'offline'
-              ? 'drucker-offline'
-              : druckerStatus.zustand === 'klappe'
-                ? 'drucker-klappe'
-                : null;
+        this.druckschleife.merkeStatus(druckerStatus);
+        this.uebernimmDruckerStatus(druckerStatus);
       } catch {
         // Der Beobachter darf nie sterben.
       }
       await pause(3000);
     }
+  }
+
+  /*
+   * Den Drucker nur so oft fragen, wie es etwas bringt.
+   *
+   * Unter Windows ist jede Pruefung ein frisch gestartetes PowerShell - auf dem
+   * N100 eine knappe Sekunde Rechenzeit. Alle drei Sekunden, den ganzen Abend
+   * lang, war das die groesste Dauerlast der Box, und sie fiel ausgerechnet in
+   * Countdown und Layoutberechnung.
+   *
+   * Wachsam (alle 3 s) ist die Pruefung jetzt nur, wenn es darauf ankommt: Es
+   * wartet etwas auf den Druck, oder der Drucker hat gerade eine Stoerung, deren
+   * Ende der Gast sehen soll. Sonst reichen 20 Sekunden - und waehrend ein Gast
+   * fotografiert, wird ein ruhiger Drucker gar nicht gefragt.
+   */
+  private letzteDruckerPruefung = 0;
+  /** Liegen Auftraege bei Windows, die noch nicht gedruckt sind? */
+  private druckerBeschaeftigt = false;
+  private speicherKnapp = false;
+
+  private druckerPruefungFaellig(): boolean {
+    const wachsam =
+      this.druckerStoerung !== null ||
+      this.druckerBeschaeftigt ||
+      this.druckschleife.istAngehalten() ||
+      offeneAuftraege() > 0;
+    if (!wachsam && this.aktiveSitzung) return false;
+    const abstand = wachsam ? 3000 : 20_000;
+    return Date.now() - this.letzteDruckerPruefung >= abstand;
+  }
+
+  /**
+   * Den Drucker jetzt fragen, wenn die letzte Antwort aelter ist als
+   * `maxAlterMs`. Ruht der Drucker, wird er nur alle 20 Sekunden gefragt - so
+   * lange konnte die Quittung "gleich am Drucker abholen" versprechen, obwohl
+   * die Rolle leer war. Hoechstens `zeitlimitMs` Wartezeit; antwortet er nicht,
+   * bleibt es beim letzten Stand.
+   */
+  async frischerDruckerStatus(maxAlterMs = 5000, zeitlimitMs = 2500): Promise<void> {
+    if (Date.now() - this.letzteDruckerPruefung < maxAlterMs) return;
+    this.letzteDruckerPruefung = Date.now();
+    const status = await Promise.race([
+      this.drucker.pruefe().catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), zeitlimitMs)),
+    ]);
+    if (!status) return;
+    this.druckschleife.merkeStatus(status);
+    this.uebernimmDruckerStatus(status);
   }
 
   /**
@@ -178,7 +389,14 @@ export class Betrieb {
   aktuelleStoerung(): Stoerung | null {
     if (!this.kameraOk) return 'kamera-offline';
     if (this.druckschleife.istAngehalten()) return this.druckerStoerung ?? 'drucker-offline';
-    return this.druckerStoerung;
+    if (this.druckerStoerung) return this.druckerStoerung;
+    // Der Drucker meldet nichts, aber bei Windows bewegt sich seit Minuten
+    // nichts: Dann klemmt etwas, was der Treiber nicht als Fehler meldet.
+    if (this.druckschleife.stehtStill()) return 'drucker-klappe';
+    // Knapper Speicher haelt nichts an - er ist nur ein Hinweis, damit
+    // rechtzeitig jemand Bescheid sagt.
+    if (this.speicherKnapp) return 'speicher-voll';
+    return null;
   }
 
   async status(): Promise<Betriebsstatus> {
@@ -224,6 +442,14 @@ export function protokolliere(
   if (ebene === 'fehler') console.error(zeile);
   else console.log(zeile);
 }
+
+/** Unter dieser Grenze meldet die Box "Speicher wird eng" - dieselbe Schwelle,
+ *  ab der die Statusliste rot zeigt. */
+const SPEICHER_KNAPP_GB = 2;
+
+/** Zehn Bilder je Sekunde: genug zum Ausrichten, und mehr liefert die 600D
+ *  ueber USB ohnehin kaum. */
+const LIVE_TAKT_MS = 100;
 
 function pause(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

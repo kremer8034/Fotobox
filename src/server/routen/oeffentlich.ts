@@ -1,13 +1,14 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import sharp from 'sharp';
-import QRCode from 'qrcode';
+import { sep } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { findeEventNachGalerieToken, findeEventNachStatusToken } from '../fach/events.js';
 import { galerieEintraege, holeAusgabe } from '../fach/sitzungen.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import { eventpfade } from '../fach/pfade.js';
+import { abgeleitet, FASSUNGEN } from '../bild/abgeleitet.js';
 import type { Betrieb } from '../betrieb.js';
+import type { Veranstaltung } from '../../shared/typen.js';
 
 /**
  * Oeffentliche Routen: Galerie und Statusseite.
@@ -21,11 +22,38 @@ import type { Betrieb } from '../betrieb.js';
  * Datenbank angefordert, den Pfad setzt der Server selbst zusammen und prueft,
  * dass er im Ordner des freigegebenen Events liegt. Damit ist "../.." nicht
  * weggefiltert, sondern strukturell ausgeschlossen.
+ *
+ * Ein Token gilt nur, solange seine Veranstaltung laeuft (aktiv oder
+ * pausiert). Vorher galt es fuer immer: Der Reise-Router ist bei jeder Feier
+ * derselbe, mit demselben WLAN-Passwort - wer den Link der Hochzeit vom
+ * letzten Wochenende aufhob oder weitergeleitet bekam, sah deren Bilder auf
+ * dem naechsten Geburtstag wieder.
  */
+const LAUFEND = new Set(['aktiv', 'pausiert']);
+
+function galerieEvent(token: string): Veranstaltung | null {
+  const event = findeEventNachGalerieToken(token);
+  return event && event.einstellungen.galerieAktiv && LAUFEND.has(event.status) ? event : null;
+}
+
+/**
+ * Das Layout zu einer Bild-ID - nur, wenn es zu dieser Veranstaltung gehoert,
+ * kein Probelauf ist, nicht aus der Galerie genommen wurde und dort liegt, wo
+ * Layouts hingehoeren. Frueher prueften Grossansicht und Download das
+ * unterschiedlich gruendlich; der Download lieferte so auch Probelauf-Bilder.
+ */
+function freigegebenesLayout(event: Veranstaltung, ausgabeId: string): { id: string; pfad: string } | null {
+  const ausgabe = holeAusgabe(ausgabeId);
+  if (!ausgabe || ausgabe.eventId !== event.id || ausgabe.istTest || ausgabe.verborgen) return null;
+  const layoutsOrdner = eventpfade(event.ordner).layouts;
+  if (!ausgabe.pfadLayout.startsWith(layoutsOrdner + sep)) return null;
+  return { id: ausgabe.id, pfad: ausgabe.pfadLayout };
+}
+
 export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): void {
   app.get<{ Params: { token: string } }>('/api/galerie/:token', async (anfrage, antwort) => {
-    const event = findeEventNachGalerieToken(anfrage.params.token);
-    if (!event || !event.einstellungen.galerieAktiv) {
+    const event = galerieEvent(anfrage.params.token);
+    if (!event) {
       return antwort.code(404).send({ fehler: 'Galerie nicht verfuegbar.' });
     }
     const eintraege = galerieEintraege(event.id);
@@ -41,25 +69,21 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
   app.get<{ Params: { token: string; id: string }; Querystring: { gross?: string } }>(
     '/medien/galerie/:token/:id.jpg',
     async (anfrage, antwort) => {
-      const event = findeEventNachGalerieToken(anfrage.params.token);
-      if (!event || !event.einstellungen.galerieAktiv) return antwort.code(404).send();
+      const event = galerieEvent(anfrage.params.token);
+      if (!event) return antwort.code(404).send();
+      const layout = freigegebenesLayout(event, anfrage.params.id);
+      if (!layout) return antwort.code(404).send();
 
-      const ausgabe = holeAusgabe(anfrage.params.id);
-      if (!ausgabe || ausgabe.eventId !== event.id) return antwort.code(404).send();
-
-      const layoutsOrdner = eventpfade(event.ordner).layouts;
-      if (!ausgabe.pfadLayout.startsWith(layoutsOrdner)) return antwort.code(404).send();
-
-      const gross = anfrage.query.gross === '1';
-      const bild = sharp(ausgabe.pfadLayout).rotate();
-      const daten = await (gross ? bild : bild.resize(600, 600, { fit: 'inside' }))
-        .jpeg({ quality: gross ? 92 : 80, mozjpeg: false })
-        .toBuffer();
-
+      const pfad = await abgeleitet(
+        layout.pfad,
+        eventpfade(event.ordner).cache,
+        layout.id,
+        anfrage.query.gross === '1' ? FASSUNGEN.handyVoll : FASSUNGEN.handyKlein,
+      );
       return antwort
         .header('Content-Type', 'image/jpeg')
-        .header('Cache-Control', 'private, max-age=300')
-        .send(daten);
+        .header('Cache-Control', 'private, max-age=86400, immutable')
+        .send(createReadStream(pfad));
     },
   );
 
@@ -68,17 +92,23 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
   app.get<{ Params: { token: string; id: string } }>(
     '/medien/download/:token/:id.jpg',
     async (anfrage, antwort) => {
-      const event = findeEventNachGalerieToken(anfrage.params.token);
-      if (!event || !event.einstellungen.galerieAktiv) return antwort.code(404).send();
-      const ausgabe = holeAusgabe(anfrage.params.id);
-      if (!ausgabe || ausgabe.eventId !== event.id) return antwort.code(404).send();
+      const event = galerieEvent(anfrage.params.token);
+      if (!event) return antwort.code(404).send();
+      const layout = freigegebenesLayout(event, anfrage.params.id);
+      if (!layout) return antwort.code(404).send();
 
-      const daten = await sharp(ausgabe.pfadLayout).rotate().jpeg({ quality: 95 }).toBuffer();
-      const name = `${event.name.replace(/[^\w-]+/g, '_')}_${ausgabe.id.slice(0, 8)}.jpg`;
+      // Dieselbe bereinigte Fassung wie die Grossansicht - einmal gerechnet.
+      const pfad = await abgeleitet(
+        layout.pfad,
+        eventpfade(event.ordner).cache,
+        layout.id,
+        FASSUNGEN.handyVoll,
+      );
+      const name = `${event.name.replace(/[^\w-]+/g, '_')}_${layout.id.slice(0, 8)}.jpg`;
       return antwort
         .header('Content-Type', 'image/jpeg')
         .header('Content-Disposition', `attachment; filename="${name}"`)
-        .send(daten);
+        .send(createReadStream(pfad));
     },
   );
 
@@ -89,7 +119,7 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
    */
   app.get<{ Params: { token: string } }>('/api/status/:token', async (anfrage, antwort) => {
     const event = findeEventNachStatusToken(anfrage.params.token);
-    if (!event) return antwort.code(404).send({ fehler: 'Unbekannt.' });
+    if (!event || !LAUFEND.has(event.status)) return antwort.code(404).send({ fehler: 'Unbekannt.' });
 
     const status = await betrieb.status();
     const auslagen = berechneAuslagen(event);
@@ -108,13 +138,6 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
         materialRest: auslagen.materialRest,
       },
     };
-  });
-
-  app.get<{ Querystring: { text?: string } }>('/api/qr', async (anfrage, antwort) => {
-    const text = anfrage.query.text ?? '';
-    if (!text) return antwort.code(400).send({ fehler: 'Kein Text.' });
-    const png = await QRCode.toBuffer(text, { width: 512, margin: 1 });
-    return antwort.header('Content-Type', 'image/png').send(png);
   });
 }
 

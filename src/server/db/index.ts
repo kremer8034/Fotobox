@@ -34,8 +34,27 @@ export function oeffneDb(pfad: string): DB {
     );
   }
   verbindung.exec(schema);
+  ergaenzeSpalten(verbindung);
   db = verbindung;
   return verbindung;
+}
+
+/**
+ * Spalten, die nach der ersten Auslieferung dazukamen. "CREATE TABLE IF NOT
+ * EXISTS" legt sie in einer vorhandenen Datenbank nicht an - hier werden sie
+ * nachgetragen, ohne etwas Bestehendes anzufassen.
+ */
+function ergaenzeSpalten(verbindung: DB): void {
+  const nachtraege: { tabelle: string; spalte: string; definition: string }[] = [
+    { tabelle: 'ausgaben', spalte: 'verborgen', definition: 'INTEGER NOT NULL DEFAULT 0' },
+    { tabelle: 'versand', spalte: 'einwilligung_text', definition: 'TEXT' },
+  ];
+  for (const { tabelle, spalte, definition } of nachtraege) {
+    const vorhanden = (verbindung.prepare(`PRAGMA table_info(${tabelle})`).all() as { name: string }[]).some(
+      (s) => s.name === spalte,
+    );
+    if (!vorhanden) verbindung.exec(`ALTER TABLE ${tabelle} ADD COLUMN ${spalte} ${definition}`);
+  }
 }
 
 export function holeDb(): DB {

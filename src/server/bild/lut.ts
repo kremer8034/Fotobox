@@ -56,6 +56,9 @@ export function parseCube(inhalt: string): Lut {
   }
 
   if (groesse <= 1) throw new Error('LUT_3D_SIZE fehlt oder ist unbrauchbar.');
+  // Uebliche LUTs haben 17, 33 oder 65 Stufen. Eine 256er-Datei braeuchte
+  // hunderte Megabyte Speicher - fuer eine Fotobox keine sinnvolle Groesse.
+  if (groesse > 65) throw new Error(`LUT_3D_SIZE ${groesse} ist zu gross; hoechstens 65.`);
   const erwartet = groesse * groesse * groesse * 3;
   if (werte.length !== erwartet) {
     throw new Error(`LUT hat ${werte.length / 3} Eintraege, erwartet waren ${erwartet / 3}.`);

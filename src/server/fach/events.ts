@@ -1,14 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { holeDb, jetzt } from '../db/index.js';
 import { legeEventordnerAn, eventpfade, ordnernameFuer } from './pfade.js';
 import { neuesToken } from './pin.js';
 import {
   EINSTELLUNGEN_VORGABE,
+  UEBERGAENGE,
   type EventEinstellungen,
   type EventStatus,
   type Veranstaltung,
+  FILTER_OHNE,
 } from '../../shared/typen.js';
 
 /**
@@ -85,7 +87,12 @@ export function erstelleEvent(
   eventsWurzel: string,
 ): Veranstaltung {
   const id = randomUUID();
-  const ordner = join(eventsWurzel, ordnernameFuer(eingabe.datum, eingabe.name));
+  // Gleicher Name am gleichen Tag ergab vorher denselben Ordner - die Fotos
+  // zweier Veranstaltungen lagen dann gemischt, und das Loeschen der einen
+  // nahm den Ordner der anderen mit. Jetzt bekommt jede ihren eigenen.
+  const basis = join(eventsWurzel, ordnernameFuer(eingabe.datum, eingabe.name));
+  let ordner = basis;
+  for (let n = 2; existsSync(ordner); n += 1) ordner = `${basis}_${n}`;
   legeEventordnerAn(ordner);
 
   const einstellungen: EventEinstellungen = {
@@ -116,6 +123,24 @@ export function erstelleEvent(
   return event;
 }
 
+/**
+ * Eine Veranstaltung mit allen Einstellungen der Vorlage-Veranstaltung anlegen
+ * - fuer die naechste Buchung desselben Gastgebers oder dieselbe Art Feier.
+ * Uebernommen werden nur die Einstellungen: keine Fotos, keine Zahlen, keine
+ * Galerie-Links (neue Tokens) und keine Betreuer-PIN - der naechste Gastgeber
+ * bekommt seine eigene.
+ */
+export function dupliziereEvent(
+  quelleId: string,
+  eingabe: { name: string; datum: string },
+  eventsWurzel: string,
+  uebernimm: (e: EventEinstellungen) => EventEinstellungen = (e) => e,
+): Veranstaltung {
+  const quelle = holeEvent(quelleId);
+  if (!quelle) throw new Error('Veranstaltung nicht gefunden.');
+  return erstelleEvent({ ...eingabe, einstellungen: uebernimm(quelle.einstellungen) }, eventsWurzel);
+}
+
 export function aktualisiereEvent(
   id: string,
   aenderung: {
@@ -134,6 +159,11 @@ export function aktualisiereEvent(
     zeiten: { ...vorher.einstellungen.zeiten, ...aenderung.einstellungen?.zeiten },
     toene: { ...vorher.einstellungen.toene, ...aenderung.einstellungen?.toene },
   };
+  // Vorausgewaehlt kann nicht mehr sein als erlaubt - sonst startete die
+  // Mengenwahl im Kiosk ueber der Obergrenze.
+  einstellungen.kopienVorgabe = Math.min(einstellungen.kopienVorgabe, einstellungen.kopienMax);
+  // "Ohne Filter" ist immer die erste Kachel.
+  if (!einstellungen.filter.includes(FILTER_OHNE)) einstellungen.filter = [FILTER_OHNE, ...einstellungen.filter];
 
   holeDb()
     .prepare(
@@ -152,16 +182,6 @@ export function aktualisiereEvent(
   schreibeEventJson(nachher);
   return nachher;
 }
-
-/** Erlaubte Statuswechsel. Alles andere wird abgewiesen. */
-const UEBERGAENGE: Record<EventStatus, EventStatus[]> = {
-  entwurf: ['startbereit', 'archiviert'],
-  startbereit: ['aktiv', 'entwurf', 'archiviert'],
-  aktiv: ['pausiert', 'abgeschlossen'],
-  pausiert: ['aktiv', 'abgeschlossen'],
-  abgeschlossen: ['archiviert', 'aktiv'],
-  archiviert: ['entwurf'],
-};
 
 export function setzeStatus(id: string, neu: EventStatus): Veranstaltung {
   const event = holeEvent(id);
@@ -192,6 +212,11 @@ export function setzeStatus(id: string, neu: EventStatus): Veranstaltung {
   return nachher;
 }
 
+/** Die Veranstaltung aus der Datenbank - Sitzungen, Fotos, Drucke und Versand gehen per Fremdschluessel mit. */
+export function loescheEvent(id: string): void {
+  holeDb().prepare('DELETE FROM events WHERE id = ?').run(id);
+}
+
 export function setzeProbelauf(id: string, an: boolean): Veranstaltung {
   holeDb().prepare('UPDATE events SET probelauf = ? WHERE id = ?').run(an ? 1 : 0, id);
   return holeEvent(id)!;
@@ -199,6 +224,12 @@ export function setzeProbelauf(id: string, an: boolean): Veranstaltung {
 
 export function erneuereGalerieToken(id: string): Veranstaltung {
   holeDb().prepare('UPDATE events SET galerie_token = ? WHERE id = ?').run(neuesToken(), id);
+  return holeEvent(id)!;
+}
+
+/** Ein weitergegebener Status-Link wird so ungueltig - wie beim Galerie-Link. */
+export function erneuereStatusToken(id: string): Veranstaltung {
+  holeDb().prepare('UPDATE events SET status_token = ? WHERE id = ?').run(neuesToken(), id);
   return holeEvent(id)!;
 }
 

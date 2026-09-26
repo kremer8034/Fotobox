@@ -14,9 +14,20 @@ export type DruckerZustand =
   | 'klappe'
   | 'unbekannt';
 
+/** Zustaende, in denen ein neuer Auftrag nur haengen bliebe. */
+export function druckerBlockiert(zustand: DruckerZustand): boolean {
+  return zustand === 'papier-leer' || zustand === 'offline' || zustand === 'klappe';
+}
+
 export interface DruckerStatus {
   zustand: DruckerZustand;
   meldung?: string;
+  /**
+   * Auftraege, die schon beim Betriebssystem liegen, aber noch nicht gedruckt
+   * sind. Unter Windows kehrt der Druckbefehl zurueck, sobald der Auftrag in
+   * der Windows-Warteschlange liegt - nicht, wenn das Blatt draussen ist.
+   */
+  auftraegeBeimSystem?: number;
 }
 
 export interface DruckerTreiber {

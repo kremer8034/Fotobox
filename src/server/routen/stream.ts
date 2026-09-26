@@ -5,40 +5,45 @@ import type { Betrieb } from '../betrieb.js';
  * Live-View als MJPEG.
  *
  * liveview.jpg von digiCamControl liefert immer nur ein einzelnes Bild. Der
- * Server holt es etwa zehnmal pro Sekunde und reicht die JPEG-Daten
- * unveraendert weiter - kein Neucodieren, keine Skalierung. Fuer das Ausrichten
- * reicht das muehelos, ein echter Videostream ist es nicht.
+ * Betrieb holt es in festem Takt fuer alle Zuschauer gemeinsam, und die
+ * JPEG-Daten gehen unveraendert weiter - kein Neucodieren, keine Skalierung.
  */
 const GRENZE = 'fotoboxgrenze';
 
 export function registriereStream(app: FastifyInstance, betrieb: Betrieb): void {
-  app.get('/stream/liveview', async (anfrage, antwort) => {
-    antwort.raw.writeHead(200, {
+  app.get('/stream/liveview', (anfrage, antwort) => {
+    const leitung = antwort.raw;
+    leitung.writeHead(200, {
       'Content-Type': `multipart/x-mixed-replace; boundary=${GRENZE}`,
       'Cache-Control': 'no-store, no-cache, must-revalidate',
       Connection: 'close',
       Pragma: 'no-cache',
     });
+    // Kopfzeilen sofort senden: Sonst wartet der Browser bis zum ersten Bild,
+    // und das kommt bei abgesteckter Kamera womoeglich nie.
+    leitung.flushHeaders();
 
-    let offen = true;
-    anfrage.raw.on('close', () => {
-      offen = false;
+    const abmelden = betrieb.schaueLiveBild((bild) => {
+      if (leitung.destroyed) return;
+      // Kommt der Browser nicht hinterher - etwa weil der N100 gerade ein
+      // Layout rechnet -, wird dieses Bild ausgelassen statt angestellt.
+      // Vorher stauten sich die Bilder in der Leitung, und der Gast sah sich
+      // mit wachsender Verzoegerung: winkt, und die Hand kommt eine Sekunde
+      // spaeter.
+      if (leitung.writableNeedDrain) return;
+      leitung.write(
+        `--${GRENZE}\r\nContent-Type: image/jpeg\r\nContent-Length: ${bild.length}\r\n\r\n`,
+      );
+      leitung.write(bild);
+      leitung.write('\r\n');
     });
 
-    while (offen && !antwort.raw.destroyed) {
-      const bild = await betrieb.liveBild();
-      if (bild) {
-        antwort.raw.write(
-          `--${GRENZE}\r\nContent-Type: image/jpeg\r\nContent-Length: ${bild.length}\r\n\r\n`,
-        );
-        antwort.raw.write(bild);
-        antwort.raw.write('\r\n');
-      }
-      await new Promise((r) => setTimeout(r, 100));
-    }
-
-    if (!antwort.raw.destroyed) antwort.raw.end();
-    return antwort;
+    anfrage.raw.on('close', abmelden);
+    leitung.on('close', abmelden);
+    leitung.on('error', abmelden);
+    // Fastify soll die Antwort nicht selbst abschliessen - sie gehoert jetzt
+    // dem Strom und endet, wenn der Browser die Verbindung schliesst.
+    antwort.hijack();
   });
 
   /** Einzelbild, etwa fuer die Vorschau im Admin. */

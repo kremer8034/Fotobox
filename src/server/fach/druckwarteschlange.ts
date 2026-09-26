@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { holeDb, jetzt } from '../db/index.js';
 import { verbucheMaterial } from './events.js';
 import type { DruckQuelle, Druckauftrag, DruckStatus } from '../../shared/typen.js';
-import type { DruckerTreiber } from '../treiber/drucker.js';
+import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../treiber/drucker.js';
 
 /**
  * Druckwarteschlange.
@@ -14,7 +14,20 @@ import type { DruckerTreiber } from '../treiber/drucker.js';
  *
  * Faellt der Drucker aus, bleiben die Auftraege stehen, statt still verloren zu
  * gehen. Nach dem Papierwechsel laeuft die Schlange weiter.
+ *
+ * Wichtig dabei: Vor jedem Auftrag wird der Drucker gefragt. SumatraPDF meldet
+ * "fertig", sobald der Auftrag in der Windows-Warteschlange liegt - auch bei
+ * leerem Papier. Vorher wanderte deshalb bei einer leeren Rolle alles sofort
+ * zu Windows, galt als gedruckt und war fuer unsere Schlange verloren: kein
+ * Warten, kein Fortsetzen, falsche Zaehlung. Jetzt bleibt ein Auftrag bei uns,
+ * bis der Drucker bereit ist, und Windows bekommt nie mehr als zwei auf einmal.
  */
+
+/** So viele Auftraege duerfen gleichzeitig bei Windows liegen. */
+const HOECHSTENS_BEIM_SYSTEM = 2;
+/** Bewegt sich bei Windows so lange nichts, klemmt etwas. Ein Blatt dauert
+ *  12,4 s; drei Kopien und ein kalter Drucker bleiben weit darunter. */
+const STILLSTAND_MS = 180_000;
 
 interface AuftragZeile {
   id: string;
@@ -74,6 +87,87 @@ export function reiheEin(eingabe: {
   return id;
 }
 
+/**
+ * Nach einem Neustart: Auftraege, die beim Absturz gerade liefen, wieder
+ * anstellen. Vorher blieben sie fuer immer auf "laeuft" stehen - gedruckt
+ * wurden sie nie, und die Statusseite meldete den ganzen Abend "1 Foto wird
+ * gerade gedruckt".
+ *
+ * Lieber einmal zu viel drucken als ein Bild verlieren: Ob der Auftrag vor dem
+ * Absturz noch beim Drucker ankam, laesst sich nicht sicher sagen. Ein
+ * doppeltes Blatt kostet 20 Cent, ein fehlendes Bild einen enttaeuschten Gast.
+ */
+export function stelleUnterbrocheneWiederAn(): number {
+  return holeDb()
+    .prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'laeuft'")
+    .run().changes;
+}
+
+/**
+ * Wie viele Blatt eines Fotos Gaeste schon angestossen haben - am Ergebnis und
+ * ueber die Galerie zusammen. Nachdrucke des Betreuers zaehlen nicht mit.
+ * Auch fehlgeschlagene Auftraege zaehlen: Sie werden nach dem Papierwechsel
+ * nachgeholt.
+ */
+export function gastKopienVon(ausgabeId: string): number {
+  const zeile = holeDb()
+    .prepare(
+      "SELECT COALESCE(SUM(kopien), 0) AS n FROM druckauftraege WHERE ausgabe_id = ? AND quelle IN ('kiosk', 'galerie')",
+    )
+    .get(ausgabeId) as { n: number };
+  return zeile.n;
+}
+
+/**
+ * Eine Veranstaltung geht los: Was von frueheren Feiern noch auf den Druck
+ * wartet, wird zurueckgestellt statt gedruckt.
+ *
+ * Endete eine Feier mit leerer Rolle, standen ihre letzten Auftraege weiter
+ * auf "wartend" - und kamen mit der neuen Rolle als Erstes heraus, auf der
+ * naechsten Veranstaltung, vor fremden Gaesten, abgerechnet bei der alten.
+ * Jetzt gelten sie als nicht gedruckt; nachdrucken laesst sich jedes Bild
+ * weiterhin aus der Verwaltung.
+ *
+ * @returns wie viele Auftraege zurueckgestellt wurden
+ */
+export function stelleFremdeZurueck(eventId: string): number {
+  return holeDb()
+    .prepare(
+      `UPDATE druckauftraege
+          SET status = 'fehlgeschlagen', fehlertext = 'Nicht gedruckt: Eine andere Veranstaltung wurde gestartet.'
+        WHERE status = 'wartend' AND event_id <> ?`,
+    )
+    .run(eventId).changes;
+}
+
+/**
+ * Blatt, die vom Druck-Limit einer Veranstaltung schon vergeben sind: gedruckt
+ * oder noch unterwegs. Vorher zaehlten nur die gedruckten - bei leerer Rolle
+ * oder langer Schlange nahm die Box weit ueber das Limit hinaus Auftraege an
+ * (im Test 26 Blatt bei einem Limit von 20), und alle kamen spaeter heraus.
+ * Fehlgeschlagene zaehlen mit, weil sie nach dem Papierwechsel nachgeholt werden.
+ */
+export function blattVergeben(eventId: string): number {
+  return (
+    holeDb()
+      .prepare(
+        `SELECT COALESCE(SUM(kopien), 0) AS n FROM druckauftraege
+          WHERE event_id = ? AND berechnen = 1 AND quelle <> 'testdruck'
+            AND status IN ('gedruckt', 'wartend', 'laeuft', 'fehlgeschlagen')`,
+      )
+      .get(eventId) as { n: number }
+  ).n;
+}
+
+/** Wie viele Blatt gerade vor einem neuen Auftrag an der Reihe sind. */
+export function blattInWarteschlange(): number {
+  return (
+    holeDb()
+      .prepare("SELECT COALESCE(SUM(kopien), 0) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft')")
+      .get() as { n: number }
+  ).n;
+}
+
 export function offeneAuftraege(): number {
   const zeile = holeDb()
     .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft')")
@@ -105,10 +199,29 @@ export class Druckschleife {
   private angehalten = false;
   letzterFehler: string | null = null;
 
+  /** Seit wann die Zahl der Auftraege bei Windows unveraendert ueber null steht. */
+  private stillstandSeit: number | null = null;
+  private letzteAnzahlBeimSystem = 0;
+
   constructor(
     private readonly drucker: () => DruckerTreiber,
     private readonly protokoll: (text: string) => void,
+    /** Jeder hier gelesene Druckerzustand geht auch an die Anzeige. */
+    private readonly beiStatus: (status: DruckerStatus) => void = () => undefined,
   ) {}
+
+  /** Klemmt ein Auftrag bei Windows schon so lange, dass jemand nachsehen muss? */
+  stehtStill(): boolean {
+    return this.stillstandSeit !== null && Date.now() - this.stillstandSeit >= STILLSTAND_MS;
+  }
+
+  /** Beobachtet, ob sich bei Windows etwas bewegt. */
+  merkeStatus(status: DruckerStatus): void {
+    const anzahl = status.auftraegeBeimSystem ?? 0;
+    if (anzahl === 0 || anzahl !== this.letzteAnzahlBeimSystem) this.stillstandSeit = null;
+    if (anzahl > 0 && this.stillstandSeit === null) this.stillstandSeit = Date.now();
+    this.letzteAnzahlBeimSystem = anzahl;
+  }
 
   starte(): void {
     if (this.laeuft) return;
@@ -120,13 +233,33 @@ export class Druckschleife {
     this.gestoppt = true;
   }
 
-  /** "Papier gewechselt" im Servicemenue. */
-  fortsetzen(): void {
+  /**
+   * "Papier gewechselt" im Servicemenue.
+   *
+   * Holt nur die Fehldrucke der laufenden Veranstaltung nach. Vorher kamen
+   * alle fehlgeschlagenen Auftraege der Datenbank zurueck - auch die einer
+   * Feier von vor Wochen, und deren Fotos fremder Leute kamen dann auf der
+   * naechsten Hochzeit aus dem Drucker. Laeuft keine Veranstaltung (der
+   * Besitzer zu Hause), wird alles nachgeholt.
+   *
+   * @returns wie viele Auftraege dieser Veranstaltung jetzt auf den Druck warten
+   */
+  fortsetzen(eventId: string | null = null): number {
     this.angehalten = false;
     this.letzterFehler = null;
-    holeDb()
-      .prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen'")
-      .run();
+    const db = holeDb();
+    if (eventId) {
+      db.prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen' AND event_id = ?").run(
+        eventId,
+      );
+      return (
+        db
+          .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft') AND event_id = ?")
+          .get(eventId) as { n: number }
+      ).n;
+    }
+    db.prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen'").run();
+    return offeneAuftraege();
   }
 
   istAngehalten(): boolean {
@@ -145,6 +278,19 @@ export class Druckschleife {
 
       if (!naechster) {
         await pause(1000);
+        continue;
+      }
+
+      // Erst fragen, dann schicken. Ist der Drucker blockiert oder liegt bei
+      // Windows schon genug, bleibt der Auftrag bei uns und wartet - und geht
+      // von selbst los, sobald wieder Papier drin ist.
+      const status = await this.drucker()
+        .pruefe()
+        .catch((): DruckerStatus => ({ zustand: 'unbekannt' }));
+      this.merkeStatus(status);
+      this.beiStatus(status);
+      if (druckerBlockiert(status.zustand) || (status.auftraegeBeimSystem ?? 0) >= HOECHSTENS_BEIM_SYSTEM) {
+        await pause(3000);
         continue;
       }
 

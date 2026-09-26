@@ -3,8 +3,9 @@ import { join } from 'node:path';
 import { leseGeraet } from '../db/geraet.js';
 import { holeVorlage } from './vorlagen.js';
 import { wurzelpfade } from './pfade.js';
-import { lanAdresse } from '../netzwerk.js';
-import type { Veranstaltung } from '../../shared/typen.js';
+import { schriftenOrdner } from './schriften.js';
+import { alleLanAdressen, lanAdresse } from '../netzwerk.js';
+import { fotoEbenen, type Veranstaltung } from '../../shared/typen.js';
 import type { Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
 
@@ -90,13 +91,21 @@ export async function startbereitPruefung(
       fehlendeDateien.push(`Vorlage ${id} fehlt`);
       continue;
     }
+    // Ohne sichtbare Foto-Ebene nimmt die Box kein Foto auf - der Gast
+    // bekaeme nur die leere Vorlage.
+    if (fotoEbenen(vorlage).length === 0) {
+      fehlendeDateien.push(`${vorlage.name}: keine sichtbare Foto-Ebene`);
+    }
     for (const ebene of vorlage.ebenen) {
       if (ebene.typ === 'bild' && !existsSync(join(wurzel.vorlagen, ebene.datei))) {
         fehlendeDateien.push(`${vorlage.name}: ${ebene.datei}`);
       }
+      // Eigene Schriften liegen in Fotobox-Daten/schriften, nicht bei den
+      // Vorlagen-Bildern. Eine geloeschte Schrift faellt sonst erst beim
+      // Ausdruck auf - dann steht der Text in irgendeiner Ersatzschrift.
       if (ebene.typ === 'text' && ebene.schriftDatei) {
-        if (!existsSync(join(wurzel.vorlagen, ebene.schriftDatei))) {
-          fehlendeDateien.push(`${vorlage.name}: ${ebene.schriftDatei}`);
+        if (!existsSync(join(schriftenOrdner(konfig.datenpfad), ebene.schriftDatei))) {
+          fehlendeDateien.push(`${vorlage.name}: Schrift ${ebene.schrift ?? ebene.schriftDatei}`);
         }
       }
     }
@@ -107,7 +116,7 @@ export async function startbereitPruefung(
     bestanden: vorlagenOk && fehlendeDateien.length === 0,
     hinweis:
       fehlendeDateien.length > 0
-        ? `Fehlt: ${fehlendeDateien.join(', ')}`
+        ? `Stimmt nicht: ${fehlendeDateien.join(', ')}`
         : vorlagenOk
           ? `${event.einstellungen.vorlagen.length} Vorlage(n) freigegeben.`
           : 'Der Veranstaltung ist keine Vorlage zugeordnet.',
@@ -123,6 +132,22 @@ export async function startbereitPruefung(
         ? `Galerie laeuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}`
         : 'Keine Netzwerkadresse gefunden. Haengt die Box am Reise-Router?',
     });
+
+    // Haengt die Box zusaetzlich in einem fremden Netz (Kabel der Location,
+    // Hotel-WLAN), koennte die Galerie dort statt im eigenen Router landen -
+    // offen fuer alle in diesem Netz.
+    const alle = alleLanAdressen();
+    if (alle.length > 1) {
+      punkte.push({
+        schluessel: 'netze',
+        titel: 'Box haengt nur im eigenen Netz',
+        bestanden: false,
+        nurWarnung: true,
+        hinweis:
+          `Die Box hat mehrere Netzwerkadressen (${alle.join(', ')}); die Galerie laeuft unter ${adresse}. ` +
+          'Ist das nicht der Reise-Router, andere Verbindungen trennen (Netzwerkkabel ziehen, fremdes WLAN vergessen).',
+      });
+    }
   }
 
   punkte.push({

@@ -1,0 +1,118 @@
+# Baut die Setup-Datei der Fotobox auf einem echten Windows-Rechner.
+#
+#   - Bei jedem Push auf einen Zweig: bauen und pruefen. Die Setup-Datei
+#     liegt dann unter "Artifacts" des Laufs zum Ausprobieren.
+#   - Tag "v1.2.3" (oder Actions -> "Windows-Setup" -> "Run workflow" mit
+#     "veroeffentlichen"): zusaetzlich ein GitHub-Release mit Setup-Datei und
+#     Pruefsumme. Genau dort sucht die Verwaltung der Fotobox nach Updates.
+#
+# Die Versionsnummer kommt aus package.json; der Text des Releases aus dem
+# passenden Abschnitt in docs/Aenderungen.md.
+
+name: Windows-Setup
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+    inputs:
+      veroeffentlichen:
+        description: 'Als Release veroeffentlichen (Version aus package.json)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # Diese Node-Version wird auch mitgeliefert - die Datenbank-
+          # Bibliothek ist an sie gebunden.
+          node-version: '22'
+          cache: npm
+
+      - name: Abhaengigkeiten
+        run: npm ci
+
+      - name: Typen pruefen
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Bauen
+        run: npm run build
+
+      - name: Version bestimmen
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME -replace '^v', ''
+            if ($tag -ne $v) { throw "Tag $env:GITHUB_REF_NAME passt nicht zur Version in package.json ($v)." }
+          }
+          # Windows will fuer die Dateieigenschaften vier Zahlen ohne Zusatz.
+          $nummer = (($v -split '-')[0]) + '.0'
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "nummer=$nummer" >> $env:GITHUB_OUTPUT
+          $veroeffentlichen = ($env:GITHUB_REF_TYPE -eq 'tag') -or ('${{ inputs.veroeffentlichen }}' -eq 'true')
+          "veroeffentlichen=$($veroeffentlichen.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+      - name: Paket zusammenstellen
+        run: node skripte/paket-bauen.mjs
+
+      - name: Rauchtest mit dem mitgelieferten Node
+        run: node skripte/paket-rauchtest.mjs
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          & $iscc /Qp "/DVersion=${{ steps.version.outputs.version }}" "/DVersionNummer=${{ steps.version.outputs.nummer }}" windows\installer\Fotobox.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup ist fehlgeschlagen ($LASTEXITCODE)." }
+
+      - name: Pruefsumme
+        shell: pwsh
+        run: |
+          $datei = Get-Item "paket\ausgabe\Fotobox-Setup-${{ steps.version.outputs.version }}.exe"
+          $hash = (Get-FileHash $datei.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($datei.Name)" | Out-File -Encoding ascii -NoNewline "$($datei.FullName).sha256"
+          "Setup: $($datei.Name), $([math]::Round($datei.Length / 1MB, 1)) MB, SHA-256 $hash"
+
+      - name: Setup ausprobieren (installieren, Update, deinstallieren)
+        timeout-minutes: 15
+        shell: pwsh
+        run: pwsh -File skripte\installer-probe.ps1 -Setup "paket\ausgabe\Fotobox-Setup-${{ steps.version.outputs.version }}.exe"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Fotobox-Setup-${{ steps.version.outputs.version }}
+          path: paket/ausgabe/*
+          retention-days: 14
+
+      - name: Hinweise fuer das Release
+        if: steps.version.outputs.veroeffentlichen == 'true'
+        run: node skripte/aenderungen.mjs ${{ steps.version.outputs.version }} > paket/hinweise.md
+
+      - name: Release veroeffentlichen
+        if: steps.version.outputs.veroeffentlichen == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Fotobox ${{ steps.version.outputs.version }}
+          body_path: paket/hinweise.md
+          files: |
+            paket/ausgabe/Fotobox-Setup-${{ steps.version.outputs.version }}.exe
+            paket/ausgabe/Fotobox-Setup-${{ steps.version.outputs.version }}.exe.sha256

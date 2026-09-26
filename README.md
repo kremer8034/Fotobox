@@ -14,7 +14,9 @@ Der reine Fotobox-Betrieb läuft **vollständig ohne Internet**. Online-Funktion
 - **Vorlagen als freier Ebenenstapel** aus Bild-, Foto- und Textebenen. Ein
   Zierrahmen kann über einem Foto und gleichzeitig unter dem Logo liegen.
   Textebenen kennen die Platzhalter `{veranstaltung}`, `{datum}`, `{uhrzeit}`
-  und `{nummer}` — dieselbe Vorlage passt damit auf jede Feier.
+  und `{nummer}` — dieselbe Vorlage passt damit auf jede Feier. Die Schriftart
+  ist je Textebene wählbar; eigene TTF- oder OTF-Dateien lassen sich
+  hinzufügen und gelten dann auch für den Ausdruck.
 - **Filter** als Presets, dazu Import eigener `.cube`-LUTs. Angewendet wird
   ausschließlich auf die Fotos, nie auf Bild- und Textebenen der Vorlage.
 - **Druckweg mit exakter Größe**: Layout als JPEG in 1800 × 1200 px, verpackt
@@ -41,7 +43,7 @@ Dann `http://127.0.0.1:8787` öffnen. Für die Entwicklung mit Neuladen:
 
 ```bash
 npm run dev          # Server und Weboberfläche parallel
-npm test             # 37 Tests, alle ohne Hardware
+npm test             # 113 Tests, alle ohne Hardware
 npm run typecheck
 ```
 
@@ -56,37 +58,33 @@ Umgebungsvariablen:
 
 ## Installation auf der Fotobox
 
-**Ohne IT-Vorkenntnisse:
-[docs/Anleitung-Schritt-fuer-Schritt.md](docs/Anleitung-Schritt-fuer-Schritt.md)**
-— 22 nummerierte Schritte vom Herunterladen bis zum ersten Ausdruck, jeder
-Klick einzeln beschrieben, mit den Windows-Warnmeldungen, die unterwegs
-auftauchen, und was dann zu tun ist. Das ist der empfohlene Weg.
+**Eine Setup-Datei:** `Fotobox-Setup-<Version>.exe` von der
+[Releases-Seite](https://github.com/kremer8034/fotobox/releases) laden,
+doppelklicken, „Installieren“. Sie bringt alles mit – eigenes Node.js, fertig
+gebautes Programm, SumatraPDF – und richtet Autostart, Firewall-Freigabe und
+Energieeinstellungen ein. An der Box braucht es dafür weder Internet noch
+Kommandozeile.
 
-Die Kurzfassung für alle, die Windows kennen: Doppelklick auf
-`windows\Installieren.bat`. Die Datei holt sich selbst die nötigen Rechte und
-startet `Installieren.ps1` — kein Rechtsklick, keine Ausführungsrichtlinie.
+**Updates** gehen mit derselben Art Datei: in der Verwaltung unter
+*Gerät → Software* auf „Nach Updates suchen“, oder die neue Setup-Datei per
+USB-Stick starten. Daten, Fotos und Einstellungen bleiben erhalten, die
+Datenbank wird vorher gesichert.
 
-Das Skript erledigt alles in einem Zug: Node.js prüfen und bei Bedarf über
-winget installieren, Abhängigkeiten holen, Oberfläche bauen, Tests laufen
-lassen, Datenordner anlegen, digiCamControl, SumatraPDF und den DNP-Drucker
-suchen, Autostart einrichten, Bildschirmabschaltung und Standby abschalten und
-die Anzeigeskalierung prüfen. Als Administrator legt es zusätzlich die
-Firewall-Freigabe an — eng begrenzt auf den einen Port und das private
-Netzwerkprofil.
+Alles dazu – auch wie eine neue Version veröffentlicht wird – steht in
+**[docs/Installation-und-Updates.md](docs/Installation-und-Updates.md)**.
+Ohne IT-Vorkenntnisse:
+**[docs/Anleitung-Schritt-fuer-Schritt.md](docs/Anleitung-Schritt-fuer-Schritt.md)**.
+Der technische Weg bis zur einsatzbereiten Box mit Kamera- und Druckertest,
+Kalibrierung und Störungstest: [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md).
 
-Dafür braucht der PC **einmalig Internet**. Danach nie wieder.
+Gebaut wird die Setup-Datei von GitHub Actions auf einem Windows-Rechner
+(`.github/workflows/windows-setup.yml`): Tests, Build, Paket mit
+`skripte/paket-bauen.mjs`, Rauchtest des fertigen Pakets mit dem
+mitgelieferten Node, dann Inno Setup (`windows/installer/Fotobox.iss`).
 
-Anschließend:
-
-```
-windows\Fotobox starten.bat        Server starten
-windows\Verwaltung oeffnen.bat     Verwaltung im Browser öffnen
-windows\Kiosk starten.bat          Browser im Kiosk-Vollbild
-```
-
-**Der technische Weg von der leeren Festplatte bis zur einsatzbereiten Box
-steht in [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md)** — mit Kamera- und
-Druckertest einzeln, Kalibrierung und dem Störungstest.
+Für Entwickler bleibt `windows\Installieren.bat`: Installation direkt aus dem
+ausgecheckten Quelltext (Node über winget, `npm install`, Build, Tests,
+Autostart).
 
 ### Checkliste von Hand
 
@@ -97,9 +95,9 @@ Druckertest einzeln, Kalibrierung und dem Störungstest.
    spürbar daneben.
 3. **digiCamControl** installieren, dessen Webserver auf Port 5513 einschalten
    und das Programm einmal starten.
-4. **SumatraPDF** installieren oder als `SumatraPDF.exe` in den Ordner
-   `windows\` legen — der Server findet es beim Start selbst und trägt den
-   Pfad unter *Gerät → Drucker* ein.
+4. **SumatraPDF** bringt die Setup-Datei mit (`windows\SumatraPDF.exe`) — der
+   Server findet es beim Start selbst und trägt den Pfad unter
+   *Gerät → Drucker* ein.
 5. **Besitzer-PIN vergeben.** Ohne sie lässt sich keine Veranstaltung starten;
    eine ausgelieferte Standard-PIN gibt es bewusst nicht.
 6. **Kamera**: Netzteil mit Dummy-Akku verwenden, LED-Dauerlicht aufstellen,
@@ -123,6 +121,7 @@ Druckertest einzeln, Kalibrierung und dem Störungstest.
 Fotobox-Daten/
   fotobox.db
   vorlagen/                     Vorlagen-Definitionen und ihre Bilddateien
+  schriften/                    eigene Schriftdateien (TTF/OTF)
   luts/                         eigene .cube-Dateien
   events/
     2026-05-16_Hochzeit-Mueller/
@@ -150,9 +149,32 @@ WLAN — darauf ist das Konzept zugeschnitten:
 - **Kein Dateipfad kommt je aus der URL.** Bilder werden über Ausgabe-IDs
   angefordert; den Pfad baut der Server und prüft ihn gegen den Ordner des
   freigegebenen Events.
-- **Galerie-Zugang über ein Zufallstoken** mit 128 Bit, jederzeit erneuerbar.
+- **Galerie-Zugang über ein Zufallstoken** mit 128 Bit, jederzeit erneuerbar
+  (Galerie- und Status-Link getrennt). Ein Token gilt **nur, solange seine
+  Veranstaltung läuft** — der Link der Hochzeit vom letzten Wochenende zeigt auf
+  dem nächsten Geburtstag nichts mehr, obwohl der Reise-Router derselbe ist.
+- **Probelauf-Bilder und herausgenommene Bilder** sind über keinen Weg abrufbar.
+  Betreuer und Besitzer können im Servicemenü unter „Galerie" jedes Foto sofort
+  aus der Galerie nehmen (und zurückholen); die Dateien bleiben für die Übergabe.
+- **Strenge Kopfzeilen im WLAN:** Content-Security-Policy, kein Einbetten in
+  fremde Seiten, kein Referrer mit dem Galerie-Link, keine zwischengespeicherten
+  Antworten. Neue Bildfassungen werden höchstens zwei gleichzeitig gerechnet,
+  damit viele Handys auf einmal den Kiosk nicht ausbremsen.
+- **Verwaltung gegen fremde Webseiten geschützt:** Die lokale Instanz antwortet
+  nur unter `localhost`/`127.0.0.1` (gegen DNS-Rebinding) und nimmt schreibende
+  Anfragen nur von eigenen Seiten an (gegen untergeschobene Formulare) — falls
+  auf dem Fotobox-PC auch einmal im Internet gesurft wird.
 - **PINs nur als scrypt-Hash**, Drosselung nach drei Fehlversuchen.
-- **EXIF wird entfernt** aus allem, was über die Galerie herausgeht.
+- **EXIF wird entfernt** aus allem, was über die Galerie oder per E-Mail
+  herausgeht.
+- **E-Mail:** Die Verbindung zum Mailserver ist immer verschlüsselt (TLS ist
+  Pflicht, auch auf Port 587). Das Mailpasswort verlässt den Server nie, auch
+  nicht in die Verwaltung. Nur schlichte Adressen, nur das gerade fertige Foto,
+  höchstens drei Mails je Adresse und Tag. Adressen werden nach der Frist aus dem
+  Einwilligungstext automatisch gelöscht (Zeitpunkt und Wortlaut der
+  Einwilligung bleiben als Nachweis) und stehen nie im Protokoll.
+- Der **Startbereit-Check warnt**, wenn die Box in mehreren Netzen hängt und die
+  Galerie deshalb im falschen landen könnte.
 
 Ehrlich zur Grenze: Ein Browser-Kiosk ist nur so sicher wie Windows darunter.
 Das Konzept schützt zuverlässig gegen neugierige Gäste und versehentliches

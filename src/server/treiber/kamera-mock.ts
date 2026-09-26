@@ -13,9 +13,30 @@ export class MockKamera implements KameraTreiber {
   private zielordner = '';
   private liveView = false;
   private zaehler = 0;
+  /** Abrufe des Live-Bilds - fuer Messungen, wie oft die Kamera gefragt wird. */
+  liveAbrufe = 0;
+  /**
+   * Kuenstliche Abrufzeit je Live-Bild. Die echte 600D braucht ueber USB und
+   * digiCamControl einige Dutzend Millisekunden; ohne diese Verzoegerung
+   * liesse sich das Zeitverhalten des Live-Bilds nicht nachstellen.
+   */
+  private readonly liveVerzoegerung = Number(process.env.FOTOBOX_MOCK_LIVEBILD_MS ?? 0);
+
+  /**
+   * Nachgestellte Ausfaelle fuer Stoerungstests: "abgesteckt" wie ein gezogenes
+   * USB-Kabel, und eine Zahl Ausloeser, die scheitern - so wie die 600D, wenn
+   * der Autofokus nicht greift.
+   */
+  abgesteckt = false;
+  scheiterndeAusloeser = 0;
+  /** Ausloeser, die angenommen werden, aber keine Datei liefern. */
+  verschluckteAusloeser = 0;
 
   async pruefe(): Promise<KameraStatus> {
-    return { verbunden: true, liveViewLaeuft: this.liveView };
+    if (this.abgesteckt) {
+      return { verbunden: false, antwortet: true, liveViewLaeuft: false, meldung: 'abgesteckt (Test)' };
+    }
+    return { verbunden: true, antwortet: true, liveViewLaeuft: this.liveView };
   }
 
   async starteLiveView(): Promise<void> {
@@ -27,7 +48,9 @@ export class MockKamera implements KameraTreiber {
   }
 
   async liveBild(): Promise<Buffer | null> {
-    if (!this.liveView) return null;
+    if (!this.liveView || this.abgesteckt) return null;
+    this.liveAbrufe += 1;
+    if (this.liveVerzoegerung > 0) await new Promise((r) => setTimeout(r, this.liveVerzoegerung));
     // Ein langsam wandernder Farbverlauf, damit man im Browser sieht, dass der
     // Strom lebt und nicht ein Standbild haengt.
     const phase = (Date.now() / 3000) % 1;
@@ -42,6 +65,15 @@ export class MockKamera implements KameraTreiber {
   }
 
   async ausloesen(): Promise<void> {
+    if (this.abgesteckt) throw new Error('Kamera nicht verbunden (Test).');
+    if (this.scheiterndeAusloeser > 0) {
+      this.scheiterndeAusloeser -= 1;
+      throw new Error('Kamera meldet "busy" (Test).');
+    }
+    if (this.verschluckteAusloeser > 0) {
+      this.verschluckteAusloeser -= 1;
+      return;
+    }
     if (!this.zielordner) throw new Error('Kein Zielordner gesetzt.');
     mkdirSync(this.zielordner, { recursive: true });
     this.zaehler += 1;

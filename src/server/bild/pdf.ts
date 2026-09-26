@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import sharp from 'sharp';
 import { createWriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -14,6 +15,13 @@ import type { Canvas, Druckkalibrierung } from '../../shared/typen.js';
  *
  * Die Druckkalibrierung wirkt nur auf das eingebettete Bild, nie auf die
  * Seitengroesse. Damit gilt sie einmal fuer alle Layouts und alle Events.
+ *
+ * Die Seite liegt immer quer, so wie das Papier im Drucker. Ein Layout im
+ * Hochformat wird vorher um 90 Grad gedreht. Vorher bekam es eine hochkant
+ * stehende Seite, die SumatraPDF beim Drucken selbst drehte - und dabei
+ * drehte es die Kalibrierung mit: Der am queren Testbild gemessene Versatz
+ * "waagerecht" landete bei Hochformat-Layouts auf dem Papier senkrecht, die
+ * Skalierungen waren vertauscht.
  */
 
 /** PDF rechnet in Punkten: 1 pt = 1/72 Zoll. */
@@ -31,8 +39,11 @@ export async function schreibeDruckPdf(
 ): Promise<void> {
   await mkdir(dirname(zielPfad), { recursive: true });
 
-  const seiteBreite = optionen.canvas.breiteMm * PUNKTE_JE_MM;
-  const seiteHoehe = optionen.canvas.hoeheMm * PUNKTE_JE_MM;
+  const { breiteMm, hoeheMm } = optionen.canvas;
+  const hochkant = hoeheMm > breiteMm;
+  const seiteBreite = Math.max(breiteMm, hoeheMm) * PUNKTE_JE_MM;
+  const seiteHoehe = Math.min(breiteMm, hoeheMm) * PUNKTE_JE_MM;
+  const seitenbild = hochkant ? await sharp(bild).rotate(90).jpeg({ quality: 95 }).toBuffer() : bild;
 
   const k = optionen.kalibrierung;
   const skalaX = k.skalierungXProzent / 100;
@@ -57,7 +68,7 @@ export async function schreibeDruckPdf(
     strom.on('error', fehler);
     dokument.on('error', fehler);
     dokument.pipe(strom);
-    dokument.image(bild, links, oben, { width: bildBreite, height: bildHoehe });
+    dokument.image(seitenbild, links, oben, { width: bildBreite, height: bildHoehe });
     dokument.end();
   });
 }

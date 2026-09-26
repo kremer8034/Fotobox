@@ -1,11 +1,12 @@
 import sharp from 'sharp';
-import { existsSync } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { holeAusgabe } from '../fach/sitzungen.js';
 import { holeEvent } from '../fach/events.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { leseGeraet } from '../db/geraet.js';
+import { abgeleitet, FASSUNGEN } from '../bild/abgeleitet.js';
 
 /**
  * Medien fuer Kiosk und Admin. Nur ueber 127.0.0.1 erreichbar.
@@ -54,12 +55,18 @@ export function registriereMedien(app: FastifyInstance): void {
         return antwort.code(404).send();
       }
 
-      const klein = anfrage.query.klein === '1';
-      const bild = sharp(ausgabe.pfadLayout);
-      const daten = await (klein ? bild.resize(480, 480, { fit: 'inside' }) : bild)
-        .jpeg({ quality: klein ? 78 : 92 })
-        .toBuffer();
-      return antwort.header('Content-Type', 'image/jpeg').send(daten);
+      // Die Miniatur wird einmal gerechnet und aufgehoben; das Vollbild ist das
+      // fertige Layout selbst und geht unveraendert heraus. Vorher wurden
+      // beide bei jedem Abruf neu kodiert - siehe bild/abgeleitet.ts.
+      const pfad =
+        anfrage.query.klein === '1'
+          ? await abgeleitet(ausgabe.pfadLayout, eventpfade(event.ordner).cache, ausgabe.id, FASSUNGEN.kioskKlein)
+          : ausgabe.pfadLayout;
+      return antwort
+        .header('Content-Type', 'image/jpeg')
+        // Ein fertiges Layout aendert sich nie - der Browser darf es behalten.
+        .header('Cache-Control', 'private, max-age=86400, immutable')
+        .send(createReadStream(pfad));
     },
   );
 }

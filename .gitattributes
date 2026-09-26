@@ -1,0 +1,7 @@
+# Batchdateien brauchen unter Windows CRLF-Zeilenenden: Mit reinem LF springt
+# "goto" in cmd.exe unter Umstaenden an die falsche Stelle - und die
+# Neustart-Schleifen in den Startdateien leben von goto.
+*.bat text eol=crlf
+# PowerShell-Skripte und das Installer-Skript ebenso - Windows-Werkzeuge.
+*.ps1 text eol=crlf
+*.iss text eol=crlf

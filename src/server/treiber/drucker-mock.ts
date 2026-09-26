@@ -8,8 +8,18 @@ import type { DruckerStatus, DruckerTreiber } from './drucker.js';
  */
 export class MockDrucker implements DruckerTreiber {
   readonly name = 'Mock-Drucker';
-  /** Von Tests umschaltbar, um Papierstau und Co. nachzustellen. */
-  zustand: DruckerStatus = { zustand: 'bereit' };
+  /**
+   * Von Tests umschaltbar, um Papierstau und Co. nachzustellen. Beim Start
+   * auch ueber FOTOBOX_MOCK_DRUCKER (z. B. "papier-leer") - damit lassen sich
+   * die Stoerungshinweise im Browser ansehen, ohne einen echten Drucker leer
+   * laufen zu lassen.
+   */
+  zustand: DruckerStatus = {
+    zustand: (process.env.FOTOBOX_MOCK_DRUCKER as DruckerStatus['zustand']) || 'bereit',
+  };
+
+  /** Fuer Tests: Der naechste Druckbefehl scheitert, obwohl der Drucker bereit meldet. */
+  scheitertBeimDruck = false;
 
   constructor(private readonly ausgabeordner: string) {}
 
@@ -18,6 +28,10 @@ export class MockDrucker implements DruckerTreiber {
   }
 
   async drucke(pdfPfad: string, kopien: number): Promise<void> {
+    if (this.scheitertBeimDruck) {
+      this.scheitertBeimDruck = false;
+      throw new Error('Druckbefehl fehlgeschlagen (Test).');
+    }
     if (this.zustand.zustand !== 'bereit') {
       throw new Error(`Drucker nicht bereit: ${this.zustand.zustand}`);
     }

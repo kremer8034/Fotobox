@@ -13,6 +13,12 @@
 
 export interface KameraStatus {
   verbunden: boolean;
+  /**
+   * Hat die Kamera-Software ueberhaupt geantwortet? "verbunden: false" allein
+   * unterscheidet nicht zwischen "Kabel ab" (Programm antwortet, Kamera fehlt)
+   * und "Programm abgestuerzt" - und nur im zweiten Fall hilft ein Neustart.
+   */
+  antwortet: boolean;
   liveViewLaeuft: boolean;
   meldung?: string;
 }
