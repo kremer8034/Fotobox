@@ -19,7 +19,7 @@ import { FilterSeite } from './Filter.js';
  * ausgelegt - die Vorbereitung passiert am Schreibtisch.
  */
 export function Admin({ pfad, navigiere }: { pfad: string; navigiere: (ziel: string) => void }) {
-  const [status, setzeStatus] = useState<{ aktivesEvent: { name: string } | null } | null>(null);
+  const [status, setzeStatus] = useState<{ aktivesEvent: { name: string } | null; version?: string } | null>(null);
   useRueckkehrZumKiosk(navigiere);
 
   useEffect(() => {
@@ -47,6 +47,12 @@ export function Admin({ pfad, navigiere }: { pfad: string; navigiere: (ziel: str
         </button>
         <div style={{ padding: '0.6rem 0.7rem', fontSize: '0.72rem', color: 'var(--schrift-leise)' }}>
           {status?.aktivesEvent ? `Aktiv: ${status.aktivesEvent.name}` : 'Keine Veranstaltung aktiv'}
+          {status?.version && (
+            <>
+              <br />
+              Version {status.version}
+            </>
+          )}
         </div>
       </nav>
 

@@ -58,37 +58,33 @@ Umgebungsvariablen:
 
 ## Installation auf der Fotobox
 
-**Ohne IT-Vorkenntnisse:
-[docs/Anleitung-Schritt-fuer-Schritt.md](docs/Anleitung-Schritt-fuer-Schritt.md)**
-— 22 nummerierte Schritte vom Herunterladen bis zum ersten Ausdruck, jeder
-Klick einzeln beschrieben, mit den Windows-Warnmeldungen, die unterwegs
-auftauchen, und was dann zu tun ist. Das ist der empfohlene Weg.
+**Eine Setup-Datei:** `Fotobox-Setup-<Version>.exe` von der
+[Releases-Seite](https://github.com/kremer8034/fotobox/releases) laden,
+doppelklicken, „Installieren“. Sie bringt alles mit – eigenes Node.js, fertig
+gebautes Programm, SumatraPDF – und richtet Autostart, Firewall-Freigabe und
+Energieeinstellungen ein. An der Box braucht es dafür weder Internet noch
+Kommandozeile.
 
-Die Kurzfassung für alle, die Windows kennen: Doppelklick auf
-`windows\Installieren.bat`. Die Datei holt sich selbst die nötigen Rechte und
-startet `Installieren.ps1` — kein Rechtsklick, keine Ausführungsrichtlinie.
+**Updates** gehen mit derselben Art Datei: in der Verwaltung unter
+*Gerät → Software* auf „Nach Updates suchen“, oder die neue Setup-Datei per
+USB-Stick starten. Daten, Fotos und Einstellungen bleiben erhalten, die
+Datenbank wird vorher gesichert.
 
-Das Skript erledigt alles in einem Zug: Node.js prüfen und bei Bedarf über
-winget installieren, Abhängigkeiten holen, Oberfläche bauen, Tests laufen
-lassen, Datenordner anlegen, digiCamControl, SumatraPDF und den DNP-Drucker
-suchen, Autostart einrichten, Bildschirmabschaltung und Standby abschalten und
-die Anzeigeskalierung prüfen. Als Administrator legt es zusätzlich die
-Firewall-Freigabe an — eng begrenzt auf den einen Port und das private
-Netzwerkprofil.
+Alles dazu – auch wie eine neue Version veröffentlicht wird – steht in
+**[docs/Installation-und-Updates.md](docs/Installation-und-Updates.md)**.
+Ohne IT-Vorkenntnisse:
+**[docs/Anleitung-Schritt-fuer-Schritt.md](docs/Anleitung-Schritt-fuer-Schritt.md)**.
+Der technische Weg bis zur einsatzbereiten Box mit Kamera- und Druckertest,
+Kalibrierung und Störungstest: [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md).
 
-Dafür braucht der PC **einmalig Internet**. Danach nie wieder.
+Gebaut wird die Setup-Datei von GitHub Actions auf einem Windows-Rechner
+(`.github/workflows/windows-setup.yml`): Tests, Build, Paket mit
+`skripte/paket-bauen.mjs`, Rauchtest des fertigen Pakets mit dem
+mitgelieferten Node, dann Inno Setup (`windows/installer/Fotobox.iss`).
 
-Anschließend:
-
-```
-windows\Fotobox starten.bat        Server starten
-windows\Verwaltung oeffnen.bat     Verwaltung im Browser öffnen
-windows\Kiosk starten.bat          Browser im Kiosk-Vollbild
-```
-
-**Der technische Weg von der leeren Festplatte bis zur einsatzbereiten Box
-steht in [docs/Inbetriebnahme.md](docs/Inbetriebnahme.md)** — mit Kamera- und
-Druckertest einzeln, Kalibrierung und dem Störungstest.
+Für Entwickler bleibt `windows\Installieren.bat`: Installation direkt aus dem
+ausgecheckten Quelltext (Node über winget, `npm install`, Build, Tests,
+Autostart).
 
 ### Checkliste von Hand
 
@@ -99,9 +95,9 @@ Druckertest einzeln, Kalibrierung und dem Störungstest.
    spürbar daneben.
 3. **digiCamControl** installieren, dessen Webserver auf Port 5513 einschalten
    und das Programm einmal starten.
-4. **SumatraPDF** installieren oder als `SumatraPDF.exe` in den Ordner
-   `windows\` legen — der Server findet es beim Start selbst und trägt den
-   Pfad unter *Gerät → Drucker* ein.
+4. **SumatraPDF** bringt die Setup-Datei mit (`windows\SumatraPDF.exe`) — der
+   Server findet es beim Start selbst und trägt den Pfad unter
+   *Gerät → Drucker* ein.
 5. **Besitzer-PIN vergeben.** Ohne sie lässt sich keine Veranstaltung starten;
    eine ausgelieferte Standard-PIN gibt es bewusst nicht.
 6. **Kamera**: Netzteil mit Dummy-Akku verwenden, LED-Dauerlicht aufstellen,

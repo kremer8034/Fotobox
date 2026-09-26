@@ -236,6 +236,17 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             <p className="untertitel">
               {start.pausiert ? 'Gleich geht es weiter.' : (start.grund ?? '')}
             </p>
+            {start.ersteinrichtung && (
+              <>
+                <p className="untertitel">
+                  Die Fotobox ist frisch installiert. Lege in der Verwaltung zuerst unter „Gerät“ deine
+                  Besitzer-PIN fest.
+                </p>
+                <button className="knopf knopf--haupt" onClick={() => navigiere('/admin/geraet')}>
+                  Einrichtung fortsetzen
+                </button>
+              </>
+            )}
           </div>
         </div>
       );

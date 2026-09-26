@@ -10,3 +10,6 @@ daten/
 *.db
 *.db-journal
 *.db-wal
+
+# Installationspaket und Setup-Datei (werden von GitHub Actions gebaut)
+paket/

@@ -63,6 +63,8 @@ import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene, type FilterO
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import { holeDb } from '../db/index.js';
 import type { Konfig } from '../konfig.js';
+import { Aktualisierer, pruefeAufUpdate, type UpdateInfo } from '../fach/aktualisierung.js';
+import { VERSION } from '../version.js';
 
 /**
  * Admin-Routen. Ausschliesslich ueber 127.0.0.1 erreichbar - ein Gast im WLAN
@@ -775,7 +777,47 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     },
   );
 
-  app.get('/api/admin/status', async () => betrieb.status());
+  app.get('/api/admin/status', async () => ({ ...(await betrieb.status()), version: VERSION }));
+
+  /*
+   * Software-Update - nur auf Knopfdruck des Besitzers, siehe
+   * fach/aktualisierung.ts. Installiert wird ausschliesslich, was die letzte
+   * Pruefung hier auf dem Server gefunden hat; eine Adresse aus dem Browser
+   * wird nie geladen.
+   */
+  const aktualisierer = new Aktualisierer({
+    ordner: join(konfig.datenpfad, 'updates'),
+    starten: process.platform === 'win32' && konfig.echteHardware,
+  });
+  let letztePruefung: UpdateInfo | null = null;
+
+  app.post('/api/admin/update/pruefen', async (_anfrage, antwort) => {
+    try {
+      letztePruefung = await pruefeAufUpdate(VERSION);
+      return letztePruefung;
+    } catch (fehler) {
+      return antwort.code(503).send({ fehler: (fehler as Error).message });
+    }
+  });
+
+  app.post('/api/admin/update/installieren', async (_anfrage, antwort) => {
+    if (!letztePruefung?.neuerVerfuegbar) {
+      return antwort.code(409).send({ fehler: 'Bitte zuerst nach Updates suchen.' });
+    }
+    // Mitten in einer Aufnahme wuerde das Update die Gruppe hinauswerfen.
+    if (betrieb.aktiveSitzung) {
+      return antwort.code(409).send({ fehler: 'Gerade fotografiert jemand. Bitte warten, bis die Sitzung fertig ist.' });
+    }
+    if (aktualisierer.laeuft()) return antwort.code(409).send({ fehler: 'Es läuft schon ein Update.' });
+    protokolliere('info', 'update', `Update von ${VERSION} auf ${letztePruefung.neueste} angefordert.`);
+    // Laeuft im Hintergrund; den Fortschritt fragt die Verwaltung ab.
+    aktualisierer.installiere(letztePruefung).catch((fehler: Error) => {
+      protokolliere('warnung', 'update', `Update fehlgeschlagen: ${fehler.message}`);
+    });
+    return { ok: true };
+  });
+
+  app.get('/api/admin/update/stand', async () => ({ ...aktualisierer.stand, aktuell: VERSION }));
 
   /**
    * Was schiefging: Warnungen und Fehler aus dem Protokoll, neueste zuerst.

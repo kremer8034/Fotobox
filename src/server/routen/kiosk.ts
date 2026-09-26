@@ -60,7 +60,13 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     const event = holeAktivesEvent();
     const status = await betrieb.status();
     if (!event) {
-      return { bereit: false, status, grund: 'Es ist gerade keine Veranstaltung aktiv.' };
+      // Frisch installiert, noch keine Besitzer-PIN: Dann laesst sich das
+      // Schloss nicht oeffnen, und wer den Kiosk (etwa nach dem ersten
+      // Neustart) vor sich hat, kaeme nicht mehr heraus. Solange es keine PIN
+      // gibt, bietet der Kiosk deshalb den Weg in die Verwaltung an - dort
+      // ist dann auch noch nichts zu schuetzen.
+      const ersteinrichtung = !leseGeraet().besitzerPinHash;
+      return { bereit: false, status, grund: 'Es ist gerade keine Veranstaltung aktiv.', ersteinrichtung };
     }
 
     // Eine Vorlage ohne sichtbare Foto-Ebene bietet der Kiosk nicht an: Die

@@ -107,6 +107,8 @@ export interface KioskStart {
   aktiveSitzungId?: string | null;
   pausiert?: boolean;
   grund?: string;
+  /** Noch keine Besitzer-PIN - der Kiosk zeigt den Weg in die Verwaltung. */
+  ersteinrichtung?: boolean;
   status: {
     kamera: string;
     drucker: string;
