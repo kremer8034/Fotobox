@@ -12,14 +12,17 @@ import { stat } from 'node:fs/promises';
  *    fuehrt zu einem sauberen Fehler, den die Oberflaeche als freundlichen
  *    Wartehinweis zeigt.
  */
-export async function warteAufNeueDatei(
+export function warteAufNeueDatei(
   ordner: string,
-  optionen: { zeitlimitMs?: number; muster?: RegExp } = {},
+  optionen: { zeitlimitMs?: number; muster?: RegExp; abbruch?: AbortSignal } = {},
 ): Promise<string> {
   const zeitlimit = optionen.zeitlimitMs ?? 20_000;
-  const muster = optionen.muster ?? /\.(jpe?g|png|cr2)$/i;
+  // Nur JPEG. Steht die 600D auf RAW+JPEG, kommt die .CR2 womoeglich zuerst
+  // an - und die kann sharp nicht lesen. Frueher wurde sie trotzdem genommen,
+  // und die Sitzung scheiterte erst beim Zusammensetzen.
+  const muster = optionen.muster ?? /\.jpe?g$/i;
 
-  return new Promise<string>((fertig, fehler) => {
+  const warten = new Promise<string>((fertig, fehler) => {
     const waechter = chokidar.watch(ordner, {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 400, pollInterval: 100 },
@@ -43,7 +46,20 @@ export async function warteAufNeueDatei(
       void waechter.close();
       fehler(ursache instanceof Error ? ursache : new Error(String(ursache)));
     });
+
+    optionen.abbruch?.addEventListener('abort', () => {
+      clearTimeout(uhr);
+      void waechter.close();
+      fehler(new Error('Warten abgebrochen.'));
+    });
   });
+  // Wer das Warten abbricht - weil schon der Ausloeser scheiterte -, fragt nie
+  // mehr nach dem Ergebnis. Ohne diese Zeile galt die Ablehnung als
+  // unbehandelt, und Node beendete daraufhin den ganzen Server: Ein einziger
+  // Ausloeser, bei dem der Autofokus nicht griff, legte die Box still. Der
+  // Aufrufer bekommt die Ablehnung trotzdem, wenn er wartet.
+  warten.catch(() => undefined);
+  return warten;
 }
 
 /** Zusaetzliche Sicherung: erst zurueckgeben, wenn die Datei wirklich lesbar ist. */

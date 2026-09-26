@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Kiosk } from './kiosk/Kiosk.js';
 import { Admin } from './admin/Admin.js';
 import { HandyGalerie } from './galerie/HandyGalerie.js';
+import { Absturzschutz } from './Absturzschutz.js';
 
 /**
  * Drei Oberflaechen aus einer Codebasis:
@@ -27,10 +28,26 @@ export function App() {
     );
   }, [pfad]);
 
-  if (pfad.startsWith('/admin')) return <Admin pfad={pfad} navigiere={navigiere} />;
-  if (pfad.startsWith('/g/')) return <HandyGalerie token={pfad.slice(3)} />;
-  if (pfad.startsWith('/s/')) return <HandyGalerie token={pfad.slice(3)} nurStatus />;
-  return <Kiosk navigiere={navigiere} />;
+  const bereich = pfad.startsWith('/admin')
+    ? 'admin'
+    : pfad.startsWith('/g/') || pfad.startsWith('/s/')
+      ? 'handy'
+      : 'kiosk';
+  return (
+    // Der Schluessel setzt den Schutz beim Wechsel zwischen Kiosk und
+    // Verwaltung zurueck - nicht bei jedem Unterpunkt der Verwaltung.
+    <Absturzschutz kiosk={bereich === 'kiosk'} key={bereich}>
+      {pfad.startsWith('/admin') ? (
+        <Admin pfad={pfad} navigiere={navigiere} />
+      ) : pfad.startsWith('/g/') ? (
+        <HandyGalerie token={pfad.slice(3)} />
+      ) : pfad.startsWith('/s/') ? (
+        <HandyGalerie token={pfad.slice(3)} nurStatus />
+      ) : (
+        <Kiosk navigiere={navigiere} />
+      )}
+    </Absturzschutz>
+  );
 
   function navigiere(ziel: string) {
     window.history.pushState({}, '', ziel);

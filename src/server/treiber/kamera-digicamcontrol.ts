@@ -36,12 +36,13 @@ export class DigiCamControlKamera implements KameraTreiber {
     try {
       const antwort = await this.ruf('/?CMD=Get_Status', 2500);
       if (!antwort.ok) {
-        return { verbunden: false, liveViewLaeuft: false, meldung: `HTTP ${antwort.status}` };
+        return { verbunden: false, antwortet: true, liveViewLaeuft: false, meldung: `HTTP ${antwort.status}` };
       }
-      return { verbunden: true, liveViewLaeuft: this.liveView };
+      return { verbunden: true, antwortet: true, liveViewLaeuft: this.liveView };
     } catch (fehler) {
       return {
         verbunden: false,
+        antwortet: false,
         liveViewLaeuft: false,
         meldung: fehler instanceof Error ? fehler.message : String(fehler),
       };

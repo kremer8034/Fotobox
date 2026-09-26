@@ -33,6 +33,7 @@ import { loescheAlteAdressen } from '../fach/email.js';
 import { galerieUrl as galerieAdresse, lanAdresse } from '../netzwerk.js';
 import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
+import { holeDb } from '../db/index.js';
 import type { Konfig } from '../konfig.js';
 
 /**
@@ -518,4 +519,19 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   );
 
   app.get('/api/admin/status', async () => betrieb.status());
+
+  /**
+   * Was schiefging: Warnungen und Fehler aus dem Protokoll, neueste zuerst.
+   * Die Box steht meist ohne ihren Besitzer beim Kunden - hier liest er
+   * hinterher nach, ob die Kamera gehakt hat oder der Server neu starten musste.
+   */
+  app.get('/api/admin/protokoll', async () =>
+    holeDb()
+      .prepare(
+        `SELECT zeit, ebene, bereich, text FROM protokoll
+          WHERE ebene IN ('warnung', 'fehler')
+          ORDER BY zeit DESC LIMIT 50`,
+      )
+      .all(),
+  );
 }

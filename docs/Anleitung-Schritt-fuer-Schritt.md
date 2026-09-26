@@ -378,7 +378,37 @@ verstellen.
    Sekunden gedrückt**. Kurzes Antippen tut nichts.
 2. Ein Zahlenfeld erscheint. Gib deine Besitzer-PIN ein und tippe auf **OK**.
 3. Du landest im Servicemenü, nicht auf dem Windows-Desktop. Dort kannst du
-   zurück zum Kiosk, die Verwaltung öffnen oder das Vollbild verlassen.
+   zurück zum Kiosk, die Verwaltung öffnen oder mit **„Kiosk schließen"** zum
+   Windows-Desktop wechseln.
+
+Zurück ins Vollbild kommst du mit einem Doppelklick auf **`Kiosk starten`** im
+Ordner `windows` — oder einfach mit dem nächsten Start des PCs.
+
+## Wenn etwas ausfällt
+
+Die Box ist dafür gebaut, allein beim Gastgeber zu stehen. Das meiste regelt
+sie selbst:
+
+- **Kamera abgesteckt oder ausgeschaltet:** Die Gäste lesen „Die Kamera meldet
+  sich gerade nicht". Eine laufende Aufnahme wartet bis zu anderthalb Minuten,
+  dass die Kamera zurückkommt, und macht dann einfach weiter.
+- **Ein Foto klappt nicht** (etwa weil der Autofokus nicht greift): Die Box sagt
+  „Gleich noch einmal!" und wiederholt das Foto — bis zu dreimal.
+- **digiCamControl stürzt ab oder hängt:** Die Fotobox startet es selbst neu.
+- **Papier leer, Drucker aus:** Die Fotos warten in der Warteschlange. Sobald
+  neues Papier drin ist bzw. der Drucker wieder an ist, druckt die Box von
+  selbst weiter.
+- **Die Fotobox-Software stürzt ab:** `Fotobox starten` startet sie nach fünf
+  Sekunden neu. Der Bildschirm zeigt so lange „Kleine Pause".
+- **Der Browser wird geschlossen oder stürzt ab:** `Kiosk starten` öffnet ihn
+  wieder.
+
+Nur wenn der Druckbefehl selbst scheitert (etwa weil SumatraPDF fehlt), hält
+die Warteschlange an. Dann im Servicemenü auf **„Papier gewechselt —
+weiterdrucken"** tippen, nachdem die Ursache behoben ist.
+
+Jeden Neustart der Software notiert die Box in `neustarts.txt` im Datenordner.
+Was genau passiert ist, steht im Protokoll in der Verwaltung.
 
 Auf dem Zahlenfeld gibt es außerdem den Knopf **„Was ist los?"**. Der braucht
 keine PIN und zeigt in normalen Worten, was die Fotobox gerade meldet. Den darf

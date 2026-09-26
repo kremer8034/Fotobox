@@ -18,6 +18,9 @@ export class MockDrucker implements DruckerTreiber {
     zustand: (process.env.FOTOBOX_MOCK_DRUCKER as DruckerStatus['zustand']) || 'bereit',
   };
 
+  /** Fuer Tests: Der naechste Druckbefehl scheitert, obwohl der Drucker bereit meldet. */
+  scheitertBeimDruck = false;
+
   constructor(private readonly ausgabeordner: string) {}
 
   async pruefe(): Promise<DruckerStatus> {
@@ -25,6 +28,10 @@ export class MockDrucker implements DruckerTreiber {
   }
 
   async drucke(pdfPfad: string, kopien: number): Promise<void> {
+    if (this.scheitertBeimDruck) {
+      this.scheitertBeimDruck = false;
+      throw new Error('Druckbefehl fehlgeschlagen (Test).');
+    }
     if (this.zustand.zustand !== 'bereit') {
       throw new Error(`Drucker nicht bereit: ${this.zustand.zustand}`);
     }

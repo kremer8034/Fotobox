@@ -278,12 +278,19 @@ export function Servicemenue({
                 }}
               />
               <Handgriff
-                titel="Vollbild verlassen"
+                titel="Kiosk schließen"
                 zeile="Zum Windows-Desktop"
-                beiTipp={() => {
-                  void document.exitFullscreen?.().catch(() => undefined);
-                  setzeMeldung('Vollbild verlassen.');
-                }}
+                beiTipp={() =>
+                  setzeRueckfrage({
+                    titel: 'Kiosk schließen?',
+                    text:
+                      'Die Fotobox-Oberfläche geht zu, und der Windows-Desktop erscheint. ' +
+                      'Zurück geht es mit einem Doppelklick auf „Kiosk starten“ ' +
+                      'oder beim nächsten Start des PCs.',
+                    ja: 'Schließen',
+                    aktion: () => void kioskSchliessen(),
+                  })
+                }
               />
               <Handgriff
                 titel="PC herunterfahren"
@@ -335,6 +342,15 @@ export function Servicemenue({
     try {
       await api.sende(pfad, koerper);
       setzeMeldung(erfolgstext);
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
+  }
+
+  async function kioskSchliessen() {
+    try {
+      const antwort = await api.sende<{ simuliert: boolean }>('/api/kiosk/service/kiosk-schliessen', {});
+      setzeMeldung(antwort.simuliert ? 'Im Testbetrieb bleibt der Kiosk offen.' : 'Kiosk wird geschlossen …');
     } catch (fehler) {
       setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
     }

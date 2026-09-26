@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { STOERUNGSTEXTE, type Stoerung } from '../../shared/typen.js';
+
+interface Eintrag {
+  zeit: string;
+  ebene: 'warnung' | 'fehler';
+  bereich: string;
+  text: string;
+}
 
 interface Status {
   kamera: string;
@@ -13,6 +21,11 @@ interface Status {
 
 export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) {
   const [status, setzeStatus] = useState<Status | null>(null);
+  const [vorfaelle, setzeVorfaelle] = useState<Eintrag[]>([]);
+
+  useEffect(() => {
+    api.hole<Eintrag[]>('/api/admin/protokoll').then(setzeVorfaelle).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const laden = () => api.hole<Status>('/api/admin/status').then(setzeStatus).catch(() => undefined);
@@ -63,7 +76,7 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
         </div>
         {status.stoerung && (
           <p style={{ color: 'var(--warnung)', marginBottom: 0 }}>
-            Störung gemeldet: {status.stoerung}
+            Störung gemeldet: {STOERUNGSTEXTE[status.stoerung as Stoerung]?.titel ?? status.stoerung}
           </p>
         )}
       </div>
@@ -91,6 +104,34 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
           <p style={{ color: 'var(--schrift-leise)' }}>
             Es läuft gerade keine Veranstaltung. Der Kiosk zeigt einen freundlichen Hinweis.
           </p>
+        )}
+      </div>
+
+      <div className="karte">
+        <h2>Was zuletzt gehakt hat</h2>
+        {vorfaelle.length === 0 ? (
+          <p style={{ color: 'var(--schrift-leise)', marginBottom: 0 }}>
+            Keine Warnungen und Fehler. Alles ist rund gelaufen.
+          </p>
+        ) : (
+          <ul className="vorfaelle">
+            {vorfaelle.map((v, i) => (
+              <li key={i} className={`vorfaelle__eintrag vorfaelle__eintrag--${v.ebene}`}>
+                <span className="vorfaelle__zeit">
+                  {new Date(v.zeit).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                <span className="vorfaelle__bereich">{v.bereich}</span>
+                {/* Nur die erste Zeile - darunter steht bei Abstuerzen der
+                    technische Ablauf, der hier niemandem weiterhilft. */}
+                <span>{v.text.split('\n')[0]}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </>

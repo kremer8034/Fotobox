@@ -28,52 +28,32 @@ export class WindowsDrucker implements DruckerTreiber {
       return { zustand: 'unbekannt', meldung: 'Kein Drucker ausgewaehlt.' };
     }
     try {
-      // PrinterStatus und DetectedErrorState aus WMI. Die Zahlenwerte sind in
-      // der Win32_Printer-Dokumentation festgelegt.
+      // PrinterStatus und DetectedErrorState aus WMI, dazu die Auftraege, die
+      // schon bei Windows liegen, und der Zustand des vordersten. Die
+      // Zahlenwerte sind in der Win32_Printer-Dokumentation festgelegt.
+      const name = this.druckerName.replace(/'/g, "''");
       const { stdout } = await fuehreAus(
         'powershell.exe',
         [
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          `$p = Get-CimInstance Win32_Printer -Filter "Name='${this.druckerName.replace(/'/g, "''")}'";` +
-            'if ($null -eq $p) { "fehlt" } else { "$($p.PrinterStatus);$($p.DetectedErrorState);$($p.WorkOffline)" }',
+          `$p = Get-CimInstance Win32_Printer -Filter "Name='${name}'";` +
+            'if ($null -eq $p) { "fehlt" } else {' +
+            ` $muster = [WildcardPattern]::Escape('${name}') + ', *';` +
+            ' $j = @(Get-CimInstance Win32_PrintJob | Where-Object { $_.Name -like $muster });' +
+            ' $erster = if ($j.Count -gt 0) { $j[0].JobStatus } else { "" };' +
+            ' "$($p.PrinterStatus);$($p.DetectedErrorState);$($p.WorkOffline);$($j.Count);$erster" }',
         ],
         { timeout: 8000, windowsHide: true },
       );
-      return this.deuteStatus(stdout.trim());
+      return deuteStatus(stdout.trim());
     } catch (fehler) {
       return {
         zustand: 'unbekannt',
         meldung: fehler instanceof Error ? fehler.message : String(fehler),
       };
     }
-  }
-
-  private deuteStatus(roh: string): DruckerStatus {
-    if (roh === 'fehlt') {
-      return { zustand: 'offline', meldung: 'Drucker ist in Windows nicht vorhanden.' };
-    }
-    const [statusText, fehlerText, offlineText] = roh.split(';');
-    if (offlineText?.trim().toLowerCase() === 'true') {
-      return { zustand: 'offline', meldung: 'Drucker ist offline.' };
-    }
-    const fehler = Number(fehlerText);
-    // Win32_Printer.DetectedErrorState: 4 = Paper Jam, 5 = Paper Out,
-    // 6 = Manual Feed, 9 = Door Open, 10 = Offline.
-    const nachFehler: Record<number, DruckerZustand> = {
-      4: 'klappe',
-      5: 'papier-leer',
-      6: 'papier-leer',
-      9: 'klappe',
-      10: 'offline',
-    };
-    const zustand = nachFehler[fehler];
-    if (zustand) return { zustand, meldung: `Windows meldet Fehlerzustand ${fehler}.` };
-    // PrinterStatus 3 = Idle, 4 = Printing, 5 = Warmup gelten alle als bereit.
-    const status = Number(statusText);
-    if ([3, 4, 5].includes(status)) return { zustand: 'bereit' };
-    return { zustand: 'unbekannt', meldung: `Windows meldet Status ${statusText}.` };
   }
 
   async drucke(pdfPfad: string, kopien: number): Promise<void> {
@@ -96,4 +76,48 @@ export class WindowsDrucker implements DruckerTreiber {
     ];
     await fuehreAus(this.sumatraPfad, argumente, { timeout: 120_000, windowsHide: true });
   }
+}
+
+/**
+ * Die Antwort der PowerShell-Abfrage deuten:
+ * "PrinterStatus;DetectedErrorState;WorkOffline;Auftraege bei Windows;Zustand des vordersten".
+ */
+export function deuteStatus(roh: string): DruckerStatus {
+  if (roh === 'fehlt') {
+    return { zustand: 'offline', meldung: 'Drucker ist in Windows nicht vorhanden.' };
+  }
+  const [statusText, fehlerText, offlineText, anzahlText, auftragText = ''] = roh.split(';');
+  const auftraegeBeimSystem = Number(anzahlText) || 0;
+  const mit = (status: DruckerStatus): DruckerStatus => ({ ...status, auftraegeBeimSystem });
+
+  if (offlineText?.trim().toLowerCase() === 'true') {
+    return mit({ zustand: 'offline', meldung: 'Drucker ist offline.' });
+  }
+  const fehler = Number(fehlerText);
+  // Win32_Printer.DetectedErrorState: 4 = Paper Jam, 5 = Paper Out,
+  // 6 = Manual Feed, 9 = Door Open, 10 = Offline.
+  const nachFehler: Record<number, DruckerZustand> = {
+    4: 'klappe',
+    5: 'papier-leer',
+    6: 'papier-leer',
+    9: 'klappe',
+    10: 'offline',
+  };
+  const zustand = nachFehler[fehler];
+  if (zustand) return mit({ zustand, meldung: `Windows meldet Fehlerzustand ${fehler}.` });
+
+  // Viele Treiber melden eine leere Rolle nicht am Drucker, sondern nur am
+  // haengenden Auftrag ("Error - Paper Out", "Offline").
+  if (/paper ?out/i.test(auftragText)) return mit({ zustand: 'papier-leer', meldung: auftragText });
+  if (/offline/i.test(auftragText)) return mit({ zustand: 'offline', meldung: auftragText });
+  if (/error|fehler|blocked|user intervention/i.test(auftragText)) {
+    return mit({ zustand: 'klappe', meldung: auftragText });
+  }
+
+  // PrinterStatus 3 = Idle, 4 = Printing, 5 = Warmup gelten alle als bereit;
+  // 7 = Offline meldet Windows etwa, wenn das USB-Kabel ab ist.
+  const status = Number(statusText);
+  if ([3, 4, 5].includes(status)) return mit({ zustand: 'bereit' });
+  if (status === 7) return mit({ zustand: 'offline', meldung: 'Windows meldet den Drucker als offline.' });
+  return mit({ zustand: 'unbekannt', meldung: `Windows meldet Status ${statusText}.` });
 }

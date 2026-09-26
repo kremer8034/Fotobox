@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { oeffneDb, schliesseDb } from '../db/index.js';
+import { holeDb, oeffneDb, schliesseDb } from '../db/index.js';
 import { leseGeraet, schreibeGeraet, begrenzeKalibrierung } from '../db/geraet.js';
 import { legeEingebauteFilterAn } from '../fach/filter.js';
 import { legeStandardvorlagenAn } from '../fach/vorlagen.js';
@@ -15,7 +15,7 @@ import {
 } from '../fach/events.js';
 import { starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
-import { reiheEin, Druckschleife } from '../fach/druckwarteschlange.js';
+import { reiheEin, Druckschleife, offeneAuftraege, stelleUnterbrocheneWiederAn } from '../fach/druckwarteschlange.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { hashePin, pruefePin, PinDrossel } from '../fach/pin.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
@@ -170,7 +170,7 @@ describe('Probelauf', () => {
 });
 
 describe('Druckwarteschlange', () => {
-  it('verliert bei Druckerausfall keinen Auftrag und setzt nach dem Papierwechsel fort', async () => {
+  it('verliert bei Druckerausfall keinen Auftrag und druckt nach dem Papierwechsel von selbst weiter', async () => {
     const event0 = erstelleEvent({ name: 'Stau', datum: '2026-08-01' }, wurzel.events);
     const event = aktualisiereEvent(event0.id, {
       einstellungen: { vorlagen: ['standard-1-quer'] },
@@ -207,17 +207,54 @@ describe('Druckwarteschlange', () => {
       berechnen: true,
     });
     schleife.starte();
-    await warteBis(() => schleife.istAngehalten());
-
-    // Der Auftrag ist nicht verloren, nur angehalten.
+    // Bei leerem Papier geht der Auftrag gar nicht erst los - er wartet bei
+    // uns, statt bei Windows zu verschwinden.
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(schleife.istAngehalten()).toBe(false);
+    expect(offeneAuftraege()).toBe(1);
     expect(berechneAuslagen(holeAktivesEvent()!).druckeGesamt).toBe(0);
 
+    // Papier nachgelegt: Es geht von selbst weiter, ohne Servicemenue.
     drucker.zustand = { zustand: 'bereit' };
-    schleife.fortsetzen();
     await warteBis(() => berechneAuslagen(holeAktivesEvent()!).druckeGesamt === 1);
+    expect(berechneAuslagen(holeAktivesEvent()!).druckeGesamt).toBe(1);
+
+    // Scheitert der Druckbefehl selbst, haelt die Schlange an und wartet auf
+    // "Fortsetzen" - ein solcher Fehler heilt nicht von allein.
+    drucker.scheitertBeimDruck = true;
+    reiheEin({
+      eventId: aktiv.id,
+      ausgabeId: ausgabe.id,
+      pfadPdf: ausgabe.pfadDruckPdf!,
+      kopien: 1,
+      quelle: 'kiosk',
+      berechnen: true,
+    });
+    await warteBis(() => schleife.istAngehalten());
+    expect(berechneAuslagen(holeAktivesEvent()!).druckeGesamt).toBe(1);
+    schleife.fortsetzen();
+    await warteBis(() => berechneAuslagen(holeAktivesEvent()!).druckeGesamt === 2);
     schleife.stoppe();
 
-    expect(berechneAuslagen(holeAktivesEvent()!).druckeGesamt).toBe(1);
+    expect(berechneAuslagen(holeAktivesEvent()!).druckeGesamt).toBe(2);
+    expect(offeneAuftraege()).toBe(0);
+
+    // Absturz mitten im Druck: Der Auftrag stand auf "laeuft" und waere ohne
+    // Wiederanstellen nie mehr angefasst worden.
+    const unterbrochen = reiheEin({
+      eventId: aktiv.id,
+      ausgabeId: ausgabe.id,
+      pfadPdf: ausgabe.pfadDruckPdf!,
+      kopien: 1,
+      quelle: 'kiosk',
+      berechnen: true,
+    });
+    holeDb().prepare("UPDATE druckauftraege SET status = 'laeuft' WHERE id = ?").run(unterbrochen);
+    expect(stelleUnterbrocheneWiederAn()).toBe(1);
+    const zeile = holeDb().prepare('SELECT status FROM druckauftraege WHERE id = ?').get(unterbrochen) as { status: string };
+    expect(zeile.status).toBe('wartend');
+    holeDb().prepare("DELETE FROM druckauftraege WHERE id = ?").run(unterbrochen);
+
     setzeStatus(aktiv.id, 'abgeschlossen');
   });
 });

@@ -8,7 +8,14 @@ import { DigiCamControlKamera } from './treiber/kamera-digicamcontrol.js';
 import { MockDrucker } from './treiber/drucker-mock.js';
 import { WindowsDrucker } from './treiber/drucker-windows.js';
 import type { KameraTreiber } from './treiber/kamera.js';
-import type { DruckerTreiber } from './treiber/drucker.js';
+import {
+  cameraControlExe,
+  DigiCamControlWaechter,
+  programmVorhanden,
+  windowsSteuerung,
+  type Massnahme,
+} from './treiber/digicamcontrol-waechter.js';
+import type { DruckerStatus, DruckerTreiber } from './treiber/drucker.js';
 import type { Betriebsstatus, Stoerung } from '../shared/typen.js';
 import type { SitzungZustand } from './fach/sitzungen.js';
 
@@ -43,6 +50,9 @@ export class Betrieb {
   private letztesLiveBildZeit = 0;
   private beobachtungLaeuft = false;
   private beendet = false;
+  /** Nur mit echter Hardware unter Windows: haelt digiCamControl am Leben. */
+  private readonly kameraProgramm: DigiCamControlWaechter | null;
+  private letzteMassnahme: Massnahme = 'nichts';
 
   constructor(private readonly optionen: BetriebOptionen) {
     const geraet = leseGeraet();
@@ -52,10 +62,30 @@ export class Betrieb {
     this.drucker = optionen.echteHardware
       ? new WindowsDrucker(geraet.druckerName, geraet.sumatraPfad)
       : new MockDrucker(optionen.mockDruckOrdner);
+    const exe = () => cameraControlExe(leseGeraet().digicamcontrolPfad);
+    this.kameraProgramm =
+      optionen.echteHardware && process.platform === 'win32'
+        ? new DigiCamControlWaechter(windowsSteuerung(exe), programmVorhanden(exe))
+        : null;
     this.druckschleife = new Druckschleife(
       () => this.drucker,
       (text) => protokolliere('warnung', 'druck', text),
+      (status) => this.uebernimmDruckerStatus(status),
     );
+  }
+
+  /** Ein frisch gelesener Druckerzustand - aus der Beobachtung oder vor einem Druck. */
+  private uebernimmDruckerStatus(status: DruckerStatus): void {
+    this.letzteDruckerPruefung = Date.now();
+    this.druckerBeschaeftigt = (status.auftraegeBeimSystem ?? 0) > 0;
+    this.druckerStoerung =
+      status.zustand === 'papier-leer'
+        ? 'papier-leer'
+        : status.zustand === 'offline'
+          ? 'drucker-offline'
+          : status.zustand === 'klappe'
+            ? 'drucker-klappe'
+            : null;
   }
 
   starte(): void {
@@ -103,6 +133,22 @@ export class Betrieb {
 
   liveViewLaeuft(): boolean {
     return this.liveViewGewuenscht;
+  }
+
+  /**
+   * Liefert die Kamera gerade Bilder? Laeuft der Abholer, genuegt ein Blick auf
+   * sein letztes Bild; sonst wird die Kamera einmal direkt gefragt. Ein Bild,
+   * das Byte fuer Byte dem vorigen gleicht, zaehlt nicht - das ist ein
+   * eingefrorenes Bild, kein Live-Bild.
+   */
+  async liveBildDa(): Promise<boolean> {
+    if (Date.now() - this.letztesLiveBildZeit < 1500) return true;
+    if (this.abholerLaeuft) return false;
+    const bild = await this.kamera.liveBild().catch(() => null);
+    if (!bild || (this.letztesLiveBild && bild.equals(this.letztesLiveBild))) return false;
+    this.letztesLiveBild = bild;
+    this.letztesLiveBildZeit = Date.now();
+    return true;
   }
 
   /*
@@ -228,6 +274,28 @@ export class Betrieb {
         const warVerbunden = this.kameraOk;
         this.kameraOk = kameraStatus.verbunden;
 
+        if (this.kameraProgramm) {
+          const massnahme = await this.kameraProgramm.pruefe(kameraStatus.antwortet);
+          if (massnahme === 'gestartet') protokolliere('info', 'kamera', 'digiCamControl gestartet.');
+          if (massnahme === 'neu-gestartet') {
+            protokolliere('warnung', 'kamera', 'digiCamControl antwortete nicht mehr und wurde neu gestartet.');
+          }
+          // Nur einmal melden, nicht alle drei Sekunden.
+          if (massnahme === 'programm-fehlt' && this.letzteMassnahme !== 'programm-fehlt') {
+            protokolliere('fehler', 'kamera', 'digiCamControl ist nicht installiert oder der Pfad unter Geraet stimmt nicht.');
+          }
+          if (massnahme !== 'nichts') this.letzteMassnahme = massnahme;
+          if (kameraStatus.antwortet) this.letzteMassnahme = 'nichts';
+        }
+
+        // Speicher: guenstig zu lesen, also jede Runde.
+        // Laesst sich der Wert nicht lesen, wird nicht gewarnt - sonst stuende
+        // wegen eines Lesefehlers "Speicher voll" vor den Gaesten.
+        const frei = await statfs(leseGeraet().datenpfad)
+          .then((info) => (info.bavail * info.bsize) / 1024 ** 3)
+          .catch(() => null);
+        this.speicherKnapp = frei !== null && frei < SPEICHER_KNAPP_GB;
+
         // Verbindung war weg und ist wieder da: Live-View neu aufbauen.
         if (!warVerbunden && this.kameraOk && this.liveViewGewuenscht) {
           await this.kamera.starteLiveView().catch(() => undefined);
@@ -240,14 +308,8 @@ export class Betrieb {
         }
         this.letzteDruckerPruefung = Date.now();
         const druckerStatus = await this.drucker.pruefe();
-        this.druckerStoerung =
-          druckerStatus.zustand === 'papier-leer'
-            ? 'papier-leer'
-            : druckerStatus.zustand === 'offline'
-              ? 'drucker-offline'
-              : druckerStatus.zustand === 'klappe'
-                ? 'drucker-klappe'
-                : null;
+        this.druckschleife.merkeStatus(druckerStatus);
+        this.uebernimmDruckerStatus(druckerStatus);
       } catch {
         // Der Beobachter darf nie sterben.
       }
@@ -269,10 +331,16 @@ export class Betrieb {
    * fotografiert, wird ein ruhiger Drucker gar nicht gefragt.
    */
   private letzteDruckerPruefung = 0;
+  /** Liegen Auftraege bei Windows, die noch nicht gedruckt sind? */
+  private druckerBeschaeftigt = false;
+  private speicherKnapp = false;
 
   private druckerPruefungFaellig(): boolean {
     const wachsam =
-      this.druckerStoerung !== null || this.druckschleife.istAngehalten() || offeneAuftraege() > 0;
+      this.druckerStoerung !== null ||
+      this.druckerBeschaeftigt ||
+      this.druckschleife.istAngehalten() ||
+      offeneAuftraege() > 0;
     if (!wachsam && this.aktiveSitzung) return false;
     const abstand = wachsam ? 3000 : 20_000;
     return Date.now() - this.letzteDruckerPruefung >= abstand;
@@ -285,7 +353,14 @@ export class Betrieb {
   aktuelleStoerung(): Stoerung | null {
     if (!this.kameraOk) return 'kamera-offline';
     if (this.druckschleife.istAngehalten()) return this.druckerStoerung ?? 'drucker-offline';
-    return this.druckerStoerung;
+    if (this.druckerStoerung) return this.druckerStoerung;
+    // Der Drucker meldet nichts, aber bei Windows bewegt sich seit Minuten
+    // nichts: Dann klemmt etwas, was der Treiber nicht als Fehler meldet.
+    if (this.druckschleife.stehtStill()) return 'drucker-klappe';
+    // Knapper Speicher haelt nichts an - er ist nur ein Hinweis, damit
+    // rechtzeitig jemand Bescheid sagt.
+    if (this.speicherKnapp) return 'speicher-voll';
+    return null;
   }
 
   async status(): Promise<Betriebsstatus> {
@@ -331,6 +406,10 @@ export function protokolliere(
   if (ebene === 'fehler') console.error(zeile);
   else console.log(zeile);
 }
+
+/** Unter dieser Grenze meldet die Box "Speicher wird eng" - dieselbe Schwelle,
+ *  ab der die Statusliste rot zeigt. */
+const SPEICHER_KNAPP_GB = 2;
 
 /** Zehn Bilder je Sekunde: genug zum Ausrichten, und mehr liefert die 600D
  *  ueber USB ohnehin kaum. */

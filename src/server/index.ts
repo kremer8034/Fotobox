@@ -14,12 +14,15 @@ import { findeDigiCamControl, findeSumatra } from './fach/hilfsprogramme.js';
 import { legeStandardvorlagenAn } from './fach/vorlagen.js';
 import { legeEingebauteFilterAn } from './fach/filter.js';
 import { holeAktivesEvent } from './fach/events.js';
+import { stelleUnterbrocheneWiederAn } from './fach/druckwarteschlange.js';
+import { brichSitzungAb } from './fach/sitzungen.js';
 import { Betrieb, protokolliere } from './betrieb.js';
 import { registriereKiosk } from './routen/kiosk.js';
 import { registriereAdmin } from './routen/admin.js';
 import { registriereOeffentlich } from './routen/oeffentlich.js';
 import { registriereMedien } from './routen/medien.js';
 import { registriereStream } from './routen/stream.js';
+import { registriereEntwicklung } from './routen/entwicklung.js';
 import { lanAdresse } from './netzwerk.js';
 
 /**
@@ -61,6 +64,11 @@ if (!existsSync(geraet.digicamcontrolPfad)) {
 legeEingebauteFilterAn();
 legeStandardvorlagenAn();
 
+const wiederAngestellt = stelleUnterbrocheneWiederAn();
+if (wiederAngestellt > 0) {
+  protokolliere('warnung', 'druck', `${wiederAngestellt} unterbrochene(r) Druckauftrag/-auftraege nach Neustart wieder angestellt.`);
+}
+
 const betrieb = new Betrieb({
   echteHardware: konfig.echteHardware,
   mockDruckOrdner: resolve(konfig.datenpfad, 'mock-drucke'),
@@ -78,6 +86,7 @@ registriereAdmin(lokal, betrieb, konfig);
 registriereMedien(lokal);
 registriereStream(lokal, betrieb);
 registriereOeffentlich(lokal, betrieb);
+if (!konfig.echteHardware) registriereEntwicklung(lokal, betrieb);
 await registriereWeb(lokal);
 
 await lokal.listen({ host: '127.0.0.1', port: konfig.portLokal });
@@ -133,6 +142,7 @@ const abbruchUhr = setInterval(() => {
   const grenzeMs = (event?.einstellungen.zeiten.sitzungAbbruch ?? 180) * 1000;
   if (Date.now() - betrieb.letzteBeruehrung > grenzeMs) {
     protokolliere('info', 'kiosk', 'Sitzung nach Untaetigkeit verworfen.');
+    brichSitzungAb(sitzung.id);
     betrieb.aktiveSitzung = null;
   }
 }, 5000);
@@ -163,3 +173,27 @@ async function beende(): Promise<void> {
 
 process.on('SIGINT', () => void beende());
 process.on('SIGTERM', () => void beende());
+
+/*
+ * Sicherheitsnetz. Ein vergessenes await irgendwo darf nicht die ganze Box
+ * lahmlegen: Eine unbehandelte Ablehnung wird protokolliert, der Betrieb laeuft
+ * weiter. Eine unbehandelte Ausnahme dagegen hinterlaesst den Prozess in
+ * ungewissem Zustand - dann lieber sauber beenden; "Fotobox starten.bat"
+ * startet den Server nach wenigen Sekunden neu, und die Datenbank hat jeden
+ * Schritt schon festgehalten.
+ */
+process.on('unhandledRejection', (grund) => {
+  protokolliere('fehler', 'server', `Unbehandelter Fehler (Betrieb laeuft weiter): ${beschreibe(grund)}`);
+});
+process.on('uncaughtException', (fehler) => {
+  protokolliere('fehler', 'server', `Absturz, Neustart folgt: ${beschreibe(fehler)}`);
+  try {
+    schliesseDb();
+  } finally {
+    process.exit(1);
+  }
+});
+
+function beschreibe(grund: unknown): string {
+  return grund instanceof Error ? `${grund.message}\n${grund.stack ?? ''}` : String(grund);
+}

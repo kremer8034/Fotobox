@@ -1,10 +1,31 @@
 /** Schmaler Zugriff auf die Server-Schnittstelle. */
 
+/**
+ * Ein Fehler samt HTTP-Status. Status 0 heisst: Der Server hat gar nicht
+ * geantwortet - er startet gerade neu, oder die Verbindung ist weg. Der Kiosk
+ * unterscheidet daran "kurz warten" von "das hat wirklich nicht geklappt".
+ */
+export class ApiFehler extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+export const KEINE_VERBINDUNG = 0;
+
 async function anfrage<T>(pfad: string, optionen?: RequestInit): Promise<T> {
-  const antwort = await fetch(pfad, {
-    ...optionen,
-    headers: { 'content-type': 'application/json', ...optionen?.headers },
-  });
+  let antwort: Response;
+  try {
+    antwort = await fetch(pfad, {
+      ...optionen,
+      headers: { 'content-type': 'application/json', ...optionen?.headers },
+    });
+  } catch {
+    throw new ApiFehler('Keine Verbindung zur Fotobox.', KEINE_VERBINDUNG);
+  }
   if (!antwort.ok) {
     let text = `HTTP ${antwort.status}`;
     try {
@@ -13,7 +34,7 @@ async function anfrage<T>(pfad: string, optionen?: RequestInit): Promise<T> {
     } catch {
       // Keine JSON-Antwort.
     }
-    throw new Error(text);
+    throw new ApiFehler(text, antwort.status);
   }
   if (antwort.status === 204) return undefined as T;
   return (await antwort.json()) as T;

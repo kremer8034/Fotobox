@@ -1554,3 +1554,78 @@ html.handy-ansicht body {
 .handy .statusliste {
   margin-top: 0.5rem;
 }
+
+/* Keine Verbindung zum Server: ruhiger Hinweis ueber allem, bis er wieder
+   antwortet. Deckend genug, dass niemand die Knoepfe darunter noch antippt. */
+.verbindung {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(16, 18, 22, 0.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand-gross);
+  text-align: center;
+  padding: var(--rand-sicher);
+  /* Kurze Aussetzer (eine einzelne verlorene Abfrage) sollen nicht aufblitzen. */
+  animation: zusammensetzen-ein 200ms ease 600ms both;
+}
+
+.verbindung__titel {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.verbindung__text {
+  font-size: 1.2rem;
+  color: var(--schrift-leise);
+  margin: 0;
+}
+
+/* Der Absturzschutz: dieselbe Ruhe, falls die Oberflaeche selbst stolpert. */
+.absturz {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 2rem;
+  background: var(--grund);
+  color: var(--schrift);
+}
+
+/* Verwaltung: Liste der letzten Warnungen und Fehler. */
+.vorfaelle {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.vorfaelle__eintrag {
+  display: grid;
+  grid-template-columns: 7.5rem 7rem 1fr;
+  gap: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-left: 3px solid var(--warnung);
+  background: var(--flaeche-hell);
+  border-radius: var(--radius-klein);
+  font-size: 0.9rem;
+}
+
+.vorfaelle__eintrag--fehler {
+  border-left-color: var(--fehler);
+}
+
+.vorfaelle__zeit,
+.vorfaelle__bereich {
+  color: var(--schrift-leise);
+}

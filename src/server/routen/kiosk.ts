@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { holeAktivesEvent, holeEvent, setzeStatus, verbucheMaterial } from '../fach/events.js';
@@ -30,6 +32,11 @@ import type { Konfig } from '../konfig.js';
  * Kiosk-Routen. Erreichbar ausschliesslich ueber 127.0.0.1 - siehe
  * Sicherheitskonzept.
  */
+/** So lange darf die Kamera fuer eine Datei brauchen. Die 600D schickt ein
+ *  JPEG ueber USB in zwei bis vier Sekunden; was nach 15 nicht da ist, kommt
+ *  nicht mehr - und die Gaeste stehen so lange mit eingefrorenem Laecheln da. */
+const AUFNAHME_ZEITLIMIT_MS = 15_000;
+
 export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig: Konfig): void {
   const wurzel = wurzelpfade(konfig.datenpfad);
   const drossel = new PinDrossel();
@@ -193,28 +200,53 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       betrieb.letzteBeruehrung = Date.now();
       const pfade = eventpfade(event.ordner, sitzung.istTest);
 
+      const abbruch = new AbortController();
       try {
+        // Den Zielordner vor jedem Foto neu setzen, nicht nur zu Beginn der
+        // Sitzung: Startet digiCamControl zwischendurch neu, vergisst es ihn
+        // und legt das naechste Foto in seinen Standardordner - wir warteten
+        // dann vergeblich.
+        await betrieb.kamera.setzeZielordner(pfade.originale).catch(() => undefined);
+
         // Erst den Waechter aufsetzen, dann ausloesen - sonst geht eine sehr
         // schnelle Kamera durch die Lappen.
-        const wartet = warteAufNeueDatei(pfade.originale, { zeitlimitMs: 25_000 });
+        const wartet = warteAufNeueDatei(pfade.originale, {
+          zeitlimitMs: AUFNAHME_ZEITLIMIT_MS,
+          abbruch: abbruch.signal,
+        });
         await betrieb.kamera.ausloesen();
         const datei = await wartet;
         await warteAufStabileDatei(datei);
         await verbucheFoto(sitzung, event, datei, koerper.index);
         sitzung.gemachteFotos = koerper.index;
+        betrieb.letzteBeruehrung = Date.now();
 
-        // Der Countdown fuer das naechste Foto darf erst starten, wenn die
-        // Kamera wieder ein Live-Bild liefert.
-        const liveWiederDa = await betrieb.warteAufLiveBild();
-
-        return { ok: true, index: koerper.index, liveWiederDa };
+        return { ok: true, index: koerper.index };
       } catch (fehler) {
+        abbruch.abort();
         const text = fehler instanceof Error ? fehler.message : String(fehler);
-        protokolliere('warnung', 'aufnahme', text);
-        return antwort.code(503).send({ fehler: 'aufnahme-fehlgeschlagen', hinweis: text });
+        protokolliere('warnung', 'aufnahme', `Foto ${koerper.index}: ${text}`);
+        // Der Kiosk versucht es noch einmal; die Sitzung bleibt bestehen.
+        return antwort.code(503).send({ fehler: 'Das Foto hat nicht geklappt.', wiederholbar: true });
       }
     },
   );
+
+  /**
+   * Ist die Kamera bereit fuer das naechste Foto? Bereit heisst: Es kam gerade
+   * eben ein frisches Live-Bild. Der Kiosk fragt das vor jedem Countdown, damit
+   * nie vor einem schwarzen oder eingefrorenen Bild heruntergezaehlt wird.
+   */
+  app.get<{ Params: { id: string } }>('/api/kiosk/sitzung/:id/kamera', async (anfrage, antwort) => {
+    if (betrieb.aktiveSitzung?.id !== anfrage.params.id) {
+      return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
+    }
+    // Wer auf die Kamera wartet, ist nicht untaetig - die Rettungsleine nach
+    // drei Minuten soll eine wartende Gruppe nicht hinauswerfen.
+    betrieb.letzteBeruehrung = Date.now();
+    if (!betrieb.liveViewLaeuft()) await betrieb.starteLiveView();
+    return { bereit: await betrieb.liveBildDa() };
+  });
 
   /** Filter anwenden, Layout bauen, Druck-PDF erzeugen. */
   app.post<{ Params: { id: string }; Body: unknown }>(
@@ -464,6 +496,44 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       detached: true,
       stdio: 'ignore',
     }).unref();
+    return { ok: true, simuliert: false };
+  });
+
+  /** Die Oberflaeche meldet einen eigenen Absturz, damit er im Protokoll steht. */
+  app.post<{ Body: unknown }>('/api/kiosk/meldung', async (anfrage) => {
+    const { text } = z.object({ text: z.string().max(4000) }).parse(anfrage.body);
+    protokolliere('fehler', 'oberflaeche', text);
+    return { ok: true };
+  });
+
+  /**
+   * Servicemenue (Besitzer): Kiosk schliessen, zum Windows-Desktop.
+   *
+   * "Vollbild verlassen" per Fullscreen-API konnte im Chrome-Kiosk nie
+   * funktionieren - der Kiosk-Modus ist kein Vollbild im Sinne der Seite. Jetzt
+   * wird der Kiosk-Browser beendet, und eine Markierung sagt "Kiosk starten.bat",
+   * ihn diesmal nicht wieder zu oeffnen. Ein Doppelklick auf diese Datei (oder
+   * der naechste PC-Start) bringt den Kiosk zurueck.
+   */
+  app.post('/api/kiosk/service/kiosk-schliessen', async () => {
+    writeFileSync(join(konfig.datenpfad, 'kiosk-aus.txt'), `Kiosk geschlossen am ${new Date().toISOString()}\r\n`);
+    if (process.platform !== 'win32' || !konfig.echteHardware) {
+      protokolliere('info', 'system', 'Kiosk schliessen angefordert (Entwicklungsbetrieb - nur protokolliert).');
+      return { ok: true, simuliert: true };
+    }
+    protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).');
+    // Nur die Browser-Instanz mit dem Kiosk-Profil - ein anderes offenes
+    // Chrome-Fenster bleibt unberuehrt.
+    spawn(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "Start-Sleep -Milliseconds 800; Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*Fotobox-Kiosk*' -and ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+      ],
+      { detached: true, stdio: 'ignore', windowsHide: true },
+    ).unref();
     return { ok: true, simuliert: false };
   });
 
