@@ -32,7 +32,7 @@ const PROBE = process.argv.includes('--probe');
 const WINDOWS = process.platform === 'win32';
 
 /** SumatraPDF druckt ohne Dialog; die portable Fassung genuegt. */
-const SUMATRA_VERSION = '3.5.2';
+const SUMATRA_VERSION = '3.6.1';
 const SUMATRA_URL = `https://www.sumatrapdfreader.org/dl/rel/${SUMATRA_VERSION}/SumatraPDF-${SUMATRA_VERSION}-64.zip`;
 
 /** Nur diese Startskripte gehoeren ins Paket - Installieren.* baut aus dem Quelltext und ist fuer Entwickler. */
