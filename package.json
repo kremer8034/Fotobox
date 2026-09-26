@@ -1,6 +1,6 @@
 {
   "name": "fotobox",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Offline-faehige Fotobox-Software fuer Windows, Canon EOS 600D und DNP DS-RX1HS",
   "type": "module",
