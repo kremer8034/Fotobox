@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import sharp, { type OverlayOptions, type Sharp } from 'sharp';
 import { basename, join } from 'node:path';
 import {
   DRUCK_DPI,
@@ -68,7 +68,7 @@ export async function baueLayout(
         .filter((ebene) => ebene.sichtbar !== false)
         .map((ebene) => rendereEbene(ebene, quellen, masse, plaetze)),
     )
-  ).filter((auflage): auflage is sharp.OverlayOptions => auflage !== null);
+  ).filter((auflage): auflage is OverlayOptions => auflage !== null);
 
   return grund.composite(auflagen).jpeg({ quality: 95, chromaSubsampling: '4:4:4' }).toBuffer();
 }
@@ -78,7 +78,7 @@ async function rendereEbene(
   quellen: LayoutQuellen,
   masse: LayoutMasse,
   plaetze: Map<string, number>,
-): Promise<sharp.OverlayOptions | null> {
+): Promise<OverlayOptions | null> {
   switch (ebene.typ) {
     case 'bild':
       return rendereBild(ebene, quellen, masse);
@@ -107,10 +107,10 @@ async function rendereEbene(
  *    vorher scheiterte daran das Zusammensetzen jeder Sitzung.
  */
 async function alsAuflage(
-  bild: sharp.Sharp,
+  bild: Sharp,
   kasten: { links: number; oben: number; breite: number; hoehe: number },
   masse: LayoutMasse,
-): Promise<sharp.OverlayOptions | null> {
+): Promise<OverlayOptions | null> {
   const { data, info } = await bild.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const kanaele = info.channels;
   const links = Math.round(kasten.links + (kasten.breite - info.width) / 2);
@@ -150,7 +150,7 @@ async function rendereBild(
   ebene: BildEbene,
   quellen: LayoutQuellen,
   masse: LayoutMasse,
-): Promise<sharp.OverlayOptions | null> {
+): Promise<OverlayOptions | null> {
   const { breite, hoehe, links, oben } = rechteck(ebene, masse);
   // Nur ein Dateiname, nie ein Pfad: Eine Vorlage darf keine Datei ausserhalb
   // ihres Ordners in den Druck holen.
@@ -176,7 +176,7 @@ async function rendereFoto(
   quellen: LayoutQuellen,
   masse: LayoutMasse,
   platz: number | undefined,
-): Promise<sharp.OverlayOptions | null> {
+): Promise<OverlayOptions | null> {
   const foto = platz === undefined ? undefined : quellen.fotos.get(platz);
   if (!foto) return null;
   const { breite, hoehe, links, oben } = rechteck(ebene, masse);
@@ -206,7 +206,7 @@ async function rendereText(
   ebene: TextEbene,
   quellen: LayoutQuellen,
   masse: LayoutMasse,
-): Promise<sharp.OverlayOptions | null> {
+): Promise<OverlayOptions | null> {
   const text = ersetzePlatzhalter(ebene.text, quellen.platzhalter);
   if (!text.trim()) return null;
 

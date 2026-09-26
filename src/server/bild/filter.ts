@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import { join } from 'node:path';
 import { ladeLut, wendeLutAn, type Lut } from './lut.js';
 import {
@@ -196,7 +196,7 @@ function verkette(erst: Affin, dann: Affin): Affin {
   return { m, b };
 }
 
-function wendeAffinAn(bild: sharp.Sharp, affin: Affin, einfarbig: boolean): sharp.Sharp {
+function wendeAffinAn(bild: Sharp, affin: Affin, einfarbig: boolean): Sharp {
   const { m, b } = affin;
   const nahe = (x: number, y: number) => Math.abs(x - y) < 1e-6;
   const istEinheit = m.every((w, i) => nahe(w, EINHEIT.m[i]!)) && b.every((w) => nahe(w, 0));
@@ -220,7 +220,7 @@ function wendeAffinAn(bild: sharp.Sharp, affin: Affin, einfarbig: boolean): shar
   return b.every((w) => nahe(w, 0)) ? bild : bild.linear([1, 1, 1], b);
 }
 
-function anwenden(bild: sharp.Sharp, operation: FilterOperation): sharp.Sharp {
+function anwenden(bild: Sharp, operation: FilterOperation): Sharp {
   switch (operation.op) {
     case 'graustufen':
       return bild.grayscale();
