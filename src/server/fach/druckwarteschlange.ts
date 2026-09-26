@@ -140,6 +140,34 @@ export function stelleFremdeZurueck(eventId: string): number {
     .run(eventId).changes;
 }
 
+/**
+ * Blatt, die vom Druck-Limit einer Veranstaltung schon vergeben sind: gedruckt
+ * oder noch unterwegs. Vorher zaehlten nur die gedruckten - bei leerer Rolle
+ * oder langer Schlange nahm die Box weit ueber das Limit hinaus Auftraege an
+ * (im Test 26 Blatt bei einem Limit von 20), und alle kamen spaeter heraus.
+ * Fehlgeschlagene zaehlen mit, weil sie nach dem Papierwechsel nachgeholt werden.
+ */
+export function blattVergeben(eventId: string): number {
+  return (
+    holeDb()
+      .prepare(
+        `SELECT COALESCE(SUM(kopien), 0) AS n FROM druckauftraege
+          WHERE event_id = ? AND berechnen = 1 AND quelle <> 'testdruck'
+            AND status IN ('gedruckt', 'wartend', 'laeuft', 'fehlgeschlagen')`,
+      )
+      .get(eventId) as { n: number }
+  ).n;
+}
+
+/** Wie viele Blatt gerade vor einem neuen Auftrag an der Reihe sind. */
+export function blattInWarteschlange(): number {
+  return (
+    holeDb()
+      .prepare("SELECT COALESCE(SUM(kopien), 0) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft')")
+      .get() as { n: number }
+  ).n;
+}
+
 export function offeneAuftraege(): number {
   const zeile = holeDb()
     .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft')")

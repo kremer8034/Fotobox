@@ -132,6 +132,8 @@ export interface KioskStart {
     kopienVorgabe: number;
     kopienMax: number;
     druckLimitErreicht: boolean;
+    /** Blatt bis zum Druck-Limit; null ohne Limit. */
+    druckRest?: number | null;
   };
   vorlagen?: { id: string; name: string; fotos: number; canvas: { breiteMm: number; hoeheMm: number } }[];
   filter?: { id: string; name: string }[];

@@ -28,13 +28,20 @@ export function Ergebnis({
     kopienVorgabe: number;
     kopienMax: number;
     druckLimitErreicht: boolean;
+    druckRest?: number | null;
   };
   rueckkehrSekunden: number;
   tonAn: boolean;
   beiFertig: () => void;
 }) {
-  const [kopien, setzeKopien] = useState(ausgabe.kopienVorgabe);
+  // Nie mehr anbieten, als das Druck-Limit der Feier noch hergibt.
+  const hoechstens = Math.min(ausgabe.kopienMax, ausgabe.druckRest ?? Infinity);
+  const [kopien, setzeKopien] = useState(Math.max(1, Math.min(ausgabe.kopienVorgabe, hoechstens)));
   const [emailOffen, setzeEmailOffen] = useState(false);
+  // Jede Beruehrung zaehlt als Eingabe. Vorher lief die Uhr auch weiter,
+  // waehrend der Gast an der Kopienzahl drehte - und die Seite verschwand
+  // unter seinem Finger.
+  const [beruehrt, setzeBeruehrt] = useState(0);
   const druck = useDrucken(ausgabeId, 'kiosk', beiFertig);
 
   useEffect(() => {
@@ -46,24 +53,28 @@ export function Ergebnis({
   // seines Vorgaengers, mit aktivem Druckknopf. Waehrend der E-Mail-Eingabe
   // steht die Uhr: Wer eine Adresse tippt, braucht laenger als 20 Sekunden,
   // und die Eingabe hat ihren eigenen Leerlauf.
-  useZeitgeber(beiFertig, emailOffen ? null : rueckkehrSekunden * 1000, [druck.quittung]);
+  useZeitgeber(beiFertig, emailOffen ? null : rueckkehrSekunden * 1000, [druck.quittung, beruehrt]);
 
-  const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht;
+  const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht && hoechstens >= 1;
 
   return (
-    <div className="seite kiosk" style={{ position: 'relative' }}>
+    <div
+      className="seite kiosk"
+      style={{ position: 'relative' }}
+      onPointerDown={() => setzeBeruehrt((n) => n + 1)}
+    >
       <img className="ergebnis__bild" src={`/medien/ausgabe/${ausgabeId}.jpg`} alt="Dein Foto" />
 
       <div className="ergebnis__leiste">
         {druckMoeglich && (
           <>
-            <Mengenwahl kopien={kopien} max={ausgabe.kopienMax} beiAendern={setzeKopien} />
+            <Mengenwahl kopien={Math.min(kopien, hoechstens)} max={hoechstens} beiAendern={setzeKopien} />
             <button
               className="knopf knopf--haupt"
-              onClick={() => void druck.drucke(kopien)}
+              onClick={() => void druck.drucke(Math.min(kopien, hoechstens))}
               disabled={druck.beschaeftigt}
             >
-              {kopien === 1 ? 'Drucken' : `${kopien}× drucken`}
+              {Math.min(kopien, hoechstens) === 1 ? 'Drucken' : `${Math.min(kopien, hoechstens)}× drucken`}
             </button>
           </>
         )}

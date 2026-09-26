@@ -364,6 +364,25 @@ export class Betrieb {
   }
 
   /**
+   * Den Drucker jetzt fragen, wenn die letzte Antwort aelter ist als
+   * `maxAlterMs`. Ruht der Drucker, wird er nur alle 20 Sekunden gefragt - so
+   * lange konnte die Quittung "gleich am Drucker abholen" versprechen, obwohl
+   * die Rolle leer war. Hoechstens `zeitlimitMs` Wartezeit; antwortet er nicht,
+   * bleibt es beim letzten Stand.
+   */
+  async frischerDruckerStatus(maxAlterMs = 5000, zeitlimitMs = 2500): Promise<void> {
+    if (Date.now() - this.letzteDruckerPruefung < maxAlterMs) return;
+    this.letzteDruckerPruefung = Date.now();
+    const status = await Promise.race([
+      this.drucker.pruefe().catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), zeitlimitMs)),
+    ]);
+    if (!status) return;
+    this.druckschleife.merkeStatus(status);
+    this.uebernimmDruckerStatus(status);
+  }
+
+  /**
    * Die eine Stoerung, die dem Gast angezeigt wird. Reihenfolge nach
    * Dringlichkeit: Was den Ablauf blockiert, kommt zuerst.
    */

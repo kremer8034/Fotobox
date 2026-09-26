@@ -21,7 +21,7 @@ import {
   zahlDerFotos,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
-import { gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
+import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import {
   adresseZuOft,
@@ -103,6 +103,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         kopienVorgabe: event.einstellungen.kopienVorgabe,
         kopienMax: event.einstellungen.kopienMax,
         druckLimitErreicht: druckLimitErreicht(event.id),
+        // Blatt bis zum Druck-Limit, null ohne Limit - die Mengenwahl bietet nie mehr an.
+        druckRest: druckRest(event.id),
       },
       vorlagen: freigegeben.map((v) => ({
         id: v.id,
@@ -337,8 +339,14 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (koerper.kopien > event.einstellungen.kopienMax) {
       return antwort.code(400).send({ fehler: 'Mehr Kopien als erlaubt.' });
     }
-    if (druckLimitErreicht(event.id)) {
+    const limitRest = druckRest(event.id);
+    if (limitRest !== null && limitRest <= 0) {
       return antwort.code(403).send({ fehler: 'Für diese Feier sind alle Ausdrucke aufgebraucht. Dein Foto ist trotzdem gespeichert.' });
+    }
+    if (limitRest !== null && koerper.kopien > limitRest) {
+      return antwort.code(409).send({
+        fehler: `Für diese Feier ${limitRest === 1 ? 'geht nur noch ein Ausdruck' : `gehen nur noch ${limitRest} Ausdrucke`}.`,
+      });
     }
 
     const ausgabe = holeAusgabe(koerper.ausgabeId);
@@ -364,6 +372,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       }
     }
 
+    // Vor dem Einreihen: So viele Blatt kommen vor diesem heraus.
+    const vorDir = blattInWarteschlange();
     const auftragId = reiheEin({
       eventId: event.id,
       ausgabeId: ausgabe.id,
@@ -376,11 +386,13 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
     betrieb.letzteBeruehrung = Date.now();
     // Steht der Drucker gerade, soll die Quittung das sagen - nicht "gleich am
-    // Drucker abholen", waehrend das Papier leer ist.
+    // Drucker abholen", waehrend das Papier leer ist. Dafuer ein frischer
+    // Blick auf den Drucker, nicht der von vor bis zu 20 Sekunden.
+    await betrieb.frischerDruckerStatus();
     const stoerung = betrieb.aktuelleStoerung();
     const druckerSteht =
       stoerung === 'papier-leer' || stoerung === 'drucker-offline' || stoerung === 'drucker-klappe';
-    return { auftragId, wartend: true, druckerSteht };
+    return { auftragId, wartend: true, druckerSteht, vorDir };
   });
 
   /**
@@ -458,16 +470,22 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   app.get<{ Querystring: { alle?: string } }>('/api/kiosk/galerie', async (anfrage) => {
     const event = holeAktivesEvent();
     if (!event) return { bilder: [] };
+    const limitRest = druckRest(event.id);
     return {
       veranstaltung: event.name,
       nachdruckMoeglich: event.einstellungen.druckAktiv && !druckLimitErreicht(event.id),
-      kopienMax: event.einstellungen.kopienMax,
+      // Auch der Betreuer druckt nicht ueber das Druck-Limit hinaus.
+      kopienMax: Math.min(event.einstellungen.kopienMax, limitRest ?? Infinity),
       bilder: galerieEintraege(event.id, { mitVerborgenen: anfrage.query.alle === '1' }).map((e) => ({
         id: e.ausgabeId,
         erstellt: e.erstellt,
         verborgen: e.verborgen,
-        // Wie viele Ausdrucke Gaeste von diesem Foto noch anstossen koennen.
-        restKopien: Math.max(0, event.einstellungen.kopienMax - gastKopienVon(e.ausgabeId)),
+        // Wie viele Ausdrucke Gaeste von diesem Foto noch anstossen koennen -
+        // je Foto und hoechstens bis zum Druck-Limit der Feier.
+        restKopien: Math.max(
+          0,
+          Math.min(event.einstellungen.kopienMax - gastKopienVon(e.ausgabeId), limitRest ?? Infinity),
+        ),
       })),
     };
   });
@@ -662,10 +680,16 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { ok: true, simuliert: false };
   });
 
-  function druckLimitErreicht(eventId: string): boolean {
+  /** Blatt bis zum Druck-Limit der Feier; null, wenn kein Limit gesetzt ist. */
+  function druckRest(eventId: string): number | null {
     const event = holeEvent(eventId);
-    if (!event || event.einstellungen.druckLimit <= 0) return false;
-    return berechneAuslagen(event).druckeGesamt >= event.einstellungen.druckLimit;
+    if (!event || event.einstellungen.druckLimit <= 0) return null;
+    return Math.max(0, event.einstellungen.druckLimit - blattVergeben(event.id));
+  }
+
+  function druckLimitErreicht(eventId: string): boolean {
+    const rest = druckRest(eventId);
+    return rest !== null && rest <= 0;
   }
 }
 

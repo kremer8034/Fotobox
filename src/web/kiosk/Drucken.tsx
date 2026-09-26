@@ -37,20 +37,25 @@ export function useDrucken(
       laeuft.current = true;
       setzeBeschaeftigt(true);
       try {
-        const antwort = await api.sende<{ druckerSteht?: boolean }>('/api/kiosk/drucken', {
+        const antwort = await api.sende<{ druckerSteht?: boolean; vorDir?: number }>('/api/kiosk/drucken', {
           ausgabeId,
           kopien,
           quelle,
         });
         const eins = kopien === 1;
+        const vorDir = antwort?.vorDir ?? 0;
         setzeQuittung({
           // Steht der Drucker, stimmt "gleich abholen" nicht - dann die Ansage
           // aus dem Plan: gespeichert, wird nachgeholt, bitte Bescheid sagen.
+          // Und bei langer Schlange (12,4 s je Blatt) soll niemand eine Minute
+          // vor dem Drucker stehen und denken, es sei etwas kaputt.
           text: antwort?.druckerSteht
             ? `${eins ? 'Dein Bild ist' : `${kopien} Bilder sind`} gespeichert und ${eins ? 'wird' : 'werden'} gedruckt, sobald der Drucker wieder bereit ist. Sag bitte kurz jemandem Bescheid.`
-            : eins
-              ? 'Dein Bild wird gedruckt. Du kannst es gleich am Drucker abholen.'
-              : `${kopien} Bilder werden gedruckt. Du kannst sie gleich am Drucker abholen.`,
+            : vorDir >= 2
+              ? `${eins ? 'Dein Bild wird' : `${kopien} Bilder werden`} gedruckt. Vorher ${vorDir === 1 ? 'kommt noch ein Bild' : `kommen noch ${vorDir} Bilder`} aus dem Drucker – etwa ${warteMinuten(vorDir)}.`
+              : eins
+                ? 'Dein Bild wird gedruckt. Du kannst es gleich am Drucker abholen.'
+                : `${kopien} Bilder werden gedruckt. Du kannst sie gleich am Drucker abholen.`,
           fehlgeschlagen: false,
         });
         setTimeout(() => {
@@ -72,6 +77,12 @@ export function useDrucken(
   );
 
   return { beschaeftigt, quittung, drucke, schliesseQuittung: () => setzeQuittung(null) };
+}
+
+/** Der RX1HS braucht 12,4 Sekunden je Blatt. */
+function warteMinuten(blatt: number): string {
+  const minuten = Math.max(1, Math.round((blatt * 12.4) / 60));
+  return minuten === 1 ? 'eine Minute' : `${minuten} Minuten`;
 }
 
 export function Mengenwahl({
