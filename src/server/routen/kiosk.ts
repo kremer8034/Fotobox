@@ -238,6 +238,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
           zeitlimitMs: AUFNAHME_ZEITLIMIT_MS,
           abbruch: abbruch.signal,
         });
+        // Erst ausloesen, wenn der Waechter zuschaut - hoechstens 3 s warten.
+        await Promise.race([wartet.bereit, new Promise((r) => setTimeout(r, 3000))]);
         await betrieb.kamera.ausloesen();
         const datei = await wartet;
         await warteAufStabileDatei(datei);

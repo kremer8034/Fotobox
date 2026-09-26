@@ -27,8 +27,14 @@ const umgebung = await vi.hoisted(async () => {
    * nichts - sie waere so oder so da. Der neue Name ist genau so lang wie der
    * alte, damit die Sprungmarken in der Datei gueltig bleiben.
    */
-  const quelle = '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf';
-  const eigenerName = 'Fotobox Testxyz';
+  // Unter Windows dient "Courier New" als Vorlage, unter Linux "Liberation
+  // Mono" - der Ersatzname hat jeweils genau dieselbe Laenge.
+  const windows = process.platform === 'win32';
+  const quelle = windows
+    ? 'C:\\Windows\\Fonts\\cour.ttf'
+    : '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf';
+  const alterName = windows ? 'Courier New' : 'Liberation Mono';
+  const eigenerName = windows ? 'Fotobox Xyz' : 'Fotobox Testxyz';
   let eigeneDatei: string | null = null;
   if (gibtEs(quelle)) {
     const utf16 = (text: string) =>
@@ -38,9 +44,9 @@ const umgebung = await vi.hoisted(async () => {
         .join('');
     const inhalt = lies(quelle)
       .toString('latin1')
-      .split('Liberation Mono')
+      .split(alterName)
       .join(eigenerName)
-      .split(utf16('Liberation Mono'))
+      .split(utf16(alterName))
       .join(utf16(eigenerName));
     eigeneDatei = verbinde(ordner, 'nur-hier.ttf');
     schreib(eigeneDatei, Buffer.from(inhalt, 'latin1'));
@@ -64,7 +70,11 @@ describe('Schriftdateien', () => {
         .trim()
         .split('\n')
         .filter(Boolean)
-    : [];
+    : existsSync('C:\\Windows\\Fonts')
+      ? ['arial.ttf', 'times.ttf', 'cour.ttf', 'georgia.ttf', 'verdana.ttf']
+          .map((d) => join('C:\\Windows\\Fonts', d))
+          .filter((p) => existsSync(p))
+      : [];
 
   it('liest den Familiennamen aus der Datei', () => {
     if (pfade.length === 0) return; // Ohne Systemschriften nicht pruefbar.
@@ -123,8 +133,10 @@ describe('Schriftwahl im Druckweg', () => {
 
   it('rendert mit verschiedenen Schriften verschieden', async () => {
     const vorgabe = await dunklePixel();
-    const serif = await dunklePixel('DejaVu Serif, serif');
-    const mono = await dunklePixel('DejaVu Sans Mono, monospace');
+    // Schriften, die es auf dem jeweiligen System sicher gibt.
+    const windows = process.platform === 'win32';
+    const serif = await dunklePixel(windows ? 'Times New Roman' : 'DejaVu Serif, serif');
+    const mono = await dunklePixel(windows ? 'Courier New' : 'DejaVu Sans Mono, monospace');
 
     expect(vorgabe).toBeGreaterThan(0);
     expect(serif).not.toBe(vorgabe);

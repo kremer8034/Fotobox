@@ -43,6 +43,15 @@ export function richteSchriftenEin(datenpfad: string): string {
   const ordner = schriftenOrdner(datenpfad);
   mkdirSync(ordner, { recursive: true });
 
+  // Unter Windows gibt es kein /etc/fonts; dort bindet fontconfig den
+  // Schriftenordner von Windows ueber den Platzhalter WINDOWSFONTDIR ein.
+  // Vorher stand auch dort nur der Linux-Pfad, und die Box kannte unter
+  // Windows keine einzige Systemschrift.
+  const systemSchriften =
+    process.platform === 'win32'
+      ? '<dir>WINDOWSFONTDIR</dir>'
+      : '<include ignore_missing="yes">/etc/fonts/fonts.conf</include>';
+
   const konf = join(ordner, 'fonts.conf');
   writeFileSync(
     konf,
@@ -52,7 +61,7 @@ export function richteSchriftenEin(datenpfad: string): string {
   <dir>${ordner}</dir>
   <!-- Die Schriften des Systems weiter mitbenutzen, sonst faende der Renderer
        ploetzlich kein Arial mehr. -->
-  <include ignore_missing="yes">/etc/fonts/fonts.conf</include>
+  ${systemSchriften}
   <cachedir>${join(ordner, '.cache')}</cachedir>
 </fontconfig>
 `,

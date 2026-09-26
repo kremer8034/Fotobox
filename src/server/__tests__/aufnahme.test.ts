@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
@@ -9,6 +9,7 @@ import { legeStandardvorlagenAn } from '../fach/vorlagen.js';
 import { aktualisiereEvent, erstelleEvent } from '../fach/events.js';
 import { bestaetigungsbild, starteSitzung, verbucheFoto, zahlDerFotos } from '../fach/sitzungen.js';
 import { wurzelpfade } from '../fach/pfade.js';
+import { warteAufNeueDatei } from '../fach/aufnahme.js';
 
 /** Aufnahmeablauf: ein Platz, ein Foto - und die Bestaetigung zeigt genau dieses. */
 
@@ -69,5 +70,27 @@ describe('Fotos einer Sitzung', () => {
     // Blau wie das Kamerabild - nicht ein Standbild des Live-Views.
     expect(dominant.b).toBeGreaterThan(180);
     expect(dominant.r).toBeLessThan(60);
+  });
+});
+
+describe('Warten auf das Kamerabild', () => {
+  // Unter Windows braucht der Dateiwaechter einen Moment, bis er zuschaut. Eine
+  // Datei, die in dieser Zeit ankam, meldete er nie - im Windows-Test lief so
+  // die ganze Aufnahme ins Leere.
+  it('findet eine Datei, die ankommt, bevor der Wächter bereit ist', async () => {
+    const ordner = mkdtempSync(join(tmpdir(), 'fotobox-waechter-'));
+    writeFileSync(join(ordner, 'alt.jpg'), 'schon da');
+    const wartet = warteAufNeueDatei(join(ordner), { zeitlimitMs: 5000 });
+    writeFileSync(join(ordner, 'IMG_0001.JPG'), 'sofort');
+    expect(await wartet).toBe(join(ordner, 'IMG_0001.JPG'));
+  });
+
+  it('meldet eine Datei, die nach dem Bereitwerden kommt', async () => {
+    const ordner = join(mkdtempSync(join(tmpdir(), 'fotobox-waechter-')), 'noch-nicht-da');
+    const wartet = warteAufNeueDatei(ordner, { zeitlimitMs: 5000 });
+    await wartet.bereit;
+    writeFileSync(join(ordner, 'IMG_0002.CR2'), 'roh');
+    writeFileSync(join(ordner, 'IMG_0002.JPG'), 'jpeg');
+    expect(await wartet).toBe(join(ordner, 'IMG_0002.JPG'));
   });
 });
