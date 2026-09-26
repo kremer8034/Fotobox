@@ -1,4 +1,6 @@
 import type { FastifyInstance } from 'fastify';
+import { ZodError } from 'zod';
+import { ersteMeldung } from './fach/einstellungen-pruefung.js';
 
 /*
  * Zwei Schutzschichten, eine je Instanz.
@@ -72,5 +74,31 @@ export function haerteOeffentlich(app: FastifyInstance): void {
     antwort.header('Cross-Origin-Resource-Policy', 'same-origin');
     if (anfrage.url.startsWith('/api/')) antwort.header('Cache-Control', 'no-store');
     return nutzlast;
+  });
+}
+
+/**
+ * Fehler einheitlich beantworten.
+ *
+ * Vorher kam jede abgelehnte Eingabe als "500 Internal Server Error" mit dem
+ * rohen Pruefprotokoll im Text an - in der Verwaltung stand dann "HTTP 500",
+ * und niemand wusste, welches Feld nicht stimmte. Jetzt: Eingabefehler als 400
+ * mit einem Satz, alles andere als 500 mit einem Hinweis und dem Eintrag im
+ * Protokoll - ohne technische Einzelheiten nach draussen.
+ */
+export function beantworteFehler(
+  app: FastifyInstance,
+  protokoll: (text: string) => void,
+): void {
+  app.setErrorHandler((fehler, anfrage, antwort) => {
+    if (fehler instanceof ZodError) {
+      return antwort.code(400).send({ fehler: ersteMeldung(fehler) });
+    }
+    const { statusCode: code, message } = fehler as { statusCode?: number; message?: string };
+    if (code && code >= 400 && code < 500) {
+      return antwort.code(code).send({ fehler: message ?? 'Ungültige Anfrage.' });
+    }
+    protokoll(`${anfrage.method} ${anfrage.url.split('?')[0]}: ${message ?? String(fehler)}`);
+    return antwort.code(500).send({ fehler: 'Da ist etwas schiefgegangen. Details stehen im Protokoll.' });
   });
 }

@@ -5,6 +5,7 @@ import { Veranstaltungen } from './Veranstaltungen.js';
 import { EventDetail } from './EventDetail.js';
 import { VorlagenSeite } from './Vorlagen.js';
 import { GeraetSeite } from './Geraet.js';
+import { FilterSeite } from './Filter.js';
 
 /**
  * Verwaltung.
@@ -36,6 +37,7 @@ export function Admin({ pfad, navigiere }: { pfad: string; navigiere: (ziel: str
         <Verweis pfad={pfad} ziel="/admin" name="Übersicht" navigiere={navigiere} />
         <Verweis pfad={pfad} ziel="/admin/events" name="Veranstaltungen" navigiere={navigiere} />
         <Verweis pfad={pfad} ziel="/admin/vorlagen" name="Vorlagen" navigiere={navigiere} />
+        <Verweis pfad={pfad} ziel="/admin/filter" name="Filter" navigiere={navigiere} />
         <Verweis pfad={pfad} ziel="/admin/geraet" name="Gerät" navigiere={navigiere} />
         <div style={{ flex: 1 }} />
         <button className="knopf knopf--neben" onClick={() => navigiere('/')}>
@@ -51,6 +53,7 @@ export function Admin({ pfad, navigiere }: { pfad: string; navigiere: (ziel: str
         {pfad === '/admin/events' && <Veranstaltungen navigiere={navigiere} />}
         {eventTreffer && <EventDetail id={eventTreffer[1]!} navigiere={navigiere} />}
         {pfad === '/admin/vorlagen' && <VorlagenSeite />}
+        {pfad === '/admin/filter' && <FilterSeite />}
         {pfad === '/admin/geraet' && <GeraetSeite />}
       </main>
     </div>

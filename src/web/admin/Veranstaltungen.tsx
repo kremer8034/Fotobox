@@ -16,6 +16,11 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
   const [name, setzeName] = useState('');
   const [datum, setzeDatum] = useState(new Date().toISOString().slice(0, 10));
   const [fehler, setzeFehler] = useState<string | null>(null);
+  // Archivierte verschwinden aus der Hauptliste, bleiben aber auffindbar -
+  // so stand es im Plan; vorher wuchs die Liste mit jeder Feier weiter.
+  const [archivZeigen, setzeArchivZeigen] = useState(false);
+  const archiviert = events.filter((e) => e.status === 'archiviert').length;
+  const sichtbar = archivZeigen ? events : events.filter((e) => e.status !== 'archiviert');
 
   useEffect(() => {
     void lade();
@@ -62,7 +67,7 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
             </tr>
           </thead>
           <tbody>
-            {events.map((e) => (
+            {sichtbar.map((e) => (
               <tr key={e.id}>
                 <td>{datumDeutsch(e.datum)}</td>
                 <td>
@@ -91,12 +96,25 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
             )}
           </tbody>
         </table>
+        {archiviert > 0 && (
+          <button
+            className="knopf knopf--neben"
+            style={{ marginTop: '0.6rem' }}
+            onClick={() => setzeArchivZeigen(!archivZeigen)}
+          >
+            {archivZeigen ? 'Archivierte ausblenden' : `Archivierte zeigen (${archiviert})`}
+          </button>
+        )}
       </div>
     </>
   );
 
   async function lade() {
-    setzeEvents(await api.hole<EventZeile[]>('/api/admin/events'));
+    try {
+      setzeEvents(await api.hole<EventZeile[]>('/api/admin/events'));
+    } catch (u) {
+      setzeFehler(u instanceof Error ? u.message : 'Die Liste ließ sich nicht laden.');
+    }
   }
 
   async function anlegen() {

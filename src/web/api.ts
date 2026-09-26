@@ -53,7 +53,8 @@ export const api = {
     anfrage<T>(pfad, { method: 'POST', body: JSON.stringify(koerper ?? {}) }),
   aendere: <T>(pfad: string, koerper: unknown) =>
     anfrage<T>(pfad, { method: 'PUT', body: JSON.stringify(koerper) }),
-  loesche: <T>(pfad: string) => anfrage<T>(pfad, { method: 'DELETE' }),
+  loesche: <T>(pfad: string, koerper?: unknown) =>
+    anfrage<T>(pfad, koerper === undefined ? { method: 'DELETE' } : { method: 'DELETE', body: JSON.stringify(koerper) }),
   /**
    * Datei-Upload. Bewusst ohne den JSON-Kopf von "anfrage": Bei FormData muss
    * der Browser den content-type samt boundary selbst setzen.

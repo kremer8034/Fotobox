@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
-import { extname, join } from 'node:path';
+import { createReadStream, existsSync } from 'node:fs';
+import { basename, extname, join, resolve, sep } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import {
+  EINSTELLUNGEN_EINGABE,
+  ersteMeldung,
+  EVENT_DATUM,
+  EVENT_NAME,
+  PIN_EINGABE,
+} from '../fach/einstellungen-pruefung.js';
 import sharp from 'sharp';
 import { leseGeraet, leseMailPasswort, schreibeGeraet, schreibeMailPasswort, begrenzeKalibrierung } from '../db/geraet.js';
 import {
@@ -14,6 +21,7 @@ import {
   holeAktivesEvent,
   holeEvent,
   listeEvents,
+  loescheEvent,
   setzeProbelauf,
   setzeStatus,
 } from '../fach/events.js';
@@ -26,15 +34,16 @@ import {
   VORLAGE_EINGABE,
   vorlageInVeranstaltungen,
 } from '../fach/vorlagen.js';
-import { listeFilter, loescheFilter, speichereFilter } from '../fach/filter.js';
+import { FILTER_EINGABE, holeFilter, listeFilter, loescheFilter, speichereFilter } from '../fach/filter.js';
+import { parseCube } from '../bild/lut.js';
 import { berechneAuslagen, schreibeAuslagenCsv } from '../fach/auslagen.js';
 import { listeAuftraege, reiheEin, setzeBerechnen } from '../fach/druckwarteschlange.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
-import { hashePin } from '../fach/pin.js';
+import { hashePin, pruefePin } from '../fach/pin.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
 import { kalibrierTestbild, platzhalterFoto } from '../bild/testbilder.js';
-import { leereVorschauLager, vorlagenVorschau } from '../bild/vorschau.js';
+import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vorschau.js';
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
@@ -50,7 +59,7 @@ import {
   sendeTestmail,
 } from '../fach/email.js';
 import { galerieUrl as galerieAdresse, lanAdresse } from '../netzwerk.js';
-import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene } from '../../shared/typen.js';
+import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene, type FilterOperation, type Veranstaltung } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import { holeDb } from '../db/index.js';
 import type { Konfig } from '../konfig.js';
@@ -100,7 +109,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
             skalierungYProzent: z.number(),
           })
           .optional(),
-        besitzerPin: z.string().min(4).max(32).optional(),
+        besitzerPin: PIN_EINGABE.optional(),
         mail: z
           .object({
             host: z.string().trim().min(1).max(200),
@@ -393,27 +402,86 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   // ---------------------------------------------------------------- Filter
   app.get('/api/admin/filter', async () => listeFilter());
 
-  app.put<{ Body: unknown }>('/api/admin/filter', async (anfrage) => {
-    const koerper = z
-      .object({ id: z.string().optional(), name: z.string().min(1), operationen: z.array(z.any()) })
-      .parse(anfrage.body);
+  app.put<{ Body: unknown }>('/api/admin/filter', async (anfrage, antwort) => {
+    const koerper = FILTER_EINGABE.parse(anfrage.body);
+    const vorhanden = koerper.id ? holeFilter(koerper.id) : null;
+    if (vorhanden?.eingebaut) {
+      return antwort.code(409).send({ fehler: 'Eingebaute Filter bleiben, wie sie sind. Leg eine Kopie an.' });
+    }
     const gespeichert = speichereFilter({
       id: koerper.id ?? randomUUID(),
       name: koerper.name,
-      operationen: koerper.operationen as never,
+      operationen: koerper.operationen as FilterOperation[],
     });
     // Die Vorschaukachel im Kiosk zeigt sonst weiter den alten Look.
     leereVorschauLager();
     return gespeichert;
   });
 
-  app.delete<{ Params: { id: string } }>('/api/admin/filter/:id', async (anfrage) => {
-    loescheFilter(anfrage.params.id);
+  app.delete<{ Params: { id: string } }>('/api/admin/filter/:id', async (anfrage, antwort) => {
+    const filter = holeFilter(anfrage.params.id);
+    if (!filter) return antwort.code(404).send({ fehler: 'Filter nicht gefunden.' });
+    if (filter.eingebaut) return antwort.code(409).send({ fehler: 'Eingebaute Filter lassen sich nicht löschen.' });
+    loescheFilter(filter.id);
+    // Die LUT-Datei mit, wenn kein anderer Filter sie nutzt.
+    for (const op of filter.operationen) {
+      if (op.op !== 'lut') continue;
+      const nochGenutzt = listeFilter().some((f) => f.operationen.some((o) => o.op === 'lut' && o.datei === op.datei));
+      if (!nochGenutzt) await rm(join(wurzel.luts, op.datei), { force: true });
+    }
     leereVorschauLager();
     return { ok: true };
   });
 
+  /**
+   * Eigene Looks als .cube-LUT importieren - aus Lightroom, Photoshop oder
+   * DaVinci. Laut Plan gehoerte das von Anfang an dazu; der Renderer konnte
+   * LUTs anwenden, aber es gab keinen Weg, eine hineinzubekommen.
+   */
+  app.post('/api/admin/filter/lut', async (anfrage, antwort) => {
+    const datei = await anfrage.file?.();
+    if (!datei) return antwort.code(400).send({ fehler: 'Keine Datei empfangen.' });
+    if (extname(datei.filename).toLowerCase() !== '.cube') {
+      return antwort.code(400).send({ fehler: 'Nur .cube-Dateien.' });
+    }
+    const inhalt = (await datei.toBuffer()).toString('utf8');
+    try {
+      parseCube(inhalt);
+    } catch (fehler) {
+      return antwort.code(400).send({ fehler: `Die Datei ist keine brauchbare LUT: ${(fehler as Error).message}` });
+    }
+    await mkdir(wurzel.luts, { recursive: true });
+    const name = `${randomUUID()}.cube`;
+    await writeFile(join(wurzel.luts, name), inhalt, 'utf8');
+    const anzeigename =
+      basename(datei.filename, extname(datei.filename)).replace(/[_-]+/g, ' ').trim().slice(0, 40) || 'Eigener Look';
+    const preset = speichereFilter({
+      id: randomUUID(),
+      name: anzeigename,
+      operationen: [{ op: 'lut', datei: name }],
+    });
+    protokolliere('info', 'filter', `LUT "${anzeigename}" importiert.`);
+    return preset;
+  });
+
+  /** Vorschau eines Filters am Muster - fuer die Filterseite der Verwaltung. */
+  app.get<{ Params: { id: string } }>('/api/admin/filter/:id/vorschau.jpg', async (anfrage, antwort) => {
+    const filter = holeFilter(anfrage.params.id);
+    if (!filter) return antwort.code(404).send({ fehler: 'Filter nicht gefunden.' });
+    const bild = await filterVorschau(filter, wurzel.luts);
+    return antwort.type('image/jpeg').header('Cache-Control', 'no-cache').send(bild);
+  });
+
   // --------------------------------------------------------- Veranstaltungen
+
+  /**
+   * Eine Veranstaltung, wie sie der Browser sehen darf. Die Antworten auf
+   * Speichern, Statuswechsel und Co. gaben vorher das rohe Objekt zurueck -
+   * samt Hash der Betreuer-PIN.
+   */
+  function eventFuerBrowser(event: Veranstaltung) {
+    return { ...event, betreuerPinHash: undefined, betreuerPinGesetzt: event.betreuerPinHash !== null };
+  }
   app.get('/api/admin/events', async () =>
     listeEvents().map((e) => ({ ...e, betreuerPinHash: undefined, auslagen: berechneAuslagen(e) })),
   );
@@ -430,32 +498,34 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     };
   });
 
-  app.post<{ Body: unknown }>('/api/admin/events', async (anfrage) => {
-    const koerper = z
-      .object({ name: z.string().min(1), datum: z.string().min(4) })
-      .parse(anfrage.body);
-    return erstelleEvent(koerper, wurzel.events);
+  app.post<{ Body: unknown }>('/api/admin/events', async (anfrage, antwort) => {
+    const geprueft = z.object({ name: EVENT_NAME, datum: EVENT_DATUM }).safeParse(anfrage.body);
+    if (!geprueft.success) return antwort.code(400).send({ fehler: ersteMeldung(geprueft.error) });
+    return eventFuerBrowser(erstelleEvent(geprueft.data, wurzel.events));
   });
 
   app.put<{ Params: { id: string }; Body: unknown }>(
     '/api/admin/events/:id',
     async (anfrage, antwort) => {
-      const koerper = z
+      const geprueft = z
         .object({
-          name: z.string().min(1).optional(),
-          datum: z.string().min(4).optional(),
-          betreuerPin: z.string().min(4).max(32).optional(),
-          einstellungen: z.record(z.any()).optional(),
+          name: EVENT_NAME.optional(),
+          datum: EVENT_DATUM.optional(),
+          betreuerPin: PIN_EINGABE.optional(),
+          einstellungen: EINSTELLUNGEN_EINGABE.optional(),
         })
-        .parse(anfrage.body);
+        .strict()
+        .safeParse(anfrage.body);
+      if (!geprueft.success) return antwort.code(400).send({ fehler: ersteMeldung(geprueft.error) });
+      const koerper = geprueft.data;
 
       try {
-        return aktualisiereEvent(anfrage.params.id, {
+        return eventFuerBrowser(aktualisiereEvent(anfrage.params.id, {
           name: koerper.name,
           datum: koerper.datum,
           einstellungen: koerper.einstellungen as never,
           ...(koerper.betreuerPin ? { betreuerPinHash: await hashePin(koerper.betreuerPin) } : {}),
-        });
+        }));
       } catch (fehler) {
         return antwort.code(400).send({ fehler: (fehler as Error).message });
       }
@@ -475,7 +545,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
         if (koerper.status === 'abgeschlossen') await schreibeAuslagenCsv(event);
         if (koerper.status === 'aktiv') await betrieb.starteLiveView();
         protokolliere('info', 'event', `"${event.name}" ist jetzt ${koerper.status}.`);
-        return event;
+        return eventFuerBrowser(event);
       } catch (fehler) {
         return antwort.code(409).send({ fehler: (fehler as Error).message });
       }
@@ -486,16 +556,47 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     '/api/admin/events/:id/probelauf',
     async (anfrage) => {
       const koerper = z.object({ an: z.boolean() }).parse(anfrage.body);
-      return setzeProbelauf(anfrage.params.id, koerper.an);
+      return eventFuerBrowser(setzeProbelauf(anfrage.params.id, koerper.an));
     },
   );
 
+  /**
+   * Eine Veranstaltung samt allen Fotos von der Box loeschen - nach der
+   * Uebergabe an den Gastgeber. Die Fotos fremder Leute sollen nicht
+   * monatelang auf einem Rechner liegen, der herumgereicht wird. Laut Plan
+   * gehoerte das dazu; bisher gab es keinen Weg.
+   *
+   * Nur fuer abgeschlossene oder archivierte Veranstaltungen, und nur, wenn der
+   * Name zur Bestaetigung genau eingetippt wird.
+   */
+  app.delete<{ Params: { id: string }; Body: unknown }>('/api/admin/events/:id', async (anfrage, antwort) => {
+    const { bestaetigung } = z.object({ bestaetigung: z.string() }).parse(anfrage.body ?? {});
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    if (event.status !== 'abgeschlossen' && event.status !== 'archiviert') {
+      return antwort.code(409).send({ fehler: 'Nur abgeschlossene oder archivierte Veranstaltungen lassen sich löschen.' });
+    }
+    if (bestaetigung.trim() !== event.name) {
+      return antwort.code(400).send({ fehler: 'Zur Bestätigung bitte den Namen genau so eintippen, wie er dasteht.' });
+    }
+    // Nur innerhalb des Event-Ordners loeschen - nie etwas anderes.
+    const ordner = resolve(event.ordner);
+    const wurzelEvents = resolve(wurzel.events);
+    if (!ordner.startsWith(wurzelEvents + sep) || ordner === wurzelEvents) {
+      return antwort.code(409).send({ fehler: 'Der Ordner liegt nicht im Event-Verzeichnis - er wird nicht angefasst.' });
+    }
+    await rm(ordner, { recursive: true, force: true });
+    loescheEvent(event.id);
+    protokolliere('info', 'event', `"${event.name}" samt Fotos von der Box gelöscht.`);
+    return { ok: true };
+  });
+
   app.post<{ Params: { id: string } }>('/api/admin/events/:id/galerie-token', async (anfrage) =>
-    erneuereGalerieToken(anfrage.params.id),
+    eventFuerBrowser(erneuereGalerieToken(anfrage.params.id)),
   );
 
   app.post<{ Params: { id: string } }>('/api/admin/events/:id/status-token', async (anfrage) =>
-    erneuereStatusToken(anfrage.params.id),
+    eventFuerBrowser(erneuereStatusToken(anfrage.params.id)),
   );
 
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/startbereit', async (anfrage, antwort) => {
@@ -572,14 +673,27 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     async (anfrage, antwort) => {
       const koerper = z
         .object({
-          betreuerPin: z.string().default(''),
-          telefon: z.string().default(''),
-          wlanName: z.string().optional(),
-          wlanPasswort: z.string().optional(),
+          betreuerPin: z.string().max(8),
+          telefon: z.string().max(40).default(''),
+          wlanName: z.string().max(64).optional(),
+          wlanPasswort: z.string().max(64).optional(),
         })
         .parse(anfrage.body ?? {});
       const event = holeEvent(anfrage.params.id);
       if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+
+      // Die Kurzanleitung ist der Zettel, mit dem der Gastgeber allein
+      // zurechtkommen muss - die PIN darauf muss stimmen. Gespeichert ist sie
+      // nur als Hash; vorher stand bei einem spaeter erzeugten Zettel deshalb
+      // "(im Admin gesetzt)" statt einer PIN darauf.
+      if (!event.betreuerPinHash) {
+        return antwort.code(409).send({ fehler: 'Erst unter "Aussehen & PIN" eine Betreuer-PIN setzen.' });
+      }
+      if (!(await pruefePin(koerper.betreuerPin, event.betreuerPinHash))) {
+        return antwort
+          .code(400)
+          .send({ fehler: 'Diese PIN stimmt nicht mit der gesetzten Betreuer-PIN überein - sie kommt so auf den Zettel.' });
+      }
 
       const galerieUrl = event.einstellungen.galerieAktiv
         ? (galerieAdresse(event.galerieToken, konfig.portOeffentlich) ?? undefined)
@@ -590,7 +704,27 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const aushang = event.einstellungen.galerieAktiv
         ? await schreibeAushang(event, angaben)
         : null;
-      return { kurzanleitung, aushang };
+      return {
+        kurzanleitung,
+        aushang,
+        links: {
+          kurzanleitung: `/api/admin/events/${event.id}/unterlagen/kurzanleitung.pdf`,
+          aushang: aushang ? `/api/admin/events/${event.id}/unterlagen/aushang.pdf` : null,
+        },
+      };
+    },
+  );
+
+  /** Die erzeugten Zettel zum Ansehen und Drucken - ohne sie auf der Platte zu suchen. */
+  app.get<{ Params: { id: string; art: string } }>(
+    '/api/admin/events/:id/unterlagen/:art',
+    async (anfrage, antwort) => {
+      const event = holeEvent(anfrage.params.id);
+      const datei = { 'kurzanleitung.pdf': 'kurzanleitung.pdf', 'aushang.pdf': 'qr-aushang.pdf' }[anfrage.params.art];
+      if (!event || !datei) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+      const pfad = join(eventpfade(event.ordner).cache, 'unterlagen', datei);
+      if (!existsSync(pfad)) return antwort.code(404).send({ fehler: 'Noch nicht erzeugt.' });
+      return antwort.type('application/pdf').header('Cache-Control', 'no-store').send(createReadStream(pfad));
     },
   );
 

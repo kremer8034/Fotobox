@@ -65,4 +65,20 @@ describe('Filter', () => {
     expect(r).toBe(g);
     expect(g).toBe(b);
   });
+
+  it('Sepia toent warm, statt nur grau zu machen', async () => {
+    const [r, g, b] = await pixel(
+      await wendeFilterAn(await einfarbig(150, 150, 150), preset([{ op: 'tonung', farbe: '#a07850', staerke: 0.8 }]), kontext),
+    );
+    expect(r! - b!).toBeGreaterThan(40);
+    // auch mit einem Graustufen-Schritt davor
+    const [r2, , b2] = await pixel(
+      await wendeFilterAn(
+        await einfarbig(150, 150, 150),
+        preset([{ op: 'graustufen' }, { op: 'tonung', farbe: '#a07850', staerke: 0.8 }]),
+        kontext,
+      ),
+    );
+    expect(r2! - b2!).toBeGreaterThan(40);
+  });
 });

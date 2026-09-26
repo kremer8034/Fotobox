@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Zeiten } from '../api.js';
 import { STATUS_NAME, STATUS_WECHSEL, UEBERGAENGE, type EventStatus } from '../../shared/typen.js';
 
@@ -59,8 +59,20 @@ const ZEIT_BESCHRIFTUNG: Record<keyof Zeiten, string> = {
   bestaetigung: 'Bestätigung des Fotos (0 = aus)',
   rueckkehrStart: 'Rückkehr zum Startbildschirm',
   galerieLeerlauf: 'Leerlauf in der Galerie',
-  liveViewAbschaltung: 'Live-View-Abschaltung',
+  liveViewAbschaltung: 'Live-View aus nach Leerlauf (0 = nie)',
   sitzungAbbruch: 'Sitzungsabbruch bei Untätigkeit',
+};
+
+/** Dieselben Grenzen, die der Server prueft - siehe einstellungen-pruefung.ts. */
+const ZEIT_GRENZEN: Record<keyof Zeiten, [number, number]> = {
+  bereitmachenErstes: [0, 60],
+  bereitmachenZwischen: [0, 60],
+  countdown: [1, 10],
+  bestaetigung: [0, 10],
+  rueckkehrStart: [5, 600],
+  galerieLeerlauf: [10, 600],
+  liveViewAbschaltung: [0, 86_400],
+  sitzungAbbruch: [30, 1800],
 };
 
 type Reiter =
@@ -100,6 +112,8 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [pruefung, setzePruefung] = useState<{ bestanden: boolean; punkte: Pruefpunkt[] } | null>(null);
   const [meldung, setzeMeldung] = useState<string | null>(null);
   const [pin, setzePin] = useState('');
+  const [zettelPin, setzeZettelPin] = useState('');
+  const [zettel, setzeZettel] = useState<{ kurzanleitung: string; aushang: string | null } | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
   const [telefon, setzeTelefon] = useState('');
   const [wlanName, setzeWlanName] = useState('');
@@ -155,6 +169,31 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
 
       {reiter === 'uebersicht' && (
         <>
+          {/* Name und Datum liessen sich nach dem Anlegen nicht mehr aendern -
+              ein Tippfehler im Namen landete ueber {veranstaltung} auf jedem
+              Ausdruck. Der Ordner auf der Platte behaelt seinen Namen. */}
+          <div className="karte">
+            <h2>Grunddaten</h2>
+            <div className="zeile">
+              <div className="feld" style={{ flex: 1 }}>
+                <label>Name</label>
+                <TextFeld
+                  wert={event.name}
+                  maxLaenge={80}
+                  beiSpeichern={(t) => (t.trim() ? speichereGrunddaten({ name: t.trim() }) : undefined)}
+                />
+              </div>
+              <div className="feld feld--klein">
+                <label>Datum</label>
+                <input
+                  type="date"
+                  value={event.datum}
+                  onChange={(ev) => ev.target.value && void speichereGrunddaten({ datum: ev.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="karte">
             <h2>Lebenszyklus</h2>
             <p style={{ color: 'var(--schrift-leise)', fontSize: '0.82rem', marginTop: 0 }}>
@@ -235,19 +274,14 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
           </p>
           <div className="zeitraster">
             {(Object.keys(ZEIT_BESCHRIFTUNG) as (keyof Zeiten)[]).map((schluessel) => (
-              <div className="feld" key={schluessel}>
-                <label htmlFor={`zeit-${schluessel}`}>{ZEIT_BESCHRIFTUNG[schluessel]}</label>
-                <input
-                  id={`zeit-${schluessel}`}
-                  className="zahl"
-                  type="number"
-                  min={0}
-                  value={e.zeiten[schluessel]}
-                  onChange={(ev) =>
-                    void speichere({ zeiten: { ...e.zeiten, [schluessel]: Number(ev.target.value) } })
-                  }
-                />
-              </div>
+              <ZahlFeld
+                key={schluessel}
+                id={`zeit-${schluessel}`}
+                name={ZEIT_BESCHRIFTUNG[schluessel]}
+                wert={e.zeiten[schluessel]}
+                grenzen={ZEIT_GRENZEN[schluessel]}
+                beiSpeichern={(n) => speichere({ zeiten: { ...e.zeiten, [schluessel]: n } })}
+              />
             ))}
           </div>
           <h2 style={{ marginTop: '1.2rem' }}>Töne</h2>
@@ -341,36 +375,28 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             />
           </div>
           <div className="zeile">
-            <div className="feld feld--klein">
-              <label>Kopien vorausgewählt</label>
-              <input
-                className="zahl"
-                type="number"
-                min={1}
-                value={e.kopienVorgabe}
-                onChange={(ev) => void speichere({ kopienVorgabe: Number(ev.target.value) })}
-              />
-            </div>
-            <div className="feld feld--klein">
-              <label title="Gilt je Foto: Ergebnisseite und Nachdrucke in der Galerie zusammen. Der Betreuer kann im Servicemenü darüber hinaus nachdrucken.">Kopien je Foto höchstens</label>
-              <input
-                className="zahl"
-                type="number"
-                min={1}
-                value={e.kopienMax}
-                onChange={(ev) => void speichere({ kopienMax: Number(ev.target.value) })}
-              />
-            </div>
-            <div className="feld feld--klein">
-              <label>Druck-Limit gesamt (0 = keins)</label>
-              <input
-                className="zahl"
-                type="number"
-                min={0}
-                value={e.druckLimit}
-                onChange={(ev) => void speichere({ druckLimit: Number(ev.target.value) })}
-              />
-            </div>
+            <ZahlFeld
+              name="Kopien vorausgewählt"
+              klein
+              wert={e.kopienVorgabe}
+              grenzen={[1, e.kopienMax]}
+              beiSpeichern={(n) => speichere({ kopienVorgabe: n })}
+            />
+            <ZahlFeld
+              name="Kopien je Foto höchstens"
+              titel="Gilt je Foto: Ergebnisseite und Nachdrucke in der Galerie zusammen. Der Betreuer kann im Servicemenü darüber hinaus nachdrucken."
+              klein
+              wert={e.kopienMax}
+              grenzen={[1, 10]}
+              beiSpeichern={(n) => speichere({ kopienMax: n })}
+            />
+            <ZahlFeld
+              name="Druck-Limit gesamt (0 = keins)"
+              klein
+              wert={e.druckLimit}
+              grenzen={[0, 100_000]}
+              beiSpeichern={(n) => speichere({ druckLimit: n })}
+            />
           </div>
           {/*
             Die Gaeste lesen diesen Text, bevor sie ihre Adresse hergeben - also
@@ -383,24 +409,21 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
                 <label htmlFor="einwilligung">
                   Einwilligungstext für die E-Mail — {'{loeschfrist}'} wird durch die Tage ersetzt
                 </label>
-                <textarea
+                <TextFeld
                   id="einwilligung"
-                  rows={3}
-                  value={e.einwilligungstext}
-                  onChange={(ev) => void speichere({ einwilligungstext: ev.target.value })}
+                  mehrzeilig
+                  wert={e.einwilligungstext}
+                  beiSpeichern={(t) => speichere({ einwilligungstext: t })}
                 />
               </div>
-              <div className="feld feld--klein">
-                <label htmlFor="loeschfrist">Adressen löschen nach (Tagen)</label>
-                <input
-                  id="loeschfrist"
-                  className="zahl"
-                  type="number"
-                  min={1}
-                  value={e.emailLoeschfristTage}
-                  onChange={(ev) => void speichere({ emailLoeschfristTage: Number(ev.target.value) })}
-                />
-              </div>
+              <ZahlFeld
+                id="loeschfrist"
+                name="Adressen löschen nach (Tagen)"
+                klein
+                wert={e.emailLoeschfristTage}
+                grenzen={[1, 365]}
+                beiSpeichern={(n) => speichere({ emailLoeschfristTage: n })}
+              />
             </div>
           )}
           <Adressen eventId={id} />
@@ -428,13 +451,14 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
           <div className="zeile">
             <div className="feld" style={{ flex: 1 }}>
               <label>Titel am Startbildschirm</label>
-              <input value={e.startTitel} onChange={(ev) => void speichere({ startTitel: ev.target.value })} />
+              <TextFeld wert={e.startTitel} maxLaenge={80} beiSpeichern={(t) => speichere({ startTitel: t })} />
             </div>
             <div className="feld" style={{ flex: 1 }}>
               <label>Untertitel</label>
-              <input
-                value={e.startUntertitel}
-                onChange={(ev) => void speichere({ startUntertitel: ev.target.value })}
+              <TextFeld
+                wert={e.startUntertitel}
+                maxLaenge={160}
+                beiSpeichern={(t) => speichere({ startUntertitel: t })}
               />
             </div>
             <div className="feld feld--klein">
@@ -454,9 +478,20 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
           <div className="zeile">
             <div className="feld feld--klein">
               <label>Betreuer-PIN {event.betreuerPinGesetzt ? '(gesetzt)' : '(fehlt)'}</label>
-              <input value={pin} onChange={(ev) => setzePin(ev.target.value)} placeholder="4–8 Ziffern" />
+              {/* Nur Ziffern: Das Tastenfeld am Kiosk hat keine Buchstaben, und
+                  mehr als 8 Stellen nimmt es nicht an. Eine PIN "abcd" liess
+                  sich vorher setzen - und nie wieder eingeben. */}
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                maxLength={8}
+                value={pin}
+                onChange={(ev) => setzePin(ev.target.value.replace(/\D/g, ''))}
+                placeholder="4–8 Ziffern"
+              />
             </div>
-            <button className="knopf knopf--neben" disabled={pin.length < 4} onClick={() => void setzePinAb()}>
+            <button className="knopf knopf--neben" disabled={!/^\d{4,8}$/.test(pin)} onClick={() => void setzePinAb()}>
               PIN setzen
             </button>
           </div>
@@ -471,27 +506,22 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
         <div className="karte">
           <h2>Auslagenersatz</h2>
           <div className="zeile">
-            <div className="feld feld--klein">
-              <label>Ersatz je Druck (€)</label>
-              <input
-                className="zahl"
-                type="number"
-                step="0.01"
-                min={0}
-                value={e.ersatzJeDruck}
-                onChange={(ev) => void speichere({ ersatzJeDruck: Number(ev.target.value) })}
-              />
-            </div>
-            <div className="feld feld--klein">
-              <label>Material Start (Blatt)</label>
-              <input
-                className="zahl"
-                type="number"
-                min={0}
-                value={e.materialStart}
-                onChange={(ev) => void speichere({ materialStart: Number(ev.target.value) })}
-              />
-            </div>
+            <ZahlFeld
+              name="Ersatz je Druck (€)"
+              klein
+              komma
+              schritt={0.01}
+              wert={e.ersatzJeDruck}
+              grenzen={[0, 100]}
+              beiSpeichern={(n) => speichere({ ersatzJeDruck: n })}
+            />
+            <ZahlFeld
+              name="Material Start (Blatt)"
+              klein
+              wert={e.materialStart}
+              grenzen={[0, 100_000]}
+              beiSpeichern={(n) => speichere({ materialStart: n })}
+            />
           </div>
           <div className="zeile" style={{ marginTop: '0.4rem' }}>
             <Kennzahl name="Durchgänge" wert={String(event.auslagen.sitzungen)} />
@@ -536,6 +566,17 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </p>
             <div className="zeile">
               <div className="feld feld--klein">
+                <label>Betreuer-PIN (kommt auf den Zettel)</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={8}
+                  value={zettelPin}
+                  onChange={(ev) => setzeZettelPin(ev.target.value.replace(/\D/g, ''))}
+                  placeholder="dieselbe wie gesetzt"
+                />
+              </div>
+              <div className="feld feld--klein">
                 <label>Telefon für den Notfall</label>
                 <input value={telefon} onChange={(ev) => setzeTelefon(ev.target.value)} />
               </div>
@@ -547,10 +588,31 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
                 <label>WLAN-Passwort</label>
                 <input value={wlanPasswort} onChange={(ev) => setzeWlanPasswort(ev.target.value)} />
               </div>
-              <button className="knopf knopf--neben" onClick={() => void unterlagen()}>
+              <button
+                className="knopf knopf--neben"
+                disabled={!/^\d{4,8}$/.test(zettelPin)}
+                onClick={() => void unterlagen()}
+              >
                 Zettel erzeugen
               </button>
             </div>
+            {zettel && (
+              <p style={{ marginBottom: 0 }}>
+                <a href={zettel.kurzanleitung} target="_blank" rel="noreferrer">
+                  Kurzanleitung öffnen
+                </a>
+                {zettel.aushang ? (
+                  <>
+                    {' · '}
+                    <a href={zettel.aushang} target="_blank" rel="noreferrer">
+                      QR-Aushang öffnen
+                    </a>
+                  </>
+                ) : (
+                  ' · Einen QR-Aushang gibt es nur bei eingeschalteter Galerie.'
+                )}
+              </p>
+            )}
           </div>
 
           <div className="karte">
@@ -582,6 +644,19 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               </button>
             </div>
           </div>
+          {(event.status === 'abgeschlossen' || event.status === 'archiviert') && (
+            <div className="karte">
+              <h2>Von der Box löschen</h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+                Nach der Übergabe gehören die Fotos dem Gastgeber, nicht der Box. Löscht den ganzen
+                Ordner mit allen Originalen, Layouts und Adressen — endgültig. Vorher prüfen, dass die
+                Übergabe geklappt hat.
+              </p>
+              <button className="knopf knopf--neben" style={{ borderColor: 'var(--fehler)' }} onClick={() => void loeschen()}>
+                Veranstaltung löschen
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -604,20 +679,71 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     return reiterZiel ? () => setzeReiter(reiterZiel) : null;
   }
 
+  /**
+   * Sofort speichern - aber nie still scheitern. Vorher blieb ein Fehler
+   * unbemerkt: Das Feld zeigte den neuen Wert, gespeichert war der alte.
+   */
   async function speichere(teil: Record<string, unknown>) {
     setzeEvent((alt) =>
       alt ? { ...alt, einstellungen: { ...alt.einstellungen, ...teil } as typeof alt.einstellungen } : alt,
     );
-    await api.aendere(`/api/admin/events/${id}`, { einstellungen: teil });
-    zeige('Gespeichert.');
+    try {
+      await api.aendere(`/api/admin/events/${id}`, { einstellungen: teil });
+      zeige('Gespeichert.');
+    } catch (u) {
+      zeige(`Nicht gespeichert: ${u instanceof Error ? u.message : 'unbekannter Fehler'}`);
+      await lade().catch(() => undefined);
+    }
+  }
+
+  async function speichereGrunddaten(teil: { name?: string; datum?: string }) {
+    try {
+      await api.aendere(`/api/admin/events/${id}`, teil);
+      await lade();
+      zeige('Gespeichert.');
+    } catch (u) {
+      zeige(`Nicht gespeichert: ${u instanceof Error ? u.message : 'unbekannter Fehler'}`);
+      await lade().catch(() => undefined);
+    }
+  }
+
+  /** Jede Aktion zeigt ihren Fehler - vorher verschwanden sie in der Konsole. */
+  async function versuche(aktion: () => Promise<void>) {
+    try {
+      await aktion();
+    } catch (u) {
+      zeige(u instanceof Error ? u.message : 'Hat nicht geklappt.');
+    }
   }
 
   function zeige(text: string) {
     setzeMeldung(text);
-    setTimeout(() => setzeMeldung(null), 2500);
+    setTimeout(() => setzeMeldung(null), 4000);
   }
 
   async function status(neu: EventStatus) {
+    // "Erst wenn alles gruen ist - oder bewusst uebersprungen wurde": Vor dem
+    // Startbereit- und dem Aktiv-Schalten laeuft der Check. Vorher liess sich
+    // eine Veranstaltung ohne Vorlage oder ohne PIN einfach starten.
+    if (neu === 'startbereit' || neu === 'aktiv') {
+      try {
+        const ergebnis = await api.hole<{ bestanden: boolean; punkte: Pruefpunkt[] }>(
+          `/api/admin/events/${id}/startbereit`,
+        );
+        setzePruefung(ergebnis);
+        const offen = ergebnis.punkte.filter((p) => !p.bestanden && !p.nurWarnung);
+        if (
+          offen.length > 0 &&
+          !window.confirm(
+            `Der Startbereit-Check meldet noch:\n\n${offen.map((p) => `• ${p.titel}`).join('\n')}\n\nTrotzdem weiter?`,
+          )
+        ) {
+          return;
+        }
+      } catch {
+        // Ein fehlgeschlagener Check haelt nicht auf - der Wechsel selbst prueft weiter.
+      }
+    }
     try {
       await api.sende(`/api/admin/events/${id}/status`, { status: neu });
       await lade();
@@ -627,65 +753,218 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     }
   }
 
-  async function probelauf(an: boolean) {
-    await api.sende(`/api/admin/events/${id}/probelauf`, { an });
-    await lade();
+  function probelauf(an: boolean) {
+    return versuche(async () => {
+      await api.sende(`/api/admin/events/${id}/probelauf`, { an });
+      await lade();
+    });
   }
 
-  async function pruefe() {
-    setzePruefung(await api.hole(`/api/admin/events/${id}/startbereit`));
+  function pruefe() {
+    return versuche(async () => setzePruefung(await api.hole(`/api/admin/events/${id}/startbereit`)));
   }
 
-  async function neuerToken() {
-    await api.sende(`/api/admin/events/${id}/galerie-token`, {});
-    await lade();
-    zeige('Der alte Link ist jetzt tot.');
+  function neuerToken() {
+    return versuche(async () => {
+      await api.sende(`/api/admin/events/${id}/galerie-token`, {});
+      await lade();
+      zeige('Der alte Link ist jetzt tot. Den QR-Aushang neu erzeugen und austauschen.');
+    });
   }
 
-  async function neuerStatusToken() {
-    await api.sende(`/api/admin/events/${id}/status-token`, {});
-    await lade();
-    zeige('Der alte Status-Link ist jetzt tot.');
+  function neuerStatusToken() {
+    return versuche(async () => {
+      await api.sende(`/api/admin/events/${id}/status-token`, {});
+      await lade();
+      zeige('Der alte Status-Link ist jetzt tot.');
+    });
   }
 
-  async function unterlagen() {
-    const antwort = await api.sende<{ kurzanleitung: string; aushang: string | null }>(
-      `/api/admin/events/${id}/unterlagen`,
-      { betreuerPin: pin || '(im Admin gesetzt)', telefon, wlanName, wlanPasswort },
-    );
-    zeige(
-      `Kurzanleitung: ${antwort.kurzanleitung}` +
-        (antwort.aushang ? ` · Aushang: ${antwort.aushang}` : ' · Aushang nur bei aktiver Galerie'),
-    );
+  function unterlagen() {
+    return versuche(async () => {
+      const antwort = await api.sende<{ links: { kurzanleitung: string; aushang: string | null } }>(
+        `/api/admin/events/${id}/unterlagen`,
+        { betreuerPin: zettelPin, telefon, wlanName, wlanPasswort },
+      );
+      setzeZettel(antwort.links);
+      zeige('Zettel erzeugt - zum Öffnen und Drucken die Links unten nutzen.');
+    });
   }
 
   async function uebergeben() {
     setzeMeldung('Kopiere…');
-    try {
+    await versuche(async () => {
       const ergebnis = await api.sende<{ meldung: string; geprueft: boolean; ziel: string }>(
         `/api/admin/events/${id}/uebergabe`,
         { ziel: zielPfad },
       );
       zeige(`${ergebnis.meldung} Ziel: ${ergebnis.ziel}`);
-    } catch (u) {
-      zeige(u instanceof Error ? u.message : 'Übergabe fehlgeschlagen.');
-    }
+      await lade();
+    });
   }
 
-  async function vorbereiten() {
-    const antwort = await api.sende<{ ordner: string }>(
-      `/api/admin/events/${id}/uebergabe-vorbereiten`,
-      {},
+  function vorbereiten() {
+    return versuche(async () => {
+      const antwort = await api.sende<{ ordner: string }>(`/api/admin/events/${id}/uebergabe-vorbereiten`, {});
+      zeige(`Ordner ist übergabefertig: ${antwort.ordner}`);
+    });
+  }
+
+  async function loeschen() {
+    const eingabe = window.prompt(
+      `Alle Fotos von „${event!.name}“ werden endgültig von der Box gelöscht.\n\nZur Bestätigung den Namen eintippen:`,
     );
-    zeige(`Ordner ist übergabefertig: ${antwort.ordner}`);
+    if (eingabe === null) return;
+    await versuche(async () => {
+      await api.loesche(`/api/admin/events/${id}`, { bestaetigung: eingabe });
+      navigiere('/admin/events');
+    });
   }
 
-  async function setzePinAb() {
-    await api.aendere(`/api/admin/events/${id}`, { betreuerPin: pin });
-    setzePin('');
-    await lade();
-    zeige('Betreuer-PIN gesetzt.');
+  function setzePinAb() {
+    return versuche(async () => {
+      await api.aendere(`/api/admin/events/${id}`, { betreuerPin: pin });
+      setzePin('');
+      await lade();
+      zeige('Betreuer-PIN gesetzt. Für die Kurzanleitung unter „Übergabe“ noch einmal eintragen.');
+    });
   }
+}
+
+/**
+ * Zahlenfeld, das nur Gueltiges speichert. Waehrend des Tippens gilt der
+ * Entwurf; gespeichert wird kurz nach dem letzten Tastendruck, und nur, wenn
+ * eine Zahl innerhalb der Grenzen dasteht. Beim Verlassen springt ein leeres
+ * oder ungueltiges Feld auf den gespeicherten Wert zurueck.
+ */
+function ZahlFeld({
+  id,
+  name,
+  titel,
+  wert,
+  grenzen,
+  schritt = 1,
+  komma = false,
+  klein = false,
+  beiSpeichern,
+}: {
+  id?: string;
+  name: string;
+  titel?: string;
+  wert: number;
+  grenzen: [number, number];
+  schritt?: number;
+  komma?: boolean;
+  klein?: boolean;
+  beiSpeichern: (n: number) => Promise<void> | void;
+}) {
+  const [entwurf, setzeEntwurf] = useState(String(wert));
+  const fokus = useRef(false);
+  const uhr = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!fokus.current) setzeEntwurf(String(wert));
+  }, [wert]);
+
+  const lies = (t: string): number | null => {
+    if (t.trim() === '') return null;
+    const n = Number(t.replace(',', '.'));
+    if (!Number.isFinite(n) || n < grenzen[0] || n > grenzen[1]) return null;
+    if (!komma && !Number.isInteger(n)) return null;
+    return n;
+  };
+  const gueltig = lies(entwurf) !== null;
+
+  return (
+    <div className={`feld${klein ? ' feld--klein' : ''}`}>
+      <label htmlFor={id} title={titel}>
+        {name}
+      </label>
+      <input
+        id={id}
+        className="zahl"
+        type="number"
+        min={grenzen[0]}
+        max={grenzen[1]}
+        step={schritt}
+        value={entwurf}
+        aria-invalid={!gueltig}
+        style={gueltig ? undefined : { borderColor: 'var(--fehler)' }}
+        onFocus={() => (fokus.current = true)}
+        onChange={(ev) => {
+          const t = ev.target.value;
+          setzeEntwurf(t);
+          if (uhr.current) clearTimeout(uhr.current);
+          const n = lies(t);
+          if (n !== null && n !== wert) uhr.current = setTimeout(() => void beiSpeichern(n), 500);
+        }}
+        onBlur={() => {
+          fokus.current = false;
+          if (uhr.current) clearTimeout(uhr.current);
+          const n = lies(entwurf);
+          if (n === null) setzeEntwurf(String(wert));
+          else if (n !== wert) void beiSpeichern(n);
+        }}
+      />
+      {!gueltig && (
+        <small style={{ color: 'var(--fehler)' }}>
+          {grenzen[0]} bis {grenzen[1]}
+        </small>
+      )}
+    </div>
+  );
+}
+
+/** Textfeld, das kurz nach dem letzten Tastendruck speichert - nicht bei jedem. */
+function TextFeld({
+  id,
+  wert,
+  maxLaenge,
+  mehrzeilig = false,
+  beiSpeichern,
+}: {
+  id?: string;
+  wert: string;
+  maxLaenge?: number;
+  mehrzeilig?: boolean;
+  beiSpeichern: (t: string) => Promise<void> | void;
+}) {
+  const [entwurf, setzeEntwurf] = useState(wert);
+  const fokus = useRef(false);
+  const uhr = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!fokus.current) setzeEntwurf(wert);
+  }, [wert]);
+  const aendern = (t: string) => {
+    setzeEntwurf(t);
+    if (uhr.current) clearTimeout(uhr.current);
+    uhr.current = setTimeout(() => void beiSpeichern(t), 700);
+  };
+  const verlassen = () => {
+    fokus.current = false;
+    if (uhr.current) clearTimeout(uhr.current);
+    if (entwurf !== wert) void beiSpeichern(entwurf);
+  };
+  return mehrzeilig ? (
+    <textarea
+      id={id}
+      rows={3}
+      maxLength={maxLaenge}
+      value={entwurf}
+      onFocus={() => (fokus.current = true)}
+      onChange={(ev) => aendern(ev.target.value)}
+      onBlur={verlassen}
+    />
+  ) : (
+    <input
+      id={id}
+      maxLength={maxLaenge}
+      value={entwurf}
+      onFocus={() => (fokus.current = true)}
+      onChange={(ev) => aendern(ev.target.value)}
+      onBlur={verlassen}
+    />
+  );
 }
 
 interface Adresseintrag {

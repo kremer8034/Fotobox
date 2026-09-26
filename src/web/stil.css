@@ -1666,3 +1666,18 @@ html.handy-ansicht body {
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+/* Verwaltung: Filterbibliothek. */
+.filter-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.filter-kachel img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-klein);
+  display: block;
+}

@@ -10,6 +10,7 @@ import {
   type EventEinstellungen,
   type EventStatus,
   type Veranstaltung,
+  FILTER_OHNE,
 } from '../../shared/typen.js';
 
 /**
@@ -135,6 +136,11 @@ export function aktualisiereEvent(
     zeiten: { ...vorher.einstellungen.zeiten, ...aenderung.einstellungen?.zeiten },
     toene: { ...vorher.einstellungen.toene, ...aenderung.einstellungen?.toene },
   };
+  // Vorausgewaehlt kann nicht mehr sein als erlaubt - sonst startete die
+  // Mengenwahl im Kiosk ueber der Obergrenze.
+  einstellungen.kopienVorgabe = Math.min(einstellungen.kopienVorgabe, einstellungen.kopienMax);
+  // "Ohne Filter" ist immer die erste Kachel.
+  if (!einstellungen.filter.includes(FILTER_OHNE)) einstellungen.filter = [FILTER_OHNE, ...einstellungen.filter];
 
   holeDb()
     .prepare(
@@ -181,6 +187,11 @@ export function setzeStatus(id: string, neu: EventStatus): Veranstaltung {
   const nachher = holeEvent(id)!;
   schreibeEventJson(nachher);
   return nachher;
+}
+
+/** Die Veranstaltung aus der Datenbank - Sitzungen, Fotos, Drucke und Versand gehen per Fremdschluessel mit. */
+export function loescheEvent(id: string): void {
+  holeDb().prepare('DELETE FROM events WHERE id = ?').run(id);
 }
 
 export function setzeProbelauf(id: string, an: boolean): Veranstaltung {

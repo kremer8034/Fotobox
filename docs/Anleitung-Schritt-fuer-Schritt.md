@@ -481,6 +481,22 @@ Auf dem Stick liegt unter anderem eine Datei **`galerie.html`**. Der Gastgeber
 kann sie doppelklicken und bekommt alle Bilder als Übersicht — ohne irgendetwas
 zu installieren.
 
+**Danach von der Box löschen:** Die Fotos gehören jetzt dem Gastgeber, nicht
+der Box, die du weiterverleihst. Wenn der Stick geprüft ist: Veranstaltung
+auf **„Abschließen"**, dann im Reiter **Übergabe** ganz unten **„Veranstaltung
+löschen"**. Zur Sicherheit musst du den Namen der Feier eintippen — gelöscht ist
+danach alles: Originale, Layouts und E-Mail-Adressen.
+
+## Eigene Filter (LUTs) hinzufügen
+
+Wer in Lightroom, Photoshop oder DaVinci Resolve einen eigenen Look hat, kann
+ihn als **`.cube`-Datei** exportieren und in die Fotobox holen:
+
+1. Verwaltung → **Filter** → **„LUT importieren (.cube)"**.
+2. Die Datei wählen. Der neue Filter erscheint mit Vorschau in der Liste.
+3. In der Veranstaltung unter **„Vorlagen & Filter"** anhaken — erst dann sehen
+   ihn die Gäste.
+
 ## Was du bekommen hast
 
 Auf derselben Seite steht unter **Auslagenersatz**, wie viele Ausdrucke gemacht

@@ -288,6 +288,23 @@ export class Betrieb {
           if (kameraStatus.antwortet) this.letzteMassnahme = 'nichts';
         }
 
+        // Live-View nach Leerlauf abschalten. Die Einstellung stand in der
+        // Verwaltung, wirkte aber nirgends - die 600D blieb den ganzen Abend im
+        // Live-View, und der Sensor wird dabei warm (mehr Bildrauschen). Die
+        // naechste Sitzung schaltet ihn wieder ein; das Bereitmachen vor dem
+        // ersten Foto ueberbrueckt die Sekunde, die das dauert.
+        const abschaltenNachS = holeAktivesEvent()?.einstellungen.zeiten.liveViewAbschaltung ?? 0;
+        if (
+          this.liveViewGewuenscht &&
+          abschaltenNachS > 0 &&
+          !this.aktiveSitzung &&
+          this.zuschauer.size === 0 &&
+          Date.now() - this.letzteBeruehrung > abschaltenNachS * 1000
+        ) {
+          await this.stoppeLiveView();
+          protokolliere('info', 'kamera', 'Live-View nach Leerlauf abgeschaltet - schont den Sensor.');
+        }
+
         // Speicher: guenstig zu lesen, also jede Runde.
         // Laesst sich der Wert nicht lesen, wird nicht gewarnt - sonst stuende
         // wegen eines Lesefehlers "Speicher voll" vor den Gaesten.

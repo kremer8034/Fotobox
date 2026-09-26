@@ -79,7 +79,16 @@ export async function wendeFilterAn(
   let affin = EINHEIT;
   let einfarbig = false;
 
+  // Eine Toenung ersetzt die Farben ohnehin durch ihren Ton. Ein Graustufen-
+  // Schritt davor macht das Bild in sharp einkanalig - und dann geht die
+  // Toenung verloren: "Sepia" kam als reines Schwarzweiss heraus.
+  const hatToenung = preset.operationen.some((o) => o.op === 'tonung');
+
   for (const operation of preset.operationen) {
+    if (operation.op === 'graustufen' && hatToenung) {
+      einfarbig = true;
+      continue;
+    }
     const schritt = alsAffin(operation);
     if (schritt) {
       affin = verkette(affin, schritt);
@@ -220,7 +229,9 @@ function anwenden(bild: sharp.Sharp, operation: FilterOperation): sharp.Sharp {
     case 'tonung': {
       const { r, g, b } = hexZuRgb(operation.farbe);
       const s = Math.max(0, Math.min(1, operation.staerke));
-      return bild.grayscale().tint({
+      // tint() behaelt die Helligkeit und setzt den Farbton - das Ergebnis ist
+      // von selbst einfarbig getoent. Kein grayscale() davor, siehe oben.
+      return bild.tint({
         r: Math.round(255 - (255 - r) * s),
         g: Math.round(255 - (255 - g) * s),
         b: Math.round(255 - (255 - b) * s),
