@@ -107,21 +107,31 @@ export function VorlagenSeite() {
   }
 
   async function dupliziere(v: Vorlage) {
-    await api.aendere('/api/admin/vorlagen', {
-      name: `${v.name} (Kopie)`,
-      preset: v.canvas.preset,
-      hintergrundFarbe: v.hintergrundFarbe,
-      ebenen: v.ebenen,
-    });
+    try {
+      await api.aendere('/api/admin/vorlagen', {
+        name: `${v.name} (Kopie)`,
+        preset: v.canvas.preset,
+        hintergrundFarbe: v.hintergrundFarbe,
+        ebenen: v.ebenen,
+      });
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Kopieren ging nicht.');
+      return;
+    }
     await lade();
     setzeMeldung(`"${v.name}" wurde kopiert.`);
   }
 
   async function loesche(v: Vorlage) {
-    if (!window.confirm(`"${v.name}" wirklich löschen? Veranstaltungen, die sie nutzen, verlieren sie.`)) {
+    if (!window.confirm(`"${v.name}" wirklich löschen? Veranstaltungen, die sie nutzen, verlieren sie. Das lässt sich nicht rückgängig machen.`)) {
       return;
     }
-    await api.loesche(`/api/admin/vorlagen/${v.id}`);
+    try {
+      await api.loesche(`/api/admin/vorlagen/${v.id}`);
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Löschen ging nicht.');
+      return;
+    }
     await lade();
     setzeMeldung(`"${v.name}" gelöscht.`);
   }

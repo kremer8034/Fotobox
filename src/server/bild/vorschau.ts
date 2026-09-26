@@ -44,8 +44,9 @@ export async function vorlagenVorschau(vorlage: Vorlage, assetsOrdner: string): 
   };
 
   const fotos = new Map<number, Buffer>();
-  for (const ebene of fotoEbenen(vorlage)) {
-    fotos.set(ebene.index, await platzhalterFlaeche(ebene.index));
+  // Nach Aufnahmenummer, wie in der echten Sitzung - siehe fotoPlaetze().
+  for (let nummer = 1; nummer <= fotoEbenen(vorlage).length; nummer += 1) {
+    fotos.set(nummer, await platzhalterFlaeche(nummer));
   }
 
   const bild = await baueLayout(

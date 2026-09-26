@@ -154,14 +154,32 @@ export interface Vorlage {
 
 /** Die Anzahl der Foto-Ebenen bestimmt, wie viele Fotos aufgenommen werden. */
 export function anzahlFotos(vorlage: Vorlage): number {
-  return vorlage.ebenen.filter((e): e is FotoEbene => e.typ === 'foto').length;
+  return fotoEbenen(vorlage).length;
 }
 
-/** Foto-Ebenen in Aufnahmereihenfolge, unabhaengig von der Stapelreihenfolge. */
-export function fotoEbenen(vorlage: Vorlage): FotoEbene[] {
+/**
+ * Die Foto-Ebenen, die tatsaechlich ein Foto bekommen, in Aufnahmereihenfolge.
+ * Das k-te aufgenommene Foto landet in der k-ten Ebene dieser Liste.
+ *
+ * Ausgeblendete Foto-Ebenen zaehlen nicht mit. Vorher nahm die Box fuer sie
+ * trotzdem ein Foto auf - die Gruppe posierte fuer ein Bild, das nirgends
+ * erschien. Die eingetragene Nummer bestimmt nur die Reihenfolge: Eine Luecke
+ * (1, 3) oder eine doppelte Nummer (2, 2) liess vorher einen Platz leer
+ * beziehungsweise ein Foto verschwinden. Bei gleicher Nummer entscheidet der
+ * Stapel.
+ */
+export function fotoEbenen(vorlage: Pick<Vorlage, 'ebenen'>): FotoEbene[] {
+  const nummer = (e: FotoEbene) => (Number.isFinite(e.index) ? e.index : Number.MAX_SAFE_INTEGER);
   return vorlage.ebenen
-    .filter((e): e is FotoEbene => e.typ === 'foto')
-    .sort((a, b) => a.index - b.index);
+    .map((ebene, stapel) => ({ ebene, stapel }))
+    .filter((x): x is { ebene: FotoEbene; stapel: number } => x.ebene.typ === 'foto' && x.ebene.sichtbar !== false)
+    .sort((a, b) => nummer(a.ebene) - nummer(b.ebene) || a.stapel - b.stapel)
+    .map((x) => x.ebene);
+}
+
+/** Welche Foto-Ebene (nach ID) das wievielte Foto bekommt - 1-basiert. */
+export function fotoPlaetze(vorlage: Pick<Vorlage, 'ebenen'>): Map<string, number> {
+  return new Map(fotoEbenen(vorlage).map((ebene, i) => [ebene.id, i + 1]));
 }
 
 // ---------------------------------------------------------------------------

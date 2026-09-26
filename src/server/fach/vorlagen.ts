@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { holeDb, jetzt } from '../db/index.js';
 import {
   CANVAS_PRESETS,
@@ -60,8 +61,111 @@ export function speichereVorlage(vorlage: Omit<Vorlage, 'erstellt' | 'geaendert'
   return holeVorlage(vorlage.id)!;
 }
 
+/*
+ * Was eine Vorlage enthalten darf.
+ *
+ * Vorher nahm der Server beim Speichern jede beliebige Ebenenliste an. Eine
+ * Ebene ohne Breite, mit "NaN" als Position oder mit einem Dateinamen wie
+ * "../../fotobox.db" landete so in der Datenbank - und fiel erst auf, wenn
+ * ein Gast nach der Filterwahl auf "Dein Bild wird zusammengesetzt" wartete.
+ * Jetzt wird beim Speichern geprueft, und der Editor bekommt eine klare
+ * Meldung.
+ */
+const zahl = (min: number, max: number) => z.number().finite().min(min).max(max);
+const farbe = z.string().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/, 'Farbe als #RRGGBB');
+
+const basis = {
+  id: z.string().min(1).max(64),
+  name: z.string().max(100).optional(),
+  // Etwas Spielraum ueber die Seite hinaus: Ein Hintergrund darf fuer den
+  // randlosen Druck ueberstehen. Weiter als eine halbe Seite nicht.
+  x: zahl(-1, 2),
+  y: zahl(-1, 2),
+  w: zahl(0.005, 3),
+  h: zahl(0.005, 3),
+  rotation: zahl(-360, 360).optional(),
+  sichtbar: z.boolean().optional(),
+  gesperrt: z.boolean().optional(),
+};
+
+const EBENE = z.discriminatedUnion('typ', [
+  z.object({
+    ...basis,
+    typ: z.literal('bild'),
+    // Nur ein Dateiname aus dem Vorlagenordner, nie ein Pfad.
+    datei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/, 'Ungueltiger Dateiname').refine((d) => !d.startsWith('.')),
+    deckkraft: zahl(0, 1).optional(),
+  }),
+  z.object({
+    ...basis,
+    typ: z.literal('foto'),
+    index: z.number().int().min(1).max(99),
+    einpassung: z.enum(['cover', 'contain']).optional(),
+    radius: zahl(0, 0.5).optional(),
+  }),
+  z.object({
+    ...basis,
+    typ: z.literal('text'),
+    text: z.string().max(500),
+    groesse: zahl(0.005, 1),
+    farbe,
+    ausrichtung: z.enum(['links', 'mitte', 'rechts']).optional(),
+    schrift: z.string().max(100).optional(),
+    schriftDatei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/).optional(),
+  }),
+]);
+
+export const VORLAGE_EINGABE = z.object({
+  id: z.string().max(64).optional(),
+  name: z.string().trim().min(1, 'Die Vorlage braucht einen Namen.').max(100),
+  preset: z.enum(['10x15-quer', '10x15-hoch']),
+  hintergrundFarbe: farbe.optional(),
+  ebenen: z.array(EBENE).max(60, 'Hoechstens 60 Ebenen.'),
+});
+
+/** Verstaendliche Meldung aus einem Pruefergebnis, etwa "Ebene 3 (text): farbe - Farbe als #RRGGBB". */
+export function beschreibePruefung(fehler: z.ZodError, ebenen: unknown): string {
+  const erstes = fehler.issues[0];
+  if (!erstes) return 'Die Vorlage ist ungueltig.';
+  const [bereich, nummer, feld] = erstes.path;
+  if (bereich === 'ebenen' && typeof nummer === 'number') {
+    const typ = Array.isArray(ebenen) ? (ebenen[nummer] as { typ?: string } | undefined)?.typ : undefined;
+    return `Ebene ${nummer + 1}${typ ? ` (${typ})` : ''}: ${feld ? `${String(feld)} - ` : ''}${erstes.message}`;
+  }
+  return erstes.message;
+}
+
+/** In welchen Veranstaltungen ist diese Vorlage freigegeben? */
+export function vorlageInVeranstaltungen(id: string): { id: string; name: string; status: string }[] {
+  const zeilen = holeDb().prepare('SELECT id, name, status, einstellungen FROM events').all() as {
+    id: string;
+    name: string;
+    status: string;
+    einstellungen: string;
+  }[];
+  return zeilen
+    .filter((z) => {
+      try {
+        return (JSON.parse(z.einstellungen) as { vorlagen?: string[] }).vorlagen?.includes(id) ?? false;
+      } catch {
+        return false;
+      }
+    })
+    .map(({ id: eventId, name, status }) => ({ id: eventId, name, status }));
+}
+
 export function loescheVorlage(id: string): void {
-  holeDb().prepare('DELETE FROM vorlagen WHERE id = ?').run(id);
+  const db = holeDb();
+  db.transaction(() => {
+    db.prepare('DELETE FROM vorlagen WHERE id = ?').run(id);
+    // Aus den Veranstaltungen austragen, statt einen toten Verweis zu lassen.
+    for (const event of vorlageInVeranstaltungen(id)) {
+      const zeile = db.prepare('SELECT einstellungen FROM events WHERE id = ?').get(event.id) as { einstellungen: string };
+      const einstellungen = JSON.parse(zeile.einstellungen) as { vorlagen: string[] };
+      einstellungen.vorlagen = einstellungen.vorlagen.filter((v) => v !== id);
+      db.prepare('UPDATE events SET einstellungen = ? WHERE id = ?').run(JSON.stringify(einstellungen), event.id);
+    }
+  })();
 }
 
 /**

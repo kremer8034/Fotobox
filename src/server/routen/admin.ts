@@ -4,6 +4,7 @@ import { createReadStream } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import sharp from 'sharp';
 import { leseGeraet, leseMailPasswort, schreibeGeraet, schreibeMailPasswort, begrenzeKalibrierung } from '../db/geraet.js';
 import {
   aktualisiereEvent,
@@ -16,7 +17,15 @@ import {
   setzeProbelauf,
   setzeStatus,
 } from '../fach/events.js';
-import { holeVorlage, listeVorlagen, loescheVorlage, speichereVorlage } from '../fach/vorlagen.js';
+import {
+  beschreibePruefung,
+  holeVorlage,
+  listeVorlagen,
+  loescheVorlage,
+  speichereVorlage,
+  VORLAGE_EINGABE,
+  vorlageInVeranstaltungen,
+} from '../fach/vorlagen.js';
 import { listeFilter, loescheFilter, speichereFilter } from '../fach/filter.js';
 import { berechneAuslagen, schreibeAuslagenCsv } from '../fach/auslagen.js';
 import { listeAuftraege, reiheEin, setzeBerechnen } from '../fach/druckwarteschlange.js';
@@ -182,19 +191,15 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     return vorlage ?? antwort.code(404).send({ fehler: 'Nicht gefunden.' });
   });
 
-  app.put<{ Body: unknown }>('/api/admin/vorlagen', async (anfrage) => {
-    const koerper = z
-      .object({
-        id: z.string().optional(),
-        name: z.string().min(1),
-        preset: z.enum(['10x15-quer', '10x15-hoch']),
-        hintergrundFarbe: z.string().optional(),
-        ebenen: z.array(z.any()),
-      })
-      .parse(anfrage.body);
-
+  app.put<{ Body: unknown }>('/api/admin/vorlagen', async (anfrage, antwort) => {
+    const geprueft = VORLAGE_EINGABE.safeParse(anfrage.body);
+    if (!geprueft.success) {
+      const ebenen = (anfrage.body as { ebenen?: unknown } | null)?.ebenen;
+      return antwort.code(400).send({ fehler: beschreibePruefung(geprueft.error, ebenen) });
+    }
+    const koerper = geprueft.data;
     return speichereVorlage({
-      id: koerper.id ?? randomUUID(),
+      id: koerper.id || randomUUID(),
       name: koerper.name,
       canvas: CANVAS_PRESETS[koerper.preset as CanvasPreset],
       hintergrundFarbe: koerper.hintergrundFarbe,
@@ -202,7 +207,18 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     });
   });
 
-  app.delete<{ Params: { id: string } }>('/api/admin/vorlagen/:id', async (anfrage) => {
+  app.delete<{ Params: { id: string } }>('/api/admin/vorlagen/:id', async (anfrage, antwort) => {
+    // Eine Vorlage, mit der gerade gefeiert wird, bleibt. Sonst verschwaende
+    // sie mitten im Abend vom Bildschirm - und war sie die einzige, stuende
+    // der Kiosk ohne Auswahl da.
+    const laufend = vorlageInVeranstaltungen(anfrage.params.id).find(
+      (e) => e.status === 'aktiv' || e.status === 'pausiert',
+    );
+    if (laufend) {
+      return antwort
+        .code(409)
+        .send({ fehler: `"${laufend.name}" läuft gerade mit dieser Vorlage. Erst danach löschen.` });
+    }
     loescheVorlage(anfrage.params.id);
     return { ok: true };
   });
@@ -219,10 +235,24 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!erlaubt.includes(endung)) {
       return antwort.code(400).send({ fehler: 'Nur PNG, JPEG oder WEBP.' });
     }
+    // Die Endung allein sagt nichts: Erst wenn sharp die Datei als Bild liest,
+    // kommt sie in den Vorlagenordner. Die Masse gehen zurueck, damit der
+    // Editor das Bild im richtigen Seitenverhaeltnis einsetzt statt es auf
+    // die ganze Seite zu verzerren.
+    const inhalt = await datei.toBuffer();
+    let masse: { breite: number; hoehe: number };
+    try {
+      const info = await sharp(inhalt).metadata();
+      if (!info.width || !info.height || !['png', 'jpeg', 'webp'].includes(info.format ?? '')) throw new Error();
+      const gedreht = (info.orientation ?? 1) >= 5;
+      masse = gedreht ? { breite: info.height, hoehe: info.width } : { breite: info.width, hoehe: info.height };
+    } catch {
+      return antwort.code(400).send({ fehler: 'Die Datei ist kein lesbares PNG-, JPEG- oder WEBP-Bild.' });
+    }
     await mkdir(wurzel.vorlagen, { recursive: true });
-    const name = `${randomUUID()}${endung}`;
-    await writeFile(join(wurzel.vorlagen, name), await datei.toBuffer());
-    return { datei: name };
+    const name = `${randomUUID()}${endung === '.jpeg' ? '.jpg' : endung}`;
+    await writeFile(join(wurzel.vorlagen, name), inhalt);
+    return { datei: name, ...masse };
   });
 
   // --------------------------------------------------------------- Schriften
@@ -321,8 +351,9 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       if (!event) return antwort.code(409).send({ fehler: 'Es muss eine Veranstaltung geben.' });
 
       const fotos = new Map<number, Buffer>();
-      for (const ebene of fotoEbenen(vorlage)) {
-        fotos.set(ebene.index, await platzhalterFoto(ebene.index));
+      // Nach Aufnahmenummer, wie in der echten Sitzung - siehe fotoPlaetze().
+      for (let nummer = 1; nummer <= fotoEbenen(vorlage).length; nummer += 1) {
+        fotos.set(nummer, await platzhalterFoto(nummer));
       }
       const layout = await baueLayout(
         vorlage,

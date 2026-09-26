@@ -1,5 +1,7 @@
 export interface Ebene {
   id: string;
+  /** Anzeigename in der Ebenenliste, etwa der Originalname einer Bilddatei. */
+  name?: string;
   typ: 'bild' | 'foto' | 'text';
   x: number;
   y: number;

@@ -5,7 +5,7 @@ import { holeVorlage } from './vorlagen.js';
 import { wurzelpfade } from './pfade.js';
 import { schriftenOrdner } from './schriften.js';
 import { alleLanAdressen, lanAdresse } from '../netzwerk.js';
-import type { Veranstaltung } from '../../shared/typen.js';
+import { fotoEbenen, type Veranstaltung } from '../../shared/typen.js';
 import type { Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
 
@@ -91,6 +91,11 @@ export async function startbereitPruefung(
       fehlendeDateien.push(`Vorlage ${id} fehlt`);
       continue;
     }
+    // Ohne sichtbare Foto-Ebene nimmt die Box kein Foto auf - der Gast
+    // bekaeme nur die leere Vorlage.
+    if (fotoEbenen(vorlage).length === 0) {
+      fehlendeDateien.push(`${vorlage.name}: keine sichtbare Foto-Ebene`);
+    }
     for (const ebene of vorlage.ebenen) {
       if (ebene.typ === 'bild' && !existsSync(join(wurzel.vorlagen, ebene.datei))) {
         fehlendeDateien.push(`${vorlage.name}: ${ebene.datei}`);
@@ -111,7 +116,7 @@ export async function startbereitPruefung(
     bestanden: vorlagenOk && fehlendeDateien.length === 0,
     hinweis:
       fehlendeDateien.length > 0
-        ? `Fehlt: ${fehlendeDateien.join(', ')}`
+        ? `Stimmt nicht: ${fehlendeDateien.join(', ')}`
         : vorlagenOk
           ? `${event.einstellungen.vorlagen.length} Vorlage(n) freigegeben.`
           : 'Der Veranstaltung ist keine Vorlage zugeordnet.',

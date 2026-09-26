@@ -35,7 +35,7 @@ import {
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
 import { filterVorschau, vorlagenVorschau } from '../bild/vorschau.js';
-import { anzahlFotos, BETREUER_HINWEISE, STOERUNGSTEXTE } from '../../shared/typen.js';
+import { anzahlFotos, BETREUER_HINWEISE, fotoEbenen, STOERUNGSTEXTE, type Vorlage } from '../../shared/typen.js';
 import { galerieUrl } from '../netzwerk.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
@@ -61,9 +61,11 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       return { bereit: false, status, grund: 'Es ist gerade keine Veranstaltung aktiv.' };
     }
 
+    // Eine Vorlage ohne sichtbare Foto-Ebene bietet der Kiosk nicht an: Die
+    // Gruppe stuende auf, und es wuerde kein Foto gemacht.
     const freigegeben = event.einstellungen.vorlagen
       .map((id) => holeVorlage(id))
-      .filter((v): v is NonNullable<typeof v> => v !== null);
+      .filter((v): v is NonNullable<typeof v> => v !== null && anzahlFotos(v) > 0);
 
     const alleFilter = listeFilter();
     const filter = event.einstellungen.filter
@@ -617,16 +619,14 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 }
 
 /** Seitenverhaeltnis je Foto-Ebene, damit das Live-Bild passend maskiert wird. */
-function seitenverhaeltnisse(vorlage: {
-  canvas: { breiteMm: number; hoeheMm: number };
-  ebenen: { typ: string; index?: number; w: number; h: number }[];
-}): Record<number, number> {
+function seitenverhaeltnisse(vorlage: Vorlage): Record<number, number> {
+  // Nach Aufnahmenummer, nicht nach der eingetragenen Nummer der Ebene - das
+  // Live-Bild fuer Foto 2 zeigt den Ausschnitt der Ebene, die Foto 2 bekommt.
   const ergebnis: Record<number, number> = {};
-  for (const ebene of vorlage.ebenen) {
-    if (ebene.typ !== 'foto' || ebene.index === undefined) continue;
-    const breitePx = ebene.w * vorlage.canvas.breiteMm;
-    const hoehePx = ebene.h * vorlage.canvas.hoeheMm;
-    ergebnis[ebene.index] = hoehePx > 0 ? breitePx / hoehePx : 1.5;
-  }
+  fotoEbenen(vorlage).forEach((ebene, i) => {
+    const breite = ebene.w * vorlage.canvas.breiteMm;
+    const hoehe = ebene.h * vorlage.canvas.hoeheMm;
+    ergebnis[i + 1] = hoehe > 0 ? breite / hoehe : 1.5;
+  });
   return ergebnis;
 }
