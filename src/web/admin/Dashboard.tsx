@@ -28,6 +28,12 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
     api.hole<Eintrag[]>('/api/admin/protokoll').then(setzeVorfaelle).catch(() => undefined);
   }, []);
 
+  async function leeren() {
+    if (!window.confirm('Alle angezeigten Meldungen löschen? Danach ist die Liste leer.')) return;
+    await api.loesche('/api/admin/protokoll');
+    setzeVorfaelle(await api.hole<Eintrag[]>('/api/admin/protokoll'));
+  }
+
   useEffect(() => {
     const laden = () => api.hole<Status>('/api/admin/status').then(setzeStatus).catch(() => undefined);
     void laden();
@@ -112,7 +118,14 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
       </div>
 
       <div className="karte">
-        <h2>Was zuletzt gehakt hat</h2>
+        <div className="zeile" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Was zuletzt gehakt hat</h2>
+          {vorfaelle.length > 0 && (
+            <button className="knopf knopf--neben" onClick={() => void leeren()}>
+              Liste leeren
+            </button>
+          )}
+        </div>
         {vorfaelle.length === 0 ? (
           <p style={{ color: 'var(--schrift-leise)', marginBottom: 0 }}>
             Keine Warnungen und Fehler. Alles ist rund gelaufen.

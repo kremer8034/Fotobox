@@ -4,6 +4,13 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.4
+
+- **„Was zuletzt gehakt hat“ leeren:** In der Übersicht löscht der Knopf
+  „Liste leeren“ alle angezeigten Warnungen und Fehler – etwa nach dem
+  Einrichten oder vor dem Verleih, damit danach nur steht, was beim Kunden
+  passiert ist.
+
 ## 1.0.3
 
 > **Von Version 1.0.2 aus bitte einmal von Hand installieren:** Dort startet

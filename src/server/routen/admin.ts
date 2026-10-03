@@ -980,4 +980,15 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       )
       .all(),
   );
+
+  /**
+   * "Was zuletzt gehakt hat" leeren - etwa nach dem Einrichten oder vor dem
+   * Verleih, damit danach nur steht, was beim Kunden passiert ist. Geloescht
+   * werden genau die angezeigten Warnungen und Fehler.
+   */
+  app.delete('/api/admin/protokoll', async () => {
+    const geloescht = holeDb().prepare("DELETE FROM protokoll WHERE ebene IN ('warnung', 'fehler')").run().changes;
+    protokolliere('info', 'verwaltung', `${geloescht} Meldung(en) aus "Was zuletzt gehakt hat" geloescht.`);
+    return { geloescht };
+  });
 }
