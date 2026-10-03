@@ -58,6 +58,7 @@ export class Betrieb {
   /** Nur mit echter Hardware unter Windows: haelt digiCamControl am Leben. */
   private readonly kameraProgramm: DigiCamControlWaechter | null;
   private letzteMassnahme: Massnahme = 'nichts';
+  private letzteDruckMeldung = '';
 
   constructor(private readonly optionen: BetriebOptionen) {
     const geraet = leseGeraet();
@@ -76,6 +77,13 @@ export class Betrieb {
       () => this.drucker,
       (text) => protokolliere('warnung', 'druck', text),
       (status) => this.uebernimmDruckerStatus(status),
+      (meldung) => {
+        // Einmal ins Protokoll, nicht bei jedem Blatt: Welches Papier der
+        // Treiber genommen hat, aendert sich nur, wenn jemand dort etwas umstellt.
+        if (meldung === this.letzteDruckMeldung) return;
+        this.letzteDruckMeldung = meldung;
+        protokolliere('info', 'druck', `An Windows uebergeben. ${meldung}`);
+      },
     );
   }
 

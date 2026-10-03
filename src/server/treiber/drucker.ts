@@ -34,6 +34,7 @@ export interface DruckerTreiber {
   readonly name: string;
   pruefe(): Promise<DruckerStatus>;
   /** Druckt die PDF-Datei. Wirft bei Fehlschlag, damit der Auftrag in der
-   *  Warteschlange stehen bleibt statt still verloren zu gehen. */
-  drucke(pdfPfad: string, kopien: number): Promise<void>;
+   *  Warteschlange stehen bleibt statt still verloren zu gehen. Kann eine
+   *  Zeile zurueckgeben, die ins Protokoll gehoert (etwa das gewaehlte Papier). */
+  drucke(pdfPfad: string, kopien: number): Promise<string | void>;
 }

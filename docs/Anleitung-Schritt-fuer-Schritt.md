@@ -93,11 +93,12 @@ darf es nicht mitbringen, deshalb einmal von Hand:
    - Schließe digiCamControl ganz. Der Webserver startet erst beim nächsten
      Programmstart; die Fotobox startet digiCamControl dann selbst.
 
-## Schritt 6: SumatraPDF (für den Drucker) — schon erledigt
+## Schritt 6: Drucken ohne Druckdialog — schon erledigt
 
-Das Programm, mit dem die Fotobox ohne Druckdialog druckt, bringt das Setup
-selbst mit. In der Verwaltung unter **Gerät → Drucker** steht sein Pfad
-(`C:\Program Files\Fotobox\windows\SumatraPDF.exe`) schon eingetragen.
+Die Fotobox druckt direkt über Windows, ohne Zusatzprogramm. Sie wählt im
+Treiber selbst das Papier 6 × 4 Zoll (10 × 15) und legt das Bild quer. Das
+mitgelieferte SumatraPDF dient nur noch als Ersatzweg für Druckdateien aus
+Versionen vor 1.0.4.
 
 ## Schritt 7: Was das Setup sonst noch erledigt hat
 
@@ -235,9 +236,10 @@ Rot spürbar daneben.
 
 1. In der Verwaltung links auf **„Gerät"**.
 2. Unter **Drucker** eintragen:
-   - **Windows-Druckername**: genau der Name aus Schritt 13
-   - **Pfad zu SumatraPDF.exe**: steht schon da — das Setup bringt
-     SumatraPDF mit
+   - **Drucker**: in der Liste den aus Schritt 13 wählen (der DNP steht mit
+     ★ oben)
+   - **SumatraPDF.exe**: steht schon da und wird nur noch als Ersatzweg
+     gebraucht
 3. Klicke einmal irgendwo daneben — es speichert von selbst.
 
 ## Schritt 15: Trocken testen (ohne Papier zu verbrauchen)
@@ -434,8 +436,9 @@ sie selbst:
 - **Der Browser wird geschlossen oder stürzt ab:** `Kiosk starten` öffnet ihn
   wieder.
 
-Nur wenn der Druckbefehl selbst scheitert (etwa weil SumatraPDF fehlt), hält
-die Warteschlange an. Dann im Servicemenü auf **„Papier gewechselt —
+Nur wenn Windows den Druckauftrag selbst ablehnt (etwa weil der Drucker in
+Windows gelöscht wurde), hält die Warteschlange an. Den Grund zeigt die
+Verwaltung unter **Gerät → Druckwarteschlange**. Dann im Servicemenü auf **„Papier gewechselt —
 weiterdrucken"** tippen, nachdem die Ursache behoben ist.
 
 Jeden Neustart der Software notiert die Box in `neustarts.txt` im Datenordner.

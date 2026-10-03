@@ -109,9 +109,10 @@ Autostart).
    spürbar daneben.
 3. **digiCamControl** installieren, dessen Webserver auf Port 5513 einschalten
    und das Programm einmal starten.
-4. **SumatraPDF** bringt die Setup-Datei mit (`windows\SumatraPDF.exe`) — der
-   Server findet es beim Start selbst und trägt den Pfad unter
-   *Gerät → Drucker* ein.
+4. **Drucker wählen** unter *Gerät → Drucker* – die Liste zeigt alle
+   Windows-Drucker, der DNP steht mit ★ oben. Gedruckt wird direkt über
+   Windows; das mitgelieferte SumatraPDF ist nur noch Ersatzweg für
+   Druckdateien aus Versionen vor 1.0.4.
 5. **Besitzer-PIN vergeben.** Ohne sie lässt sich keine Veranstaltung starten;
    eine ausgelieferte Standard-PIN gibt es bewusst nicht.
 6. **Kamera**: Netzteil mit Dummy-Akku verwenden, LED-Dauerlicht aufstellen,
@@ -206,8 +207,8 @@ Kaputtmachen — nicht gegen jemanden mit Schraubenzieher und Zeit.
 
 TypeScript durchgehend: Node.js 24 mit Fastify, SQLite über better-sqlite3,
 Bildbearbeitung mit sharp (libvips), Druck-PDFs mit pdfkit, Oberfläche mit
-React und Vite. Gedruckt wird über SumatraPDF, die Kamera spricht
-digiCamControl an.
+React und Vite. Gedruckt wird direkt über Windows (System.Drawing.Printing
+aus der Windows-PowerShell), die Kamera spricht digiCamControl an.
 
 ```
 src/shared/     Domänentypen und Vorgabewerte, von Server und Oberfläche genutzt

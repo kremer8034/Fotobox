@@ -97,7 +97,8 @@ describe('Kernablauf einer Sitzung', () => {
 
     expect(readdirSync(pfade.bearbeitet)).toHaveLength(3);
     expect(readdirSync(pfade.layouts)).toHaveLength(1);
-    expect(readdirSync(pfade.druck)).toHaveLength(1);
+    // Dazu das Seitenbild fuer den Windows-Druck - in .cache, nicht Teil der Uebergabe.
+    expect(readdirSync(pfade.druck).filter((n) => n !== '.cache')).toHaveLength(1);
 
     // Die Druckdatei traegt die Papiergroesse, nicht die Bildgroesse.
     const pdf = readFileSync(ausgabe.pfadDruckPdf!, 'latin1');

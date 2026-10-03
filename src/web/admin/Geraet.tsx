@@ -77,7 +77,7 @@ export function GeraetSeite() {
             beiWahl={(name) => void speichere({ druckerName: name })}
           />
           <div className="feld" style={{ flex: 1 }}>
-            <label>Pfad zu SumatraPDF.exe</label>
+            <label>SumatraPDF.exe (nur Ersatzweg für Druckdateien vor 1.0.4)</label>
             <input
               value={geraet.sumatraPfad}
               onChange={(e) => setzeGeraet({ ...geraet, sumatraPfad: e.target.value })}
@@ -86,8 +86,9 @@ export function GeraetSeite() {
           </div>
         </div>
         <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)', marginBottom: 0 }}>
-          Randlos, Papierformat und das ICC-Farbprofil von DNP werden einmalig im Windows-Treiber
-          eingestellt. Ohne Profil treffen Thermosublimationsdrucker Hauttöne und Rot spürbar daneben.
+          Gedruckt wird direkt über Windows: Die Fotobox wählt im Treiber das Papier 6 × 4 Zoll (10 × 15) und
+          legt das Bild quer bis an die Kante. Randlos und das ICC-Farbprofil von DNP werden einmalig im
+          Windows-Treiber eingestellt. Ohne Profil treffen Thermosublimationsdrucker Hauttöne und Rot spürbar daneben.
         </p>
       </div>
 
@@ -311,7 +312,7 @@ function DruckWarteschlange() {
       {zustand.angehalten && (
         <p style={{ color: 'var(--warnung)' }}>
           <strong>Angehalten nach einem Fehldruck.</strong>{' '}
-          {zustand.letzterFehler ? `Windows bzw. SumatraPDF meldete: „${zustand.letzterFehler}“.` : ''} Nach dem
+          {zustand.letzterFehler ? `Meldung: „${zustand.letzterFehler}“.` : ''} Nach dem
           Beheben auf „Fortsetzen“ tippen.
         </p>
       )}

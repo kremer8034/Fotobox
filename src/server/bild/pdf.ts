@@ -2,7 +2,7 @@ import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import { createWriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import type { Canvas, Druckkalibrierung } from '../../shared/typen.js';
 
 /**
@@ -71,4 +71,76 @@ export async function schreibeDruckPdf(
     dokument.image(seitenbild, links, oben, { width: bildBreite, height: bildHoehe });
     dokument.end();
   });
+
+  await schreibeSeitenbild(bild, seitenbildPfad(zielPfad), optionen.kalibrierung);
+}
+
+/** 300 dpi auf 6 x 4 Zoll - genau die Seite, die auf dem Papier landet. */
+const SEITE_PX = { breite: 1800, hoehe: 1200 };
+const PX_JE_MM = 300 / 25.4;
+
+/**
+ * Wo das Seitenbild zu einer Druckdatei liegt: daneben im Unterordner .cache.
+ * Den laesst die Uebergabe auf den USB-Stick aus - der Gastgeber bekommt die
+ * PDFs, nicht zusaetzlich jedes Bild ein zweites Mal.
+ */
+export function seitenbildPfad(pdfPfad: string): string {
+  return join(dirname(pdfPfad), '.cache', basename(pdfPfad).replace(/\.pdf$/i, '') + '.seite.jpg');
+}
+
+/**
+ * Dieselbe Seite wie im PDF, als fertiges Bild: quer, 1800 x 1200 px, die
+ * Druckkalibrierung schon eingerechnet. Das druckt der Windows-Druckhelfer
+ * Pixel fuer Pixel auf das ganze Blatt.
+ *
+ * Warum ein Bild und nicht das PDF: SumatraPDF meldete mit "-silent" jeden
+ * Fehlschlag als Erfolg (Rueckgabewert 0) - die Box hielt Auftraege fuer
+ * gedruckt, bei Windows kam nie einer an. Ein Bild kann Windows selbst
+ * drucken, ohne fremdes Programm, und jeder Fehler kommt als Text zurueck.
+ *
+ * Ob das Layout hochkant liegt, verraet das Bild selbst.
+ */
+export async function schreibeSeitenbild(
+  layout: Buffer,
+  zielPfad: string,
+  kalibrierung: Druckkalibrierung,
+): Promise<void> {
+  await mkdir(dirname(zielPfad), { recursive: true });
+  const info = await sharp(layout).metadata();
+  const hochkant = (info.height ?? 0) > (info.width ?? 0);
+  const quer = hochkant ? sharp(layout).rotate(90) : sharp(layout);
+
+  const breite = Math.max(1, Math.round((SEITE_PX.breite * kalibrierung.skalierungXProzent) / 100));
+  const hoehe = Math.max(1, Math.round((SEITE_PX.hoehe * kalibrierung.skalierungYProzent) / 100));
+  const links = Math.round((SEITE_PX.breite - breite) / 2 + kalibrierung.versatzXMm * PX_JE_MM);
+  const oben = Math.round((SEITE_PX.hoehe - hoehe) / 2 + kalibrierung.versatzYMm * PX_JE_MM);
+
+  // Was ueber den Seitenrand hinausragt, abschneiden - sharp legt nur Bilder
+  // auf, die ganz auf die Seite passen. Genau so beschneidet es auch das PDF.
+  const vonX = Math.max(0, -links);
+  const vonY = Math.max(0, -oben);
+  const sichtbarBreite = Math.min(breite, SEITE_PX.breite - links) - vonX;
+  const sichtbarHoehe = Math.min(hoehe, SEITE_PX.hoehe - oben) - vonY;
+
+  const seite = sharp({
+    create: { width: SEITE_PX.breite, height: SEITE_PX.hoehe, channels: 3, background: '#ffffff' },
+  });
+  const ebenen =
+    sichtbarBreite > 0 && sichtbarHoehe > 0
+      ? [
+          {
+            input: await sharp(await quer.toBuffer())
+              .resize(breite, hoehe, { fit: 'fill' })
+              .extract({ left: vonX, top: vonY, width: sichtbarBreite, height: sichtbarHoehe })
+              .toBuffer(),
+            left: Math.max(0, links),
+            top: Math.max(0, oben),
+          },
+        ]
+      : [];
+  await seite
+    .composite(ebenen)
+    .withMetadata({ density: 300 })
+    .jpeg({ quality: 95, chromaSubsampling: '4:4:4' })
+    .toFile(zielPfad);
 }

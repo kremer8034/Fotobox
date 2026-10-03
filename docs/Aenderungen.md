@@ -6,6 +6,17 @@ ihn auf der Box verstehst.
 
 ## 1.0.4
 
+- **Drucken geht jetzt wirklich bis zum Drucker:** Bisher übergab die Fotobox
+  jedes Bild an SumatraPDF – und das meldete im stillen Druckmodus „erledigt“,
+  auch wenn es den Drucker gar nicht erreicht hatte. Die Box zeigte „an
+  Windows übergeben“, in der Windows-Druckerwarteschlange kam aber nie ein
+  Auftrag an. Jetzt druckt Windows selbst: Die Fotobox wählt im Treiber das
+  Papier 6 × 4 Zoll (10 × 15), legt das Bild quer bis an die Kante und schickt
+  den Auftrag direkt in die Windows-Warteschlange. Klappt das nicht, steht der
+  Grund in Windows' eigenen Worten unter Gerät → Druckwarteschlange, statt
+  dass ein Druck still verschwindet. Nach dem ersten Druck steht im Protokoll,
+  welches Papier der Treiber genommen hat. Die Druckkalibrierung gilt
+  unverändert weiter.
 - **Schloss öffnet schneller:** Eine Sekunde Gedrückthalten reicht jetzt statt
   zwei. Ein kurzes Antippen öffnet weiterhin nichts.
 - **Ansagen bei der Aufnahme groß und mittig:** „Gleich geht es los“, „Neue

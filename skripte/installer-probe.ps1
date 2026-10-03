@@ -68,6 +68,58 @@ $status = Invoke-RestMethod "http://127.0.0.1:$Port/api/admin/status"
 Pruefe ($null -ne $status.version) "meldet Version $($status.version)"
 Pruefe (Test-Path "$daten\fotobox.db") 'Datenbank im Datenordner'
 
+Write-Host "`n=== 2b. Druck bis durch die Windows-Warteschlange"
+# Genau der Weg der Box: Seitenbild erzeugen und ueber den Druckhelfer an
+# einen Windows-Drucker schicken. Als Drucker dient "Microsoft Print To PDF"
+# mit einer Datei als Anschluss - kommt die Datei an, ist der Auftrag
+# wirklich durch die Windows-Warteschlange gelaufen. Bis 1.0.3 meldete der
+# Druck auf der Box "erledigt", ohne dass Windows je einen Auftrag sah.
+$druckOrdner = Join-Path $env:TEMP 'fotobox-druckprobe'
+New-Item -ItemType Directory -Force $druckOrdner | Out-Null
+$ausgabe = Join-Path $druckOrdner 'gedruckt.pdf'
+$druckerDa = $false
+try {
+  Start-Service Spooler -ErrorAction SilentlyContinue
+  Add-PrinterPort -Name $ausgabe
+  Add-Printer -Name 'Fotobox Druckprobe' -DriverName 'Microsoft Print To PDF' -PortName $ausgabe
+  $druckerDa = $true
+} catch { Write-Host "  Probedrucker nicht angelegt: $($_.Exception.Message)" }
+Pruefe $druckerDa 'Probedrucker angelegt'
+if ($druckerDa) {
+  $env:PROBE_PROGRAMM = $programm
+  $env:PROBE_ORDNER = $druckOrdner
+  $druckSkript = @'
+const { join } = await import('node:path');
+const { pathToFileURL } = await import('node:url');
+const p = process.env.PROBE_PROGRAMM, o = process.env.PROBE_ORDNER;
+const lade = (...teile) => import(pathToFileURL(join(p, 'dist', ...teile)).href);
+const { schreibeDruckPdf } = await lade('server', 'bild', 'pdf.js');
+const { kalibrierTestbild } = await lade('server', 'bild', 'testbilder.js');
+const { CANVAS_PRESETS, KALIBRIERUNG_VORGABE } = await lade('shared', 'typen.js');
+const { WindowsDrucker } = await lade('server', 'treiber', 'drucker-windows.js');
+const canvas = CANVAS_PRESETS['10x15-quer'];
+const pdf = join(o, 'probe.pdf');
+await schreibeDruckPdf(await kalibrierTestbild(canvas), pdf, { canvas, kalibrierung: KALIBRIERUNG_VORGABE });
+console.log('Druckhelfer: ' + (await new WindowsDrucker('Fotobox Druckprobe', '').drucke(pdf, 2)));
+try {
+  await new WindowsDrucker('Gibt es nicht', '').drucke(pdf, 1);
+  console.error('Ein unbekannter Drucker galt als gedruckt.');
+  process.exit(2);
+} catch (f) {
+  console.log('Unbekannter Drucker: ' + f.message);
+}
+'@
+  & "$programm\node\node.exe" --input-type=module -e $druckSkript
+  Pruefe ($LASTEXITCODE -eq 0) 'Druckhelfer druckt und meldet Fehler als Fehler'
+  $angekommen = $false
+  for ($i = 0; $i -lt 60 -and -not $angekommen; $i++) {
+    Start-Sleep 1
+    $angekommen = (Test-Path $ausgabe) -and ((Get-Item $ausgabe).Length -gt 1000)
+  }
+  Pruefe $angekommen 'Auftrag ist durch die Windows-Warteschlange gelaufen'
+  Remove-Printer -Name 'Fotobox Druckprobe' -ErrorAction SilentlyContinue
+}
+
 Write-Host "`n=== 3. Update ueber die laufende Installation - so, wie es die Verwaltung startet"
 # Genau der Weg aus der Verwaltung ("Jetzt installieren"): starteMitRueckfrage
 # aus dem installierten Programm, mit dem mitgelieferten Node. Vorher war
