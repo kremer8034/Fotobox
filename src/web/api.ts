@@ -124,6 +124,8 @@ export interface KioskStart {
     akzent: string;
     qrAufStartseite: boolean;
     galerieUrl: string | null;
+    /** Laeuft das Captive Portal: der WLAN-Code, der allein zur Galerie fuehrt. */
+    wlanQrText?: string | null;
     /** Adresse des Hintergrundbilds, null = keins. */
     hintergrund?: string | null;
     /** Abdunkeln des Hintergrundbilds in Prozent. */

@@ -154,6 +154,22 @@ describe('Unterlagen', () => {
     expect(inhalt).toMatch(/\/MediaBox \[0 0 595\.28 841\.89\]/);
     expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
+
+  it('mit Captive Portal: WLAN-Code als Hauptcode, eine Seite - auch ohne WLAN-Daten nie leer', async () => {
+    for (const wlan of [{ wlanName: 'Fotobox', wlanPasswort: 'geheim123' }, {}]) {
+      const pfad = await schreibeAushang(event, {
+        betreuerPin: '1234',
+        telefon: '',
+        galerieUrl: 'http://192.168.254.1:8787/g/abc',
+        portal: true,
+        ...wlan,
+      });
+      const inhalt = readFileSync(pfad, 'latin1');
+      expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
+      // Mindestens ein QR-Code ist als Bild eingebettet.
+      expect(inhalt).toMatch(/\/Subtype \/Image/);
+    }
+  });
 });
 
 describe('E-Mail-Schutz', () => {

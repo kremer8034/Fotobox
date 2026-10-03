@@ -252,6 +252,11 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
           ? 'Noch keine Fotos — die ersten kommen bestimmt gleich.'
           : `${mehrzahl(galerie.bilder.length, 'Foto', 'Fotos')} — tippe eines an, um es zu laden.`}
       </p>
+      {/* Oeffnet sich die Galerie als Anmeldefenster (Captive Portal), gehen
+          Download-Knoepfe dort oft nicht - Gedrueckthalten fast immer. */}
+      {galerie.bilder.length > 0 && (
+        <p className="handy__tipp handy__tipp--hervor">Tipp: Foto gedrückt halten → „Sichern“ oder „Teilen“.</p>
+      )}
       <div className="handy__raster">
         {galerie.bilder.map((bild) => (
           <button key={bild.id} className="handy__kachel" onClick={() => oeffne(bild.id)}>

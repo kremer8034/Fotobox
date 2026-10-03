@@ -7,6 +7,8 @@ import { wurzelpfade } from './pfade.js';
 import { schriftenOrdner } from './schriften.js';
 import { aktualisiereRoutenAdresse, alleLanAdressen, galerieBlockiert, lanAdresse, netzDiagnose } from '../netzwerk.js';
 import { fotoEbenen, type Veranstaltung } from '../../shared/typen.js';
+import { portalNetzEingerichtet } from '../portal/adresse.js';
+import { holePortal } from '../portal/steuerung.js';
 import type { Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
 
@@ -172,6 +174,28 @@ export async function startbereitPruefung(
           `Galerie laeuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}` +
             (diagnose?.netz ? ` - die Handys muessen im WLAN „${diagnose.netz}“ sein.` : ' - die Handys muessen im selben WLAN sein wie die Box.'),
     });
+
+    // Captive Portal (Test): Vor dem Start laufen Namensdienst und Portal noch
+    // nicht - sie starten mit der Veranstaltung. Pruefen laesst sich, ob das
+    // Netz eingerichtet ist und der Adressdienst ungestoert laeuft.
+    if (geraet.portalAktiv) {
+      const z = holePortal()?.zustand() ?? null;
+      const eingerichtet = portalNetzEingerichtet();
+      const problem = !eingerichtet
+        ? 'Das Netz für das Portal ist nicht eingerichtet – unter „WLAN & Portal“ → Selbstdiagnose.'
+        : z?.fremderDhcp
+          ? `Unter ${z.fremderDhcp} verteilt noch ein anderes Gerät Adressen (vermutlich der Vonets) – dort den DHCP-Server ausschalten.`
+          : z && !z.dhcp
+            ? `Der Adressdienst läuft nicht. ${z.fehler.join(' ')}`
+            : null;
+      punkte.push({
+        schluessel: 'portal',
+        titel: 'Galerie öffnet sich beim WLAN-Beitritt (Test)',
+        bestanden: problem === null,
+        nurWarnung: true,
+        hinweis: problem ?? 'Netz eingerichtet, Adressdienst läuft. Mit dem Start der Veranstaltung öffnet sich die Galerie von selbst.',
+      });
+    }
 
     // Haengt die Box zusaetzlich in einem fremden Netz (Kabel der Location,
     // Hotel-WLAN), koennte die Galerie dort statt im eigenen Router landen -

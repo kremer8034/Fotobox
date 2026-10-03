@@ -584,11 +584,19 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               </div>
               <div className="feld feld--klein">
                 <label>WLAN-Name (für den QR-Code)</label>
-                <input value={wlanName} onChange={(ev) => setzeWlanName(ev.target.value)} />
+                <input
+                  value={wlanName}
+                  placeholder="leer = wie unter WLAN & Portal"
+                  onChange={(ev) => setzeWlanName(ev.target.value)}
+                />
               </div>
               <div className="feld feld--klein">
                 <label>WLAN-Passwort</label>
-                <input value={wlanPasswort} onChange={(ev) => setzeWlanPasswort(ev.target.value)} />
+                <input
+                  value={wlanPasswort}
+                  placeholder="leer = wie unter WLAN & Portal"
+                  onChange={(ev) => setzeWlanPasswort(ev.target.value)}
+                />
               </div>
               <button
                 className="knopf knopf--neben"

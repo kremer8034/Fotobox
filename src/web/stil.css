@@ -2127,3 +2127,95 @@ html.handy-ansicht body {
   border: 1px solid rgba(0, 0, 0, 0.4);
   pointer-events: none;
 }
+
+/* Verwaltung: Pruefliste der Portal-Selbstdiagnose. */
+.pruefliste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pruefliste__zeile {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.7rem;
+  border-left: 4px solid var(--kante);
+  border-radius: var(--radius-klein);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.88rem;
+}
+
+.pruefliste__zeile--gut { border-left-color: var(--gut, #5aa469); }
+.pruefliste__zeile--offen { border-left-color: var(--warnung); }
+
+.pruefliste__zeichen {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  background: var(--kante);
+}
+
+.pruefliste__zeile--gut .pruefliste__zeichen { background: var(--gut, #5aa469); color: #0d2412; }
+.pruefliste__zeile--offen .pruefliste__zeichen { background: var(--warnung); color: #2a1405; }
+
+/* Kippschalter (WLAN & Portal): gross genug fuer Finger und Maus, An/Aus auf einen Blick. */
+.kippschalter-zeile {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.6rem;
+}
+
+.kippschalter {
+  flex: none;
+  position: relative;
+  width: 3.6rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 1rem;
+  border: 1px solid var(--kante);
+  background: var(--flaeche-hell);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.kippschalter__knauf {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  background: var(--schrift-leise);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.kippschalter--an {
+  background: var(--gut);
+  border-color: var(--gut);
+}
+
+.kippschalter--an .kippschalter__knauf {
+  transform: translateX(1.6rem);
+  background: #fff;
+}
+
+.kippschalter:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.kippschalter:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}

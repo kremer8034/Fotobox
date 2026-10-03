@@ -4,6 +4,26 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.8
+
+- **Galerie öffnet sich beim WLAN-Beitritt (Test):** Neuer Menüpunkt
+  **„WLAN & Portal“** in der Verwaltung, ganz oben mit dem Schalter zum Ein-
+  und Ausschalten. Ist das Portal an, genügt den Gästen
+  ein einziger Scan: Das Handy tritt dem WLAN des Vonets bei, und die Galerie
+  öffnet sich von selbst – wie die Anmeldeseite im Hotel. Das Handy bleibt
+  dabei über seine mobilen Daten online, WhatsApp & Co. laufen weiter.
+  Aushang und Startbildschirm zeigen dann den WLAN-Code als Hauptcode.
+- **Standardmäßig aus.** Ausgeschaltet läuft die Box genau wie bisher.
+- **Selbstdiagnose:** Die Seite prüft Kabel, Adresse, Vonets, Firewall und
+  ob ein zweites Gerät Adressen verteilt – und sagt jeweils, was zu tun ist.
+  Hält ein Windows-Webdienst (etwa IIS) den Anschluss 80, nennt sie ihn mit
+  Namen. „Netzwerk für das Portal einrichten“ stellt die Box mit einer
+  Windows-Rückfrage um; „Zurücksetzen (wie vorher)“ macht es rückgängig.
+- **WLAN-Daten bleiben gespeichert:** WLAN-Name und Passwort des Vonets
+  stehen jetzt unter „WLAN & Portal“ und landen von dort auf dem Aushang.
+- **Handy-Galerie:** Hinweis „Foto gedrückt halten → Sichern oder Teilen“ –
+  im Anmeldefenster des Portals greifen Download-Knöpfe nicht immer.
+
 ## 1.0.7
 
 - **Probelauf im Servicemenü:** Unter „Besitzer“ gibt es jetzt

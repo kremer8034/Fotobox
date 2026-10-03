@@ -404,6 +404,45 @@ Damit niemand die Box zum Verschicken von Massenmails missbraucht, gilt: nur das
 gerade eben fertig gewordene Foto, höchstens drei Mails je Adresse und Tag,
 fünf Versuche je Minute, 200 Mails je Feier und Tag.
 
+## Galerie öffnet sich beim WLAN-Beitritt (Test)
+
+Normalerweise scannen die Gäste zwei Codes: erst das WLAN, dann die Galerie.
+Mit dem **Captive Portal** genügt einer – nach dem WLAN-Beitritt öffnet das
+Handy die Galerie von selbst, wie die Anmeldeseite im Hotel. Das Handy bleibt
+dabei über seine mobilen Daten online.
+
+Die Funktion ist ein **Test** und standardmäßig aus. Ausgeschaltet läuft die
+Box genau wie bisher.
+
+**Einrichten (einmal, an der Box):**
+
+1. Verwaltung → Menüpunkt **„WLAN & Portal“**: unter „WLAN des Vonets“
+   Name und Passwort eintragen, **Speichern**.
+2. Im Browser der Box `http://192.168.254.254` öffnen (Benutzer und Passwort
+   meist `admin`) und dort unter **„DHCP Server“** **„Disable“** wählen. Ab
+   jetzt verteilt die Fotobox die Adressen.
+3. Zurück auf „WLAN & Portal“, unter Selbstdiagnose: **„Netzwerk für das
+   Portal einrichten“**. Windows
+   fragt nach Administratorrechten – zustimmen.
+4. **„Erneut prüfen“**: Alle Zeilen der Selbstdiagnose sollten grün sein. Was
+   noch fehlt, steht dort mit dem nächsten Handgriff. Meldet sie, dass ein
+   Dienst den **Anschluss 80** hält (etwa „World Wide Web Publishing
+   Service“): Windows-Taste → „Dienste“ öffnen, den genannten Dienst
+   doppelklicken, **Beenden** und Starttyp **„Deaktiviert“**.
+5. Ganz oben den Schalter **„Galerie öffnet sich beim WLAN-Beitritt“** auf
+   **An** stellen.
+
+**Ausprobieren:** Veranstaltung mit Galerie starten, mit dem eigenen Handy
+nur den WLAN-Code scannen. Die Galerie sollte sich nach einigen Sekunden von
+selbst öffnen. Ein Foto gedrückt halten → Sichern oder Teilen. Am besten mit
+einem iPhone und einem Android-Handy testen.
+
+**Abschalten:** Den Schalter oben auf **Aus** stellen – die Box läuft sofort
+wieder wie bisher.
+
+**Ganz zurück wie vorher:** Schalter aus, dann **„Zurücksetzen (wie vorher)“** und
+im Vonets unter „DHCP Server“ wieder **„Enable“** wählen.
+
 ## Ein Foto aus der Galerie nehmen
 
 Landet ein Foto in der Galerie, das dort nicht hingehört, kann der Gastgeber es
