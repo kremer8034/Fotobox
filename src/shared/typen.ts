@@ -107,6 +107,9 @@ export interface TextEbene extends EbeneBasis {
    * verschwundener Schrift faellt sonst erst beim Druck auf.
    */
   schriftDatei?: string;
+  /** Fett und kursiv. Hat die Schrift keinen eigenen Schnitt dafuer, rechnet der Renderer ihn nach. */
+  fett?: boolean;
+  kursiv?: boolean;
 }
 
 export type Ebene = BildEbene | FotoEbene | TextEbene;

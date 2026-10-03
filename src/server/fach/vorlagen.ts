@@ -112,6 +112,8 @@ const EBENE = z.discriminatedUnion('typ', [
     ausrichtung: z.enum(['links', 'mitte', 'rechts']).optional(),
     schrift: z.string().max(100).optional(),
     schriftDatei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/).optional(),
+    fett: z.boolean().optional(),
+    kursiv: z.boolean().optional(),
   }),
 ]);
 

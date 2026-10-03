@@ -24,6 +24,14 @@ ihn auf der Box verstehst.
   Startbereit-Check. Meldet er gerade nichts, steht dort „unbekannt“ bzw.
   „Papierstand: Drucker meldet gerade nichts“ statt einer geschätzten Zahl. „Neue Rolle eingelegt“ im
   Servicemenü fragt jetzt nur noch den Drucker nach dem neuen Vorrat.
+- **Text fett und kursiv – und eine Formatleiste:** Im Vorlagen-Editor hat
+  eine Textebene jetzt eine Leiste wie in Word: **F** für fett, *K* für
+  kursiv (auch per Strg+B / Strg+I, mitten im Tippen), die drei
+  Ausrichtungen als Symbole, sechs Schnellfarben und daneben der freie
+  Farbwähler. Die Schriftgröße lässt sich mit − und + in halben Millimetern
+  verstellen. Das Textfeld zeigt den Text gleich in der gewählten Schrift,
+  fett und kursiv. Im Ausdruck erscheint es genauso; hat eine Schrift keinen
+  eigenen fetten oder kursiven Schnitt, wird er nachgerechnet.
 
 ## 1.0.6
 

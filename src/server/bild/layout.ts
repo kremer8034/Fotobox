@@ -234,6 +234,7 @@ async function rendereText(
 
   const svg = `<svg width="${breite}" height="${hoehe}" xmlns="http://www.w3.org/2000/svg">
     <text font-family="${maskiereXml(schrift)}" font-size="${schriftPx}"
+          font-weight="${ebene.fett ? 'bold' : 'normal'}" font-style="${ebene.kursiv ? 'italic' : 'normal'}"
           fill="${maskiereXml(ebene.farbe)}" text-anchor="${anker}">${tspans}</text>
   </svg>`;
 
