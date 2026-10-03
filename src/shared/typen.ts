@@ -513,6 +513,8 @@ export type Stoerung =
 
 export interface Betriebsstatus {
   kamera: GeraeteZustand;
+  /** Was zu tun ist, wenn die Kamera nicht bereit ist. */
+  kameraHinweis?: string | null;
   drucker: GeraeteZustand;
   liveViewLaeuft: boolean;
   stoerung: Stoerung | null;

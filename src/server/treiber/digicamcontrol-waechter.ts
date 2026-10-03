@@ -22,6 +22,11 @@ const fuehreAus = promisify(execFile);
  *  - Programm antwortet, Kamera fehlt: nichts tun. Das ist ein Kabel oder der
  *                                      Kameraschalter; digiCamControl erkennt
  *                                      die Kamera von selbst, sobald sie da ist.
+ *
+ * Und eine Grenze: Hat das Programm seit dem letzten Start durch uns noch nie
+ * geantwortet, hilft ein weiterer Neustart nicht - dann ist sein Webserver
+ * ausgeschaltet. Vorher wurde es trotzdem alle zwei Minuten beendet und neu
+ * gestartet und sprang jedes Mal im Vollbild vor den Kiosk.
  */
 
 export interface ProzessSteuerung {
@@ -31,7 +36,7 @@ export interface ProzessSteuerung {
   jetzt(): number;
 }
 
-export type Massnahme = 'nichts' | 'gestartet' | 'neu-gestartet' | 'programm-fehlt';
+export type Massnahme = 'nichts' | 'gestartet' | 'neu-gestartet' | 'programm-fehlt' | 'webserver-aus';
 
 /** Mindestabstand zwischen zwei Starts: Ein frisch gestartetes digiCamControl
  *  braucht eine Weile, bis sein Webserver antwortet. */
@@ -42,6 +47,8 @@ const HAENGT_NACH_MS = 120_000;
 export class DigiCamControlWaechter {
   private letzterStart = Number.NEGATIVE_INFINITY;
   private schweigtSeit: number | null = null;
+  /** Wir haben gestartet, und seitdem kam keine einzige Antwort. */
+  private gestartetOhneAntwort = false;
 
   constructor(
     private readonly steuerung: ProzessSteuerung,
@@ -57,6 +64,7 @@ export class DigiCamControlWaechter {
     const jetzt = this.steuerung.jetzt();
     if (antwortet) {
       this.schweigtSeit = null;
+      this.gestartetOhneAntwort = false;
       return 'nichts';
     }
     this.schweigtSeit ??= jetzt;
@@ -67,13 +75,16 @@ export class DigiCamControlWaechter {
       this.steuerung.starte();
       this.letzterStart = jetzt;
       this.schweigtSeit = jetzt;
+      this.gestartetOhneAntwort = true;
       return 'gestartet';
     }
     if (jetzt - this.schweigtSeit >= HAENGT_NACH_MS) {
+      if (this.gestartetOhneAntwort) return 'webserver-aus';
       await this.steuerung.beende();
       this.steuerung.starte();
       this.letzterStart = jetzt;
       this.schweigtSeit = jetzt;
+      this.gestartetOhneAntwort = true;
       return 'neu-gestartet';
     }
     return 'nichts';

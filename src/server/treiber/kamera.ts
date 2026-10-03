@@ -21,13 +21,19 @@ export interface KameraStatus {
   antwortet: boolean;
   liveViewLaeuft: boolean;
   meldung?: string;
+  /** Warum keine Kamera bereit ist - fuer einen Hinweis, der weiterhilft. */
+  grund?: KameraGrund;
 }
+
+export type KameraGrund = 'antwortet-nicht' | 'befehle-gesperrt' | 'keine-kamera';
 
 export interface KameraTreiber {
   readonly name: string;
   /** Verbindung aufbauen bzw. pruefen. Wirft nicht, meldet nur den Zustand. */
   pruefe(): Promise<KameraStatus>;
   starteLiveView(): Promise<void>;
+  /** Fenster der Kamera-Software minimieren, damit es nicht ueber dem Kiosk liegt. */
+  fensterWeg?(): Promise<void>;
   stoppeLiveView(): Promise<void>;
   /** Ein einzelnes Live-View-Bild als JPEG. null, wenn gerade keines vorliegt. */
   liveBild(): Promise<Buffer | null>;

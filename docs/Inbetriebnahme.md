@@ -75,22 +75,25 @@ erscheinen.
   anderer Port. Prüfen, dass Canons „EOS Utility" *nicht* mitläuft — die beiden
   streiten sich um die Kamera.
 
-In digiCamControl unter *Einstellungen → Webserver* den Webserver einschalten,
-Port **5513**, danach das Programm einmal neu starten.
+In digiCamControl unter *File → Settings → Webserver* **„Benutze Webserver"**
+und **„Interaktion über Webserver erlauben"** anhaken, Port **5513**, danach
+das Programm einmal ganz schließen. Ohne den zweiten Haken antwortet
+digiCamControl, führt aber keine Befehle aus. Der Webserver lauscht nur auf
+IPv4 – im Browser deshalb `127.0.0.1` statt `localhost` verwenden.
 
 ### 2.3 Live-View und Auslösen prüfen
 
 Bei laufendem digiCamControl im Browser aufrufen:
 
 ```
-http://localhost:5513/?CMD=LiveViewWnd_Show
-http://localhost:5513/liveview.jpg
+http://127.0.0.1:5513/?CMD=LiveViewWnd_Show
+http://127.0.0.1:5513/liveview.jpg
 ```
 
 Die zweite Adresse muss ein Bild zeigen. Dann:
 
 ```
-http://localhost:5513/?CMD=Capture
+http://127.0.0.1:5513/?CMD=Capture
 ```
 
 Die Kamera muss auslösen.

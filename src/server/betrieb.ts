@@ -7,7 +7,7 @@ import { MockKamera } from './treiber/kamera-mock.js';
 import { DigiCamControlKamera } from './treiber/kamera-digicamcontrol.js';
 import { MockDrucker } from './treiber/drucker-mock.js';
 import { WindowsDrucker } from './treiber/drucker-windows.js';
-import type { KameraTreiber } from './treiber/kamera.js';
+import type { KameraGrund, KameraTreiber } from './treiber/kamera.js';
 import {
   cameraControlExe,
   DigiCamControlWaechter,
@@ -44,6 +44,9 @@ export class Betrieb {
   letzteBeruehrung = Date.now();
 
   private kameraOk = false;
+  /** Warum die Kamera nicht bereit ist; null, wenn sie es ist. */
+  private kameraGrund: KameraGrund | 'webserver-aus' | null = 'antwortet-nicht';
+  private kameraAntwortete = false;
   private druckerStoerung: Stoerung | null = null;
   private liveViewGewuenscht = false;
   private letztesLiveBild: Buffer | null = null;
@@ -273,6 +276,24 @@ export class Betrieb {
         const kameraStatus = await this.kamera.pruefe();
         const warVerbunden = this.kameraOk;
         this.kameraOk = kameraStatus.verbunden;
+        const vorherigerGrund = this.kameraGrund;
+        this.kameraGrund = kameraStatus.verbunden ? null : (kameraStatus.grund ?? 'antwortet-nicht');
+
+        // Frisch gestartet, oeffnet digiCamControl sein Fenster ueber dem
+        // Kiosk. Sobald es antwortet, wieder minimieren.
+        if (kameraStatus.antwortet && !this.kameraAntwortete) {
+          await this.kamera.fensterWeg?.().catch(() => undefined);
+        }
+        this.kameraAntwortete = kameraStatus.antwortet;
+
+        if (this.kameraGrund === 'befehle-gesperrt' && vorherigerGrund !== 'befehle-gesperrt') {
+          protokolliere(
+            'fehler',
+            'kamera',
+            'digiCamControl antwortet, fuehrt aber keine Befehle aus. In digiCamControl unter File > Settings > ' +
+              'Webserver den Haken "Interaktion ueber Webserver erlauben" setzen.',
+          );
+        }
 
         if (this.kameraProgramm) {
           const massnahme = await this.kameraProgramm.pruefe(kameraStatus.antwortet);
@@ -284,6 +305,16 @@ export class Betrieb {
           if (massnahme === 'programm-fehlt' && this.letzteMassnahme !== 'programm-fehlt') {
             protokolliere('fehler', 'kamera', 'digiCamControl ist nicht installiert oder der Pfad unter Geraet stimmt nicht.');
           }
+          if (massnahme === 'webserver-aus' && this.letzteMassnahme !== 'webserver-aus') {
+            protokolliere(
+              'fehler',
+              'kamera',
+              'digiCamControl laeuft, sein Webserver antwortet aber nicht. In digiCamControl unter File > Settings > ' +
+                'Webserver "Benutze Webserver" und "Interaktion ueber Webserver erlauben" anhaken, Port 5513, ' +
+                'dann digiCamControl schliessen - die Fotobox startet es neu.',
+            );
+          }
+          if (massnahme === 'webserver-aus' && !kameraStatus.antwortet) this.kameraGrund = 'webserver-aus';
           if (massnahme !== 'nichts') this.letzteMassnahme = massnahme;
           if (kameraStatus.antwortet) this.letzteMassnahme = 'nichts';
         }
@@ -404,6 +435,7 @@ export class Betrieb {
     const geraet = leseGeraet();
     return {
       kamera: this.kameraOk ? 'bereit' : 'gestoert',
+      kameraHinweis: this.kameraOk ? null : kameraHinweis(this.kameraGrund),
       drucker: this.druckerStoerung ? 'gestoert' : 'bereit',
       liveViewLaeuft: this.liveViewGewuenscht,
       stoerung: this.aktuelleStoerung(),
@@ -414,6 +446,22 @@ export class Betrieb {
       speicherFreiGb: await freierSpeicherGb(geraet.datenpfad),
       aktivesEvent: event ? { id: event.id, name: event.name, probelauf: event.probelauf } : null,
     };
+  }
+}
+
+/** Was bei einer nicht bereiten Kamera zu tun ist - fuer Startbereit-Check und Verwaltung. */
+export function kameraHinweis(grund: KameraGrund | 'webserver-aus' | null): string {
+  switch (grund) {
+    case 'keine-kamera':
+      return 'digiCamControl laeuft, sieht aber keine Kamera. USB-Kabel pruefen und die Kamera einschalten.';
+    case 'befehle-gesperrt':
+      return 'digiCamControl antwortet, nimmt aber keine Befehle an. Dort unter File > Settings > Webserver ' +
+        '"Interaktion ueber Webserver erlauben" anhaken.';
+    case 'webserver-aus':
+      return 'digiCamControl laeuft, aber sein Webserver ist aus. Dort unter File > Settings > Webserver ' +
+        '"Benutze Webserver" und "Interaktion ueber Webserver erlauben" anhaken, Port 5513, dann digiCamControl schliessen.';
+    default:
+      return 'digiCamControl antwortet nicht. Laeuft das Programm? Webserver auf Port 5513 eingeschaltet?';
   }
 }
 

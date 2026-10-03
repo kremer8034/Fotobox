@@ -6,6 +6,14 @@ ihn auf der Box verstehst.
 
 ## 1.0.2
 
+- **Kamera-Verbindung repariert:** Die Fotobox erreichte digiCamControl nicht,
+  obwohl die Kamera dort verbunden war, und startete das Programm alle zwei
+  Minuten neu – es sprang dabei jedes Mal vor den Kiosk. Jetzt spricht sie
+  digiCamControl richtig an, startet es nicht mehr endlos neu und minimiert
+  sein Fenster, sobald es antwortet.
+- Fehlt in digiCamControl eine Einstellung, sagen Übersicht und
+  Startbereit-Check jetzt genau, welcher Haken unter File → Settings →
+  Webserver fehlt.
 - Das Schloss oben rechts am Kiosk ist jetzt als kleiner runder Knopf zu
   sehen. Gedrückt halten füllt einen Ring – nach zwei Sekunden kommt die
   PIN-Abfrage. Ein kurzes Antippen bewirkt weiterhin nichts.

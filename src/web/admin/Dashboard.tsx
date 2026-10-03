@@ -11,6 +11,7 @@ interface Eintrag {
 
 interface Status {
   kamera: string;
+  kameraHinweis?: string | null;
   drucker: string;
   stoerung: string | null;
   warteschlangeOffen: number;
@@ -74,6 +75,9 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
             ton={status.speicherFreiGb < 10 ? 'warnung' : 'gut'}
           />
         </div>
+        {status.kamera !== 'bereit' && status.kameraHinweis && (
+          <p style={{ color: 'var(--warnung)', marginBottom: 0 }}>Kamera: {status.kameraHinweis}</p>
+        )}
         {status.stoerung && (
           <p style={{ color: 'var(--warnung)', marginBottom: 0 }}>
             Störung gemeldet: {STOERUNGSTEXTE[status.stoerung as Stoerung]?.titel ?? status.stoerung}

@@ -11,6 +11,18 @@ import type { KameraStatus, KameraTreiber } from './kamera.js';
  *   /liveview.jpg            aktuelles Live-View-Einzelbild
  *   /preview.jpg             zuletzt aufgenommenes Bild
  *
+ * Zwei Dinge aus digiCamControls Quelltext (CameraControl.Core/Classes):
+ *  - Der Webserver lauscht nur auf IPv4 (IPAddress.Any). "localhost" loest
+ *    unter Windows zuerst nach ::1 auf - dort antwortet niemand, und die Box
+ *    hielt digiCamControl fuer abgestuerzt. Deshalb fest 127.0.0.1.
+ *  - Befehle (?CMD=..., ?slc=...) fuehrt er nur aus, wenn in seinen
+ *    Einstellungen "Interaktion ueber Webserver erlauben" angehakt ist. Sonst
+ *    antwortet er zwar, tut aber nichts - kein Live-View, kein Ausloesen.
+ *
+ * Die Pruefung fragt "?slc=list&param1=cameras": Die Antwort ist die Liste
+ * der verbundenen Kameras (Seriennummern), "OK" bei keiner Kamera, und leer,
+ * wenn Befehle gesperrt sind. Das unterscheidet alle drei Faelle.
+ *
  * Die aufgenommene Datei holen wir bewusst NICHT ueber session.json ab, sondern
  * setzen digiCamControls Zielordner direkt auf 01_originale des aktiven Events
  * und ueberwachen diesen Ordner. Die Datei entsteht dort, wo sie ohnehin
@@ -20,7 +32,7 @@ export class DigiCamControlKamera implements KameraTreiber {
   readonly name = 'digiCamControl';
   private liveView = false;
 
-  constructor(private readonly basis = 'http://localhost:5513') {}
+  constructor(private readonly basis = 'http://127.0.0.1:5513') {}
 
   private async ruf(pfad: string, zeitlimitMs = 4000): Promise<Response> {
     const abbruch = AbortSignal.timeout(zeitlimitMs);
@@ -33,20 +45,32 @@ export class DigiCamControlKamera implements KameraTreiber {
   }
 
   async pruefe(): Promise<KameraStatus> {
+    let antwort: Response;
+    let text: string;
     try {
-      const antwort = await this.ruf('/?CMD=Get_Status', 2500);
-      if (!antwort.ok) {
-        return { verbunden: false, antwortet: true, liveViewLaeuft: false, meldung: `HTTP ${antwort.status}` };
-      }
-      return { verbunden: true, antwortet: true, liveViewLaeuft: this.liveView };
+      antwort = await this.ruf('/?slc=list&param1=cameras', 2500);
+      text = (await antwort.text()).trim();
     } catch (fehler) {
       return {
         verbunden: false,
         antwortet: false,
         liveViewLaeuft: false,
         meldung: fehler instanceof Error ? fehler.message : String(fehler),
+        grund: 'antwortet-nicht',
       };
     }
+    if (!antwort.ok || text === '') {
+      return { verbunden: false, antwortet: true, liveViewLaeuft: false, grund: 'befehle-gesperrt' };
+    }
+    if (text === 'OK') {
+      return { verbunden: false, antwortet: true, liveViewLaeuft: false, grund: 'keine-kamera' };
+    }
+    return { verbunden: true, antwortet: true, liveViewLaeuft: this.liveView };
+  }
+
+  /** Das Programmfenster von digiCamControl aus dem Weg raeumen. */
+  async fensterWeg(): Promise<void> {
+    await this.befehl('All_Minimize').catch(() => undefined);
   }
 
   async starteLiveView(): Promise<void> {
