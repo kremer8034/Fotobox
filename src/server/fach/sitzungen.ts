@@ -158,6 +158,38 @@ export function brichSitzungAb(sitzungId: string): void {
 }
 
 /**
+ * Der Gast hat "Abbrechen" getippt: Die Sitzung verschwindet ganz - Fotos
+ * von der Platte, Sitzung aus der Datenbank. Sie zaehlt nirgends mit und
+ * taucht in keiner Galerie auf. Gibt es schon ein fertiges Bild, bleibt
+ * alles stehen (das loescht man auf der Ergebnisseite). Liefert die Zahl
+ * der geloeschten Fotos.
+ */
+export async function verwirfSitzung(sitzungId: string): Promise<number> {
+  const db = holeDb();
+  vergiss(sitzungId);
+  const fertig = db.prepare('SELECT 1 FROM ausgaben WHERE sitzung_id = ? LIMIT 1').get(sitzungId);
+  if (fertig) {
+    brichSitzungAb(sitzungId);
+    return 0;
+  }
+  const fotos = db.prepare('SELECT pfad_original, pfad_bearbeitet FROM fotos WHERE sitzung_id = ?').all(sitzungId) as {
+    pfad_original: string;
+    pfad_bearbeitet: string | null;
+  }[];
+  db.transaction(() => {
+    db.prepare('DELETE FROM fotos WHERE sitzung_id = ?').run(sitzungId);
+    db.prepare('DELETE FROM sitzungen WHERE id = ?').run(sitzungId);
+  })();
+  for (const f of fotos) {
+    for (const pfad of [f.pfad_original, f.pfad_bearbeitet]) {
+      // Schon weg ist auch recht.
+      if (pfad) await unlink(pfad).catch(() => undefined);
+    }
+  }
+  return fotos.length;
+}
+
+/**
  * Verbucht eine frisch aufgenommene Datei. Die Kamera legt sie bereits im
  * richtigen Ordner ab, deshalb wird hier nur noch registriert - und, falls die
  * Datei woanders landete, hereinkopiert.

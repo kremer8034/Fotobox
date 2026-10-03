@@ -282,12 +282,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
               setzeSchirm({ art: 'start' });
               void ladeStart();
             }}
-            beiAbbrechen={() => {
-              void api.sende(`/api/kiosk/sitzung/${schirm.sitzung.sitzungId}/abbrechen`, {}).catch(() => undefined);
-              setzeFehler(null);
-              setzeSchirm({ art: 'start' });
-              void ladeStart();
-            }}
+            beiAbbrechen={() => verwirf(schirm.sitzung.sitzungId)}
           />
         </>
       );
@@ -326,6 +321,16 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             {/* Das Zusammensetzen dauert ein, zwei Sekunden. Vorher stand der
                 Bildschirm in dieser Zeit still - wer dann noch einmal tippt, hat
                 recht, denn es sah aus, als sei nichts passiert. */}
+            {/* Raus ohne Filter: Die Fotos werden geloescht, nichts landet in
+                der Galerie. Waehrend das Bild schon zusammengesetzt wird, nicht
+                mehr - dann entscheidet die Ergebnisseite. */}
+            {!wartetAuf && (
+              <div className="filter__leiste">
+                <button className="knopf knopf--neben" onClick={() => verwirf(schirm.sitzungId)}>
+                  Abbrechen
+                </button>
+              </div>
+            )}
             {wartetAuf && (
               <div className="zusammensetzen" role="status">
                 <div className="kreisel" aria-hidden="true" />
@@ -503,6 +508,15 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       setzeWartetAuf(null);
     }
   }
+
+  /** "Abbrechen": Sitzung samt Fotos verwerfen und zurueck zum Start. */
+  function verwirf(sitzungId: string) {
+    if (beschaeftigt.current) return;
+    void api.sende(`/api/kiosk/sitzung/${sitzungId}/abbrechen`, { verwerfen: true }).catch(() => undefined);
+    setzeFehler(null);
+    setzeSchirm({ art: 'start' });
+    void ladeStart();
+  }
 }
 
 /**
@@ -538,8 +552,13 @@ function Verbindungshinweis() {
  * vorher standen die Kacheln als schmaler Streifen in der Bildschirmmitte.
  */
 function spalten(anzahl: number): React.CSSProperties {
+  // Bis 12 Kacheln vier Spalten. Darueber mehr Spalten statt mehr Zeilen:
+  // Bei sechs Zeilen (22 Filter) blieben von den Vorschaubildern nur
+  // Streifen. So bleiben es hoechstens drei Zeilen, bis acht Spalten.
+  const n = Math.max(anzahl, 1);
+  const breite = Math.min(8, Math.max(Math.min(n, 4), Math.ceil(n / 3)));
   return {
-    gridTemplateColumns: `repeat(${Math.min(Math.max(anzahl, 1), 4)}, 1fr)`,
+    gridTemplateColumns: `repeat(${breite}, 1fr)`,
     // Gleich hohe Zeilen: Sonst wird die letzte, halb gefuellte Zeile hoeher
     // als die darueber, weil sie sich den uebrigen Platz nimmt.
     gridAutoRows: '1fr',

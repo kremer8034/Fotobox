@@ -81,3 +81,30 @@ describe('Foto per E-Mail am Kiosk', () => {
     expect(darfKioskVerschicken('mail', 'gibtsnicht', 'galerie', spaeter)).toBe(false);
   });
 });
+
+describe('Abbrechen vor dem Filter', () => {
+  it('loescht Fotos und Sitzung - aber nie eine Sitzung mit fertigem Bild', async () => {
+    const { writeFileSync, existsSync } = await import('node:fs');
+    const { verwirfSitzung } = await import('../fach/sitzungen.js');
+    const db = holeDb();
+    const ordner = mkdtempSync(join(tmpdir(), 'fotobox-verwerfen-'));
+    const foto = join(ordner, 'v1_1.jpg');
+    writeFileSync(foto, 'jpeg');
+    db.prepare("INSERT INTO sitzungen (id, event_id, vorlage_id, gestartet, ist_test) VALUES ('v1', 'weg', 'v', '2026-10-03', 0)").run();
+    db.prepare("INSERT INTO fotos (id, sitzung_id, ebene_index, pfad_original) VALUES ('f1', 'v1', 1, ?)").run(foto);
+
+    expect(await verwirfSitzung('v1')).toBe(1);
+    expect(existsSync(foto)).toBe(false);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM sitzungen WHERE id = 'v1'").get()).toEqual({ n: 0 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM fotos WHERE sitzung_id = 'v1'").get()).toEqual({ n: 0 });
+
+    // Mit fertigem Bild bleibt alles - das loescht man auf der Ergebnisseite.
+    const zweites = join(ordner, 'v2_1.jpg');
+    writeFileSync(zweites, 'jpeg');
+    db.prepare("INSERT INTO sitzungen (id, event_id, vorlage_id, gestartet, ist_test) VALUES ('v2', 'weg', 'v', '2026-10-03', 0)").run();
+    db.prepare("INSERT INTO fotos (id, sitzung_id, ebene_index, pfad_original) VALUES ('f2', 'v2', 1, ?)").run(zweites);
+    db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('v2a', 'v2', '/l.jpg', '/l.pdf', '2026-10-03T18:00:00.000Z')").run();
+    expect(await verwirfSitzung('v2')).toBe(0);
+    expect(existsSync(zweites)).toBe(true);
+  });
+});

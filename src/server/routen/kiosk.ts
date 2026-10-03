@@ -16,6 +16,7 @@ import {
   setzeVerborgen,
   darfKioskLoeschen,
   darfKioskVerschicken,
+  verwirfSitzung,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -324,10 +325,21 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     },
   );
 
-  app.post<{ Params: { id: string } }>('/api/kiosk/sitzung/:id/abbrechen', async (anfrage) => {
+  /**
+   * Sitzung abbrechen. Mit "verwerfen" (der Gast hat "Abbrechen" getippt)
+   * werden die Fotos geloescht - ohne (Neustart, Untaetigkeit) bleiben sie
+   * im Ordner, falls jemand doch danach fragt.
+   */
+  app.post<{ Params: { id: string }; Body: unknown }>('/api/kiosk/sitzung/:id/abbrechen', async (anfrage) => {
+    const { verwerfen } = z.object({ verwerfen: z.boolean().default(false) }).parse(anfrage.body ?? {});
     if (betrieb.aktiveSitzung?.id === anfrage.params.id) {
-      brichSitzungAb(anfrage.params.id);
       betrieb.aktiveSitzung = null;
+      if (verwerfen) {
+        const geloescht = await verwirfSitzung(anfrage.params.id);
+        protokolliere('info', 'sitzung', `Sitzung abgebrochen, ${geloescht} Foto(s) gelöscht.`);
+      } else {
+        brichSitzungAb(anfrage.params.id);
+      }
     }
     return { ok: true };
   });

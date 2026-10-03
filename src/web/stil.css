@@ -653,6 +653,59 @@ button {
   50% { transform: translateY(calc(2.5 * var(--mm))); }
 }
 
+/*
+ * "Bitte lächeln!" - vom Ausloesen bis das Foto erscheint. Fixed statt
+ * absolute: Der Ausschnitt fuer das Live-Bild ist kleiner als der
+ * Bildschirm, die Flaeche soll aber den ganzen Schirm fuellen - auch ueber
+ * "Foto 1 von 3" und den Rand.
+ */
+.laecheln {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #fff;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: center;
+  /* Unten Luft fuer das Wippen des Pfeils - sonst rutscht die Spitze aus dem Bild. */
+  padding: 0 calc(8 * var(--mm)) calc(4 * var(--mm));
+}
+
+.laecheln__text {
+  margin-top: auto;
+  font-size: 5.2rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+.laecheln__hinweis {
+  margin-top: calc(4 * var(--mm));
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Unten mittig, direkt ueber der Linse unter dem Bildschirm. */
+.laecheln__kamera {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2 * var(--mm));
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.laecheln__pfeil {
+  width: calc(36 * var(--mm));
+  height: calc(42 * var(--mm));
+  fill: #000;
+  animation: pfeil-wippen 0.9s ease-in-out infinite;
+}
+
 /* Oben links - oben rechts liegt das Schloss. */
 .aufnahme__abbrechen {
   position: absolute;
@@ -685,6 +738,13 @@ button {
   align-items: center;
   justify-content: center;
   gap: var(--abstand);
+}
+
+/* Filterauswahl: "Abbrechen" unten rechts, wie "Zurück" auf den anderen Seiten. */
+.filter__leiste {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: calc(3 * var(--mm));
 }
 
 .menge {

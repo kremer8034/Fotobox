@@ -36,6 +36,21 @@ ihn auf der Box verstehst.
   „Fotobox“, kam die Mail ohne lesbaren Absender an. Ist der Benutzername
   eine Mailadresse, wird daraus jetzt „Fotobox <adresse>“. Ein Name ohne
   jede Adresse lässt sich nicht mehr speichern.
+- **„Bitte lächeln!“ bildschirmfüllend:** Vom Auslösen, bis das Foto zu
+  sehen ist, wird der ganze Bildschirm weiß, die Schrift schwarz und groß,
+  dazu ein großer Pfeil nach unten zur Kamera und „Nicht bewegen, bis das
+  Foto erscheint“. Kamera und Übertragung brauchen ein, zwei Sekunden – so
+  bleibt die Gruppe in Pose, statt sich vom weiterlaufenden Live-Bild
+  täuschen zu lassen. Die weiße Fläche hellt nebenbei die Gesichter auf.
+- **Filterauswahl: „Abbrechen“:** Unten rechts zurück zum Start, ohne einen
+  Filter wählen zu müssen. Die gerade gemachten Fotos werden dabei gelöscht –
+  sie werden nicht gespeichert, zählen nirgends mit und erscheinen in keiner
+  Galerie. Dasselbe gilt jetzt für „Abbrechen“ während der Aufnahme. Bricht
+  die Box nach drei Minuten ohne Berührung von selbst ab, bleiben die Fotos
+  wie bisher im Ordner.
+- **Viele Filter:** Sind mehr als zwölf Filter freigegeben, verteilt die
+  Auswahl sie auf mehr Spalten statt auf mehr Zeilen – die Vorschaubilder
+  bleiben groß genug zum Erkennen.
 
 ## 1.0.5
 

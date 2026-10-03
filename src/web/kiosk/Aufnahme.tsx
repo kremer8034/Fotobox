@@ -268,8 +268,27 @@ export function Aufnahme({
         {phase === 'bereitmachen' && (
           <div className="anweisung">{index === 1 ? 'Gleich geht es los — stellt euch auf!' : 'Neue Pose!'}</div>
         )}
-        {phase === 'ausloesen' && <div className="anweisung">Bitte lächeln!</div>}
-        {phase === 'verarbeiten' && <div className="anweisung anweisung--ruhig">Einen Moment …</div>}
+        {/*
+          Vom Ausloesen bis das Foto zu sehen ist: ganzer Bildschirm weiss,
+          Schrift schwarz, grosser Pfeil zur Linse. Kamera und Uebertragung
+          brauchen ein, zwei Sekunden - wer dabei noch das Live-Bild sieht,
+          glaubt, es sei schon vorbei, und geht aus der Pose. Die weisse
+          Flaeche haelt die Gruppe still und hellt nebenbei die Gesichter auf.
+        */}
+        {(phase === 'ausloesen' || phase === 'verarbeiten') && (
+          <div className="laecheln" aria-live="assertive">
+            <div className="laecheln__text">
+              {phase === 'ausloesen' ? 'Bitte lächeln!' : 'Noch kurz stillhalten …'}
+            </div>
+            <div className="laecheln__hinweis">Nicht bewegen, bis das Foto erscheint</div>
+            <div className="laecheln__kamera">
+              <span>In die Kamera schauen</span>
+              <svg className="laecheln__pfeil" viewBox="0 0 100 120" aria-hidden>
+                <path d="M35 0 H65 V62 H92 L50 118 L8 62 H35 Z" />
+              </svg>
+            </div>
+          </div>
+        )}
         {phase === 'kamerasuche' && (
           <div className="anweisung anweisung--ruhig">
             Einen Moment — die Kamera macht sich bereit.
@@ -291,7 +310,7 @@ export function Aufnahme({
           schaut, schaut auf dem Foto an der Kamera vorbei - der Pfeil lenkt
           den Blick nach unten in die Linse.
         */}
-        {['bereitmachen', 'countdown', 'ausloesen'].includes(phase) && (
+        {['bereitmachen', 'countdown'].includes(phase) && (
           <div className="blick-zur-kamera" aria-hidden>
             <span>In die Kamera schauen</span>
             <span className="blick-zur-kamera__pfeil">↓</span>
