@@ -11,7 +11,6 @@ interface EventVoll {
   galerieToken: string;
   statusToken: string;
   betreuerPinGesetzt: boolean;
-  materialVerbraucht: number;
   einstellungen: {
     zeiten: Zeiten;
     toene: { countdownPiep: boolean; ausloeser: boolean; ergebnis: boolean };
@@ -23,7 +22,6 @@ interface EventVoll {
     kopienMax: number;
     druckLimit: number;
     ersatzJeDruck: number;
-    materialStart: number;
     startTitel: string;
     startUntertitel: string;
     farbeAkzent: string;
@@ -42,7 +40,6 @@ interface EventVoll {
     druckeNichtBerechnet: number;
     druckeFehlgeschlagen: number;
     betrag: number;
-    materialRest: number;
   };
 }
 
@@ -532,13 +529,6 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               grenzen={[0, 100]}
               beiSpeichern={(n) => speichere({ ersatzJeDruck: n })}
             />
-            <ZahlFeld
-              name="Material Start (Blatt)"
-              klein
-              wert={e.materialStart}
-              grenzen={[0, 100_000]}
-              beiSpeichern={(n) => speichere({ materialStart: n })}
-            />
           </div>
           <div className="zeile" style={{ marginTop: '0.4rem' }}>
             <Kennzahl name="Durchgänge" wert={String(event.auslagen.sitzungen)} />
@@ -549,11 +539,6 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               name="fehlgeschlagen"
               wert={String(event.auslagen.druckeFehlgeschlagen)}
               ton={event.auslagen.druckeFehlgeschlagen > 0 ? 'warnung' : undefined}
-            />
-            <Kennzahl
-              name="Material Rest"
-              wert={String(event.auslagen.materialRest)}
-              ton={event.auslagen.materialRest < 50 ? 'warnung' : 'gut'}
             />
           </div>
           <div className="zeile" style={{ marginTop: '0.8rem', alignItems: 'center' }}>

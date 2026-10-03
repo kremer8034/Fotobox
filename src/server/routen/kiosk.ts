@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import QRCode from 'qrcode';
 import { z } from 'zod';
-import { holeAktivesEvent, holeEvent, setzeStatus, verbucheMaterial } from '../fach/events.js';
+import { holeAktivesEvent, holeEvent, setzeStatus } from '../fach/events.js';
 import { holeVorlage, listeVorlagen } from '../fach/vorlagen.js';
 import { listeFilter } from '../fach/filter.js';
 import { leseGeraet } from '../db/geraet.js';
@@ -593,7 +593,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       stoerungstext: status.stoerung ? STOERUNGSTEXTE[status.stoerung] : null,
       betreuerHinweis: status.stoerung ? BETREUER_HINWEISE[status.stoerung] : null,
       warteschlangeOffen: status.warteschlangeOffen,
-      materialRest: status.druckerVorrat ? status.materialRest : (auslagen?.materialRest ?? 0),
+      materialRest: status.materialRest,
       speicherFreiGb: status.speicherFreiGb,
       drucke: auslagen?.druckeGesamt ?? 0,
       sitzungen: auslagen?.sitzungen ?? 0,
@@ -643,14 +643,13 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { ok: true, wartend };
   });
 
-  /** Servicemenue: neue Rolle eingelegt, Materialzaehler zuruecksetzen. */
-  app.post('/api/kiosk/service/neue-rolle', async (_anfrage, antwort) => {
-    const event = holeAktivesEvent();
-    if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
-    verbucheMaterial(event.id, -event.materialVerbraucht);
-    protokolliere('info', 'material', `Neue Rolle fuer "${event.name}" eingelegt.`);
-    // Kann der Drucker seinen Vorrat melden, gleich nachfragen - dann steht die
-    // echte Zahl da, nicht nur "wieder voll".
+  /**
+   * Servicemenue: neue Rolle eingelegt. Gezaehlt wird nichts mehr - der
+   * Drucker wird gleich nach seinem Vorrat gefragt, damit die neue Zahl
+   * sofort dasteht und nicht erst nach der naechsten Ruhepause.
+   */
+  app.post('/api/kiosk/service/neue-rolle', async () => {
+    protokolliere('info', 'material', 'Neue Rolle eingelegt.');
     const rest = await betrieb.leseDruckerVorrat();
     return { ok: true, rest };
   });

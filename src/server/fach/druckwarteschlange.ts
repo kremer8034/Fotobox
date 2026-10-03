@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import { schreibeSeitenbild, seitenbildPfad } from '../bild/pdf.js';
 import { holeDb, jetzt } from '../db/index.js';
 import { leseGeraet } from '../db/geraet.js';
-import { verbucheMaterial } from './events.js';
 import type { DruckQuelle, Druckauftrag, DruckStatus } from '../../shared/typen.js';
 import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../treiber/drucker.js';
 
@@ -340,9 +339,6 @@ export class Druckschleife {
         holeDb()
           .prepare("UPDATE druckauftraege SET status = 'gedruckt', gedruckt = ?, fehlertext = NULL WHERE id = ?")
           .run(jetzt(), auftrag.id);
-        // Ein Blatt je Kopie. Testdrucke zaehlen nicht in den Auslagenersatz,
-        // verbrauchen aber sehr wohl Papier.
-        verbucheMaterial(auftrag.eventId, auftrag.kopien);
         this.letzterFehler = null;
       } catch (fehler) {
         const text = fehler instanceof Error ? fehler.message : String(fehler);

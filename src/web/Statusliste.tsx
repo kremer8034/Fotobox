@@ -17,7 +17,8 @@ export interface Boxzustand {
   /** Welche Stoerung, als Schluessel - etwa "papier-leer". */
   stoerungArt?: string | null;
   warteschlangeOffen: number;
-  materialRest: number;
+  /** Laut Drucker; null, wenn er nichts meldet - dann fehlt die Zeile. */
+  materialRest: number | null;
   speicherFreiGb: number;
   sitzungen: number;
   drucke: number;
@@ -45,7 +46,7 @@ export function statusEintraege(z: Boxzustand): Eintrag[] {
     // eine Schaetzung. Beide Zeilen nebeneinander ergaben vorher "Papier ist
     // leer" in Rot und "Noch 700 Blatt" in Gruen, und niemand wusste, was
     // stimmt.
-    z.stoerungArt === 'papier-leer'
+    z.stoerungArt === 'papier-leer' || z.materialRest === null
       ? null
       : z.materialRest <= 0
       ? { ampel: 'fehler', text: 'Kein Papier mehr' }

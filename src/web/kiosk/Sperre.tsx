@@ -17,7 +17,7 @@ interface WasIstLos {
   stoerungstext: { titel: string; folge: string; tun: string } | null;
   betreuerHinweis: string | null;
   warteschlangeOffen: number;
-  materialRest: number;
+  materialRest: number | null;
   speicherFreiGb: number;
   drucke: number;
   sitzungen: number;
@@ -281,19 +281,13 @@ export function Servicemenue({
           <Handgriff titel="Galerie" zeile="Nachdrucken oder ein Foto herausnehmen" beiTipp={beiGalerie} />
           <Handgriff
             titel="Neue Rolle eingelegt"
-            zeile="Papierzähler auf voll zurücksetzen"
+            zeile="Papiervorrat beim Drucker abfragen"
             beiTipp={() =>
-              setzeRueckfrage({
-                titel: 'Neue Rolle eingelegt?',
-                text:
-                  'Der Papierzähler springt auf eine volle Rolle zurück. Wenn noch die alte ' +
-                  'Rolle drin ist, zeigt die Box danach zu viel Papier an und warnt nicht rechtzeitig.',
-                ja: 'Ja, neue Rolle ist drin',
-                aktion: () =>
-                  void handgriff<{ rest?: number | null }>('/api/kiosk/service/neue-rolle', {}, ({ rest }) =>
-                    typeof rest === 'number' ? `Laut Drucker sind ${rest} Blatt auf der Rolle.` : 'Papierzähler steht wieder auf voll.',
-                  ),
-              })
+              void handgriff<{ rest?: number | null }>('/api/kiosk/service/neue-rolle', {}, ({ rest }) =>
+                typeof rest === 'number'
+                  ? `Laut Drucker sind ${rest} Blatt auf der Rolle.`
+                  : 'Der Drucker meldet gerade keinen Vorrat – gleich noch einmal versuchen.',
+              )
             }
           />
 

@@ -66,19 +66,16 @@ export async function startbereitPruefung(
         : 'Drucker meldet einen Fehlerzustand.',
   });
 
-  // Meldet der Drucker seinen Vorrat selbst, gilt seine Zahl - sonst der Zaehler.
+  // Der Vorrat kommt allein vom Drucker (DNP PrinterInfo).
   const vomDrucker = status.druckerVorrat ?? null;
-  const materialRest = vomDrucker
-    ? vomDrucker.rest
-    : Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht);
   punkte.push({
     schluessel: 'material',
-    titel: 'Restbestand erfasst',
-    bestanden: materialRest > 20,
+    titel: 'Papiervorrat laut Drucker',
+    bestanden: vomDrucker !== null && vomDrucker.rest > 20,
     nurWarnung: true,
     hinweis: vomDrucker
-      ? `Noch ${materialRest} Blatt laut Drucker.`
-      : `Noch ${materialRest} Blatt (gezaehlt). Bei Bedarf im Servicemenue "Neue Rolle eingelegt" waehlen.`,
+      ? `Noch ${vomDrucker.rest} Blatt laut Drucker.`
+      : 'Der Drucker meldet gerade keinen Vorrat - unter Gerät → Papiervorrat nachsehen.',
   });
 
   punkte.push({

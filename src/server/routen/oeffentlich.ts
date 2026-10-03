@@ -135,7 +135,7 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
       zahlen: {
         sitzungen: auslagen.sitzungen,
         drucke: auslagen.druckeGesamt,
-        materialRest: status.druckerVorrat ? status.materialRest : auslagen.materialRest,
+        materialRest: status.materialRest,
       },
     };
   });

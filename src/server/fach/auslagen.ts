@@ -29,9 +29,6 @@ export interface Auslagenuebersicht {
   emails: number;
   ersatzJeDruck: number;
   betrag: number;
-  materialStart: number;
-  materialVerbraucht: number;
-  materialRest: number;
 }
 
 export function berechneAuslagen(event: Veranstaltung): Auslagenuebersicht {
@@ -100,9 +97,6 @@ export function berechneAuslagen(event: Veranstaltung): Auslagenuebersicht {
     emails,
     ersatzJeDruck: event.einstellungen.ersatzJeDruck,
     betrag,
-    materialStart: event.einstellungen.materialStart,
-    materialVerbraucht: event.materialVerbraucht,
-    materialRest: Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht),
   };
 }
 
@@ -123,9 +117,6 @@ export function alsCsv(u: Auslagenuebersicht): string {
     ['E-Mails', String(u.emails)],
     ['Auslagenersatz je Druck (EUR)', zahl(u.ersatzJeDruck)],
     ['Betrag (EUR)', zahl(u.betrag)],
-    ['Material Start (Blatt)', String(u.materialStart)],
-    ['Material verbraucht (Blatt)', String(u.materialVerbraucht)],
-    ['Material Rest (Blatt)', String(u.materialRest)],
   ];
   // Semikolon als Trenner, damit Excel im deutschen Gebietsschema die Datei
   // ohne Importdialog oeffnet.

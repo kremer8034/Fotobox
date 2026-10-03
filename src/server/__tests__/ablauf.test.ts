@@ -128,8 +128,8 @@ describe('Kernablauf einer Sitzung', () => {
     expect(auslagen.druckeGesamt).toBe(2);
     // Zwei Drucke zu 20 Cent.
     expect(auslagen.betrag).toBeCloseTo(0.4, 2);
-    // Ein Blatt = ein Bild, 700 pro Rolle.
-    expect(auslagen.materialRest).toBe(698);
+    // Kein gezaehlter Papiervorrat in der Abrechnung - den meldet der Drucker.
+    expect(auslagen).not.toHaveProperty('materialRest');
 
     setzeStatus(aktiv.id, 'abgeschlossen');
   });

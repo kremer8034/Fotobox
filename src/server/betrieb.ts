@@ -207,12 +207,13 @@ export class Betrieb {
     };
   }
 
-  /** Restblaetter: laut Drucker, wenn er sie meldet - sonst der Zaehler der Veranstaltung. */
-  materialRest(): number {
-    const vomDrucker = this.druckerVorrat();
-    if (vomDrucker) return vomDrucker.rest;
-    const event = holeAktivesEvent();
-    return event ? Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht) : 0;
+  /**
+   * Restblaetter laut Drucker - null, wenn er gerade nichts meldet. Einen
+   * selbst gezaehlten Ersatzwert gibt es bewusst nicht mehr: Er lief neben der
+   * echten Zahl her und stimmte nach dem ersten Rollenwechsel nicht mehr.
+   */
+  materialRest(): number | null {
+    return this.druckerVorrat()?.rest ?? null;
   }
 
   /** Ein frisch gelesener Druckerzustand - aus der Beobachtung oder vor einem Druck. */

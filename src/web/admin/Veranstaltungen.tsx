@@ -8,7 +8,7 @@ interface EventZeile {
   datum: string;
   status: EventStatus;
   probelauf: boolean;
-  auslagen: { druckeGesamt: number; betrag: number; materialRest: number };
+  auslagen: { druckeGesamt: number; betrag: number };
 }
 
 export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => void }) {
@@ -113,7 +113,6 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
               <th>Status</th>
               <th className="zahl">Drucke</th>
               <th className="zahl">Betrag</th>
-              <th className="zahl">Material</th>
               <th />
             </tr>
           </thead>
@@ -130,7 +129,6 @@ export function Veranstaltungen({ navigiere }: { navigiere: (ziel: string) => vo
                 </td>
                 <td className="zahl">{e.auslagen.druckeGesamt}</td>
                 <td className="zahl">{e.auslagen.betrag.toFixed(2).replace('.', ',')} €</td>
-                <td className="zahl">{e.auslagen.materialRest}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button className="knopf knopf--neben" onClick={() => dupliziere(e)}>
                     Duplizieren
