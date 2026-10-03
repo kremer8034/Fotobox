@@ -4,6 +4,12 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.2
+
+- Das Schloss oben rechts am Kiosk ist jetzt als kleiner runder Knopf zu
+  sehen. Gedrückt halten füllt einen Ring – nach zwei Sekunden kommt die
+  PIN-Abfrage. Ein kurzes Antippen bewirkt weiterhin nichts.
+
 ## 1.0.1
 
 Wartungsversion: alle Bausteine auf dem neuesten Stand. Für dich ändert sich
