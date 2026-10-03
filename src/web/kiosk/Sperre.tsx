@@ -41,19 +41,24 @@ function alsZustand(w: WasIstLos): Boxzustand {
  * Kiosk-Sperre mit zwei PIN-Ebenen.
  *
  * Das Schloss oben rechts ist kaum sichtbar und reagiert erst auf langes
- * Druecken (2 Sekunden) - ein neugieriger Gast tippt einmal drauf und es
+ * Druecken (1 Sekunde) - ein neugieriger Gast tippt einmal drauf und es
  * passiert nichts.
  *
  * Nach der PIN kommt nicht der Windows-Desktop, sondern ein Servicemenue. Und
  * welches, haengt von der eingegebenen PIN ab: Der Kunde bekommt die
  * Betreuer-PIN und damit nur die Handgriffe des Alltags.
  */
+/** So lange muss das Schloss gedrueckt werden; der Ring in stil.css laeuft genauso lang. */
+const SCHLOSS_HALTEN_MS = 1000;
+
 export function Schloss({ beiOeffnen }: { beiOeffnen: () => void }) {
   const [gedruecktSeit, setzeGedruecktSeit] = useState<number | null>(null);
 
-  // Fiel die Statusabfrage des Kiosks in die zwei Sekunden, begann die
+  // Fiel die Statusabfrage des Kiosks in die Haltezeit, begann die
   // Zaehlung vorher von vorn - das Schloss ging "manchmal nicht auf".
-  useZeitgeber(beiOeffnen, gedruecktSeit === null ? null : 2000, [gedruecktSeit]);
+  // Eine Sekunde: lang genug gegen versehentliches Antippen, zwei waren dem
+  // Besitzer zu lang.
+  useZeitgeber(beiOeffnen, gedruecktSeit === null ? null : SCHLOSS_HALTEN_MS, [gedruecktSeit]);
 
   // Sichtbar, aber unaufdringlich: Bei 8 % Deckkraft fand selbst der Besitzer
   // die Stelle nicht mehr. Waehrend des Drueckens fuellt sich ein Ring, damit

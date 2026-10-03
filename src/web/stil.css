@@ -1073,8 +1073,8 @@ button {
 /*
  * Schloss oben rechts: ein dezenter runder Knopf, rund 8 mm, in einer
  * Tippflaeche von 14 x 14 mm. Etwas von der Kante abgerueckt, damit ihn ein
- * Gehaeuserahmen nicht verdeckt. Beim Gedrueckthalten fuellt sich in zwei
- * Sekunden ein Ring - so lange wie das Schloss zum Oeffnen braucht.
+ * Gehaeuserahmen nicht verdeckt. Beim Gedrueckthalten fuellt sich in einer
+ * Sekunde ein Ring - so lange wie das Schloss zum Oeffnen braucht.
  */
 @property --schloss-fortschritt {
   syntax: '<percentage>';
@@ -1115,7 +1115,7 @@ button {
   background:
     radial-gradient(closest-side, rgba(16, 18, 22, 0.85) 82%, transparent 84%),
     conic-gradient(var(--akzent) var(--schloss-fortschritt), rgba(255, 255, 255, 0.2) 0);
-  animation: schloss-fuellen 2s linear forwards;
+  animation: schloss-fuellen 1s linear forwards;
 }
 
 @keyframes schloss-fuellen {

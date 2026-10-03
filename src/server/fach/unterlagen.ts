@@ -49,7 +49,7 @@ export async function schreibeKurzanleitung(
 
     abschnitt(d, 'Papier wechseln', [
       'Neue Rolle einlegen wie gewohnt.',
-      'Dann oben rechts am Bildschirm lange auf die Ecke druecken (zwei Sekunden),',
+      'Dann oben rechts am Bildschirm lange auf die Ecke druecken (eine Sekunde),',
       `PIN ${angaben.betreuerPin} eingeben und "Papier gewechselt" waehlen.`,
       'Bei einer ganz neuen Rolle zusaetzlich "Neue Rolle eingelegt" antippen.',
     ]);

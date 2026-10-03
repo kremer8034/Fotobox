@@ -402,7 +402,7 @@ fünf Versuche je Minute, 200 Mails je Feier und Tag.
 Landet ein Foto in der Galerie, das dort nicht hingehört, kann der Gastgeber es
 selbst herausnehmen:
 
-1. Oben rechts in die Ecke tippen und zwei Sekunden halten, Betreuer-PIN
+1. Oben rechts in die Ecke tippen und eine Sekunde halten, Betreuer-PIN
    eingeben.
 2. Im Servicemenü auf **„Galerie"** tippen.
 3. Das Foto antippen und **„Aus der Galerie nehmen"** wählen.

@@ -6,6 +6,8 @@ ihn auf der Box verstehst.
 
 ## 1.0.4
 
+- **Schloss öffnet schneller:** Eine Sekunde Gedrückthalten reicht jetzt statt
+  zwei. Ein kurzes Antippen öffnet weiterhin nichts.
 - **Ansagen bei der Aufnahme groß und mittig:** „Gleich geht es los“, „Neue
   Pose!“, „Bitte lächeln!“ stehen jetzt groß in der Bildmitte, halbtransparent
   hinterlegt, sodass man sich dahinter noch sieht.
