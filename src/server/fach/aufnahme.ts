@@ -48,6 +48,7 @@ export function warteAufNeueDatei(
       if (erledigt) return;
       erledigt = true;
       clearTimeout(uhr);
+      clearInterval(nachschau);
       meldeBereit();
       void waechter.close();
       if ('datei' in ergebnis) fertig(ergebnis.datei);
@@ -80,9 +81,28 @@ export function warteAufNeueDatei(
       }
     });
 
+    /*
+     * Unter Windows meldet der Waechter "EBUSY: resource busy or locked",
+     * waehrend digiCamControl die Datei noch schreibt. Das ist kein Fehler der
+     * Aufnahme - vorher scheiterte daran das ganze Foto, obwohl es fertig im
+     * Ordner lag. Solche Meldungen uebergehen; die Nachschau unten findet die
+     * Datei trotzdem.
+     */
     waechter.on('error', (ursache) => {
+      const code = (ursache as NodeJS.ErrnoException)?.code;
+      if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') return;
       ende({ fehler: ursache instanceof Error ? ursache : new Error(String(ursache)) });
     });
+
+    // Zweite Sicherung neben dem Waechter: alle 500 ms selbst nachsehen.
+    const nachschau = setInterval(() => {
+      try {
+        const neu = readdirSync(ordner).find((name) => !vorher.has(name) && muster.test(name));
+        if (neu) ende({ datei: join(ordner, neu) });
+      } catch {
+        // Ordner gerade nicht lesbar; beim naechsten Mal.
+      }
+    }, 500);
 
     optionen.abbruch?.addEventListener('abort', () => ende({ fehler: new Error('Warten abgebrochen.') }));
   });

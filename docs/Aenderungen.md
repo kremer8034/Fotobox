@@ -11,6 +11,13 @@ ihn auf der Box verstehst.
   warten, die letzten Aufträge mit ihrem Status und, falls die Schleife nach
   einem Fehldruck angehalten hat, die Fehlermeldung von Windows. Dazu die Knöpfe
   „Fortsetzen“ und „Wartende verwerfen“.
+- **Druck nach einem Update repariert:** Startete die Fotobox, bevor der
+  Drucker eingetragen war, scheiterten die wartenden Aufträge mit „Kein Drucker
+  ausgewählt“, und die Warteschlange blieb danach angehalten. Jetzt warten die
+  Aufträge, bis ein Drucker gewählt ist, und gehen dann von selbst los.
+- **Foto ging verloren, obwohl es da war:** Windows meldete beim Schreiben der
+  Kameradatei kurz „Datei gesperrt“, und die Aufnahme brach ab. Das wird jetzt
+  übergangen; die Fotobox sieht zusätzlich selbst im Ordner nach.
 - Wird in der Verwaltung ein anderer Drucker gewählt, läuft die Warteschlange
   sofort wieder an, auch wenn sie nach einem Fehldruck angehalten war.
 
