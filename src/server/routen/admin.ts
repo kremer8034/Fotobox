@@ -38,7 +38,15 @@ import {
 import { FILTER_EINGABE, holeFilter, listeFilter, loescheFilter, speichereFilter } from '../fach/filter.js';
 import { parseCube } from '../bild/lut.js';
 import { berechneAuslagen, schreibeAuslagenCsv } from '../fach/auslagen.js';
-import { listeAuftraege, reiheEin, setzeBerechnen, stelleFremdeZurueck } from '../fach/druckwarteschlange.js';
+import {
+  letzteAuftraege,
+  listeAuftraege,
+  offeneAuftraege,
+  reiheEin,
+  setzeBerechnen,
+  stelleFremdeZurueck,
+  verwirfWartende,
+} from '../fach/druckwarteschlange.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { hashePin, pruefePin } from '../fach/pin.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
@@ -184,6 +192,26 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   });
 
   /** Kalibrier-Testbild drucken. Zaehlt nicht in den Auslagenersatz. */
+  /**
+   * Was in der Druckwarteschlange los ist. Vorher sah man nur "Testbild in der
+   * Warteschlange" - und nicht, dass die Schleife nach einem Fehldruck
+   * angehalten war oder bei Windows noch Auftraege klemmten.
+   */
+  app.get('/api/admin/druck/zustand', async () => ({
+    angehalten: betrieb.druckschleife.istAngehalten(),
+    letzterFehler: betrieb.druckschleife.letzterFehler,
+    drucker: betrieb.letzterDruckerStatus,
+    offen: offeneAuftraege(),
+    auftraege: letzteAuftraege(),
+  }));
+
+  /** Fehldrucke nachholen und die Schleife wieder anlaufen lassen. */
+  app.post('/api/admin/druck/fortsetzen', async () => ({
+    wartend: betrieb.druckschleife.fortsetzen(null),
+  }));
+
+  app.post('/api/admin/druck/verwerfen', async () => ({ verworfen: verwirfWartende() }));
+
   app.post<{ Body: unknown }>('/api/admin/geraet/kalibrierdruck', async (anfrage, antwort) => {
     const koerper = z
       .object({ preset: z.enum(['10x15-quer', '10x15-hoch']).default('10x15-quer') })

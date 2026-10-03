@@ -44,6 +44,8 @@ export class Betrieb {
   letzteBeruehrung = Date.now();
 
   private kameraOk = false;
+  /** Was Windows zuletzt ueber den Drucker gesagt hat - fuer die Anzeige unter Geraet. */
+  letzterDruckerStatus: DruckerStatus | null = null;
   /** Warum die Kamera nicht bereit ist; null, wenn sie es ist. */
   private kameraGrund: KameraGrund | 'webserver-aus' | null = 'antwortet-nicht';
   private kameraAntwortete = false;
@@ -79,6 +81,7 @@ export class Betrieb {
 
   /** Ein frisch gelesener Druckerzustand - aus der Beobachtung oder vor einem Druck. */
   private uebernimmDruckerStatus(status: DruckerStatus): void {
+    this.letzterDruckerStatus = status;
     this.letzteDruckerPruefung = Date.now();
     this.druckerBeschaeftigt = (status.auftraegeBeimSystem ?? 0) > 0;
     this.druckerStoerung =
@@ -119,6 +122,8 @@ export class Betrieb {
     }
     // Der neue Drucker soll sofort gefragt werden, nicht erst in 20 Sekunden.
     this.letzteDruckerPruefung = 0;
+    // Ein Fehldruck mit dem alten Drucker soll den neuen nicht blockieren.
+    this.druckschleife.gibFrei();
   }
 
   // -------------------------------------------------------------------------

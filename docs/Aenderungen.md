@@ -4,6 +4,16 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.3
+
+- **Druckwarteschlange sichtbar:** Unter Gerät steht jetzt, was mit den
+  Druckaufträgen los ist – wie viele bei der Fotobox und wie viele bei Windows
+  warten, die letzten Aufträge mit ihrem Status und, falls die Schleife nach
+  einem Fehldruck angehalten hat, die Fehlermeldung von Windows. Dazu die Knöpfe
+  „Fortsetzen“ und „Wartende verwerfen“.
+- Wird in der Verwaltung ein anderer Drucker gewählt, läuft die Warteschlange
+  sofort wieder an, auch wenn sie nach einem Fehldruck angehalten war.
+
 ## 1.0.2
 
 - **Kamera-Verbindung repariert:** Die Fotobox erreichte digiCamControl nicht,
