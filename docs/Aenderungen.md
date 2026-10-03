@@ -6,6 +6,15 @@ ihn auf der Box verstehst.
 
 ## 1.0.4
 
+- **Papiervorrat direkt vom Drucker:** Die Fotobox liest jetzt die echte Zahl
+  der Restblätter aus dem DNP-Drucker – dieselbe wie „Media Remaining“ in
+  DNPs PrinterInfo. Dafür nutzt sie die Bibliothek von PrinterInfo; das
+  Programm muss also installiert sein (bei dir ist es das schon). Die Zahl
+  steht unter Gerät → „Papiervorrat laut Drucker“, in der Übersicht, im
+  Servicemenü und im Startbereit-Check. „Neue Rolle eingelegt“ musst du nicht
+  mehr drücken: Nach einem Rollenwechsel steht die neue Zahl spätestens nach
+  zehn Minuten da (oder sofort mit „Jetzt vom Drucker lesen“). Gefragt wird
+  der Drucker nur, wenn er gerade nicht druckt – das verlangt DNP so.
 - **„Kiosk schließen“ schließt jetzt wirklich:** Der Knopf im Servicemenü
   meldete „Kiosk wird geschlossen“, der Browser blieb aber offen. Der Befehl,
   der ihn beenden sollte, lief unter Windows gar nicht erst an. Jetzt geht der

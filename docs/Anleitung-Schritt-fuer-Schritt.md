@@ -238,6 +238,13 @@ Rot spürbar daneben.
      ★ oben)
 3. Klicke einmal irgendwo daneben — es speichert von selbst.
 
+**Papiervorrat direkt vom Drucker:** Ist DNPs Programm **PrinterInfo**
+installiert (kostenlos bei DNP), liest die Fotobox den Vorrat selbst aus dem
+Drucker – dieselbe Zahl wie dort unter „Media Remaining“. Sie steht unter
+**Gerät → Papiervorrat laut Drucker** und in der Übersicht. Das Zurücksetzen
+mit „Neue Rolle eingelegt“ braucht es dann nicht mehr. Ohne PrinterInfo
+zählt die Fotobox wie bisher selbst mit.
+
 ## Schritt 15: Trocken testen (ohne Papier zu verbrauchen)
 
 Bevor echtes Papier durchläuft, prüfen wir den Weg:

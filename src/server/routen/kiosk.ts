@@ -555,7 +555,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       stoerungstext: status.stoerung ? STOERUNGSTEXTE[status.stoerung] : null,
       betreuerHinweis: status.stoerung ? BETREUER_HINWEISE[status.stoerung] : null,
       warteschlangeOffen: status.warteschlangeOffen,
-      materialRest: auslagen?.materialRest ?? 0,
+      materialRest: status.druckerVorrat ? status.materialRest : (auslagen?.materialRest ?? 0),
       speicherFreiGb: status.speicherFreiGb,
       drucke: auslagen?.druckeGesamt ?? 0,
       sitzungen: auslagen?.sitzungen ?? 0,
@@ -611,7 +611,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
     verbucheMaterial(event.id, -event.materialVerbraucht);
     protokolliere('info', 'material', `Neue Rolle fuer "${event.name}" eingelegt.`);
-    return { ok: true };
+    // Kann der Drucker seinen Vorrat melden, gleich nachfragen - dann steht die
+    // echte Zahl da, nicht nur "wieder voll".
+    const rest = await betrieb.leseDruckerVorrat();
+    return { ok: true, rest };
   });
 
   /**

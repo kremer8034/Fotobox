@@ -158,6 +158,32 @@ if (-not $browser) {
   Pruefe $weg 'Kiosk-Browser ist zu'
 }
 
+Write-Host "`n=== 2d. Papiervorrat: Abfrageweg ueber CspStat.dll"
+# Einen DNP-Drucker gibt es hier nicht. Geprueft wird der ganze Weg bis zur
+# DLL: richtige PowerShell (32/64 Bit), C#-Teil uebersetzt, DLL geladen. Eine
+# Windows-DLL ohne die DNP-Funktionen muss mit lesbarer Meldung scheitern.
+$vorratSkript = @'
+const { join } = await import('node:path');
+const { pathToFileURL } = await import('node:url');
+const m = await import(pathToFileURL(join(process.env.PROBE_PROGRAMM, 'dist', 'server', 'treiber', 'dnp-vorrat.js')).href);
+let fehler = 0;
+for (const ordner of ['SysWOW64', 'System32']) {
+  const dll = join(process.env.SystemRoot, ordner, 'kernel32.dll');
+  try {
+    await m.leseDnpVorrat(dll);
+    console.error(ordner + ': galt als DNP-Drucker');
+    fehler++;
+  } catch (f) {
+    console.log(ordner + ' (' + m.dllBitbreite(dll) + ' Bit): ' + f.message);
+    if (!/GetPrinterPortNum/.test(f.message)) fehler++;
+  }
+}
+process.exit(fehler);
+'@
+$env:PROBE_PROGRAMM = $programm
+& "$programm\node\node.exe" --input-type=module -e $vorratSkript
+Pruefe ($LASTEXITCODE -eq 0) "Vorrat-Abfrage laedt DLLs in 32 und 64 Bit und meldet Fehler lesbar (Code $LASTEXITCODE)"
+
 Write-Host "`n=== 3. Update ueber die laufende Installation - so, wie es die Verwaltung startet"
 # Genau der Weg aus der Verwaltung ("Jetzt installieren"): starteMitRueckfrage
 # aus dem installierten Programm, mit dem mitgelieferten Node. Vorher war

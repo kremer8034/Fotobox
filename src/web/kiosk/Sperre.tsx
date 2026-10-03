@@ -286,7 +286,10 @@ export function Servicemenue({
                   'Der Papierzähler springt auf eine volle Rolle zurück. Wenn noch die alte ' +
                   'Rolle drin ist, zeigt die Box danach zu viel Papier an und warnt nicht rechtzeitig.',
                 ja: 'Ja, neue Rolle ist drin',
-                aktion: () => void tue('/api/kiosk/service/neue-rolle', {}, 'Papierzähler steht wieder auf voll.'),
+                aktion: () =>
+                  void handgriff<{ rest?: number | null }>('/api/kiosk/service/neue-rolle', {}, ({ rest }) =>
+                    typeof rest === 'number' ? `Laut Drucker sind ${rest} Blatt auf der Rolle.` : 'Papierzähler steht wieder auf voll.',
+                  ),
               })
             }
           />

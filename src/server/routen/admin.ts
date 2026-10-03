@@ -119,6 +119,18 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     }
   });
 
+  /** Papiervorrat laut DNP-Drucker - der zuletzt gelesene Stand. */
+  app.get('/api/admin/drucker/vorrat', async () => ({
+    vorrat: betrieb.druckerVorrat(),
+    hinweis: betrieb.vorratHinweis,
+  }));
+
+  /** Papiervorrat jetzt beim Drucker lesen - nur, wenn er gerade nicht druckt. */
+  app.post('/api/admin/drucker/vorrat', async () => {
+    await betrieb.leseDruckerVorrat();
+    return { vorrat: betrieb.druckerVorrat(), hinweis: betrieb.vorratHinweis };
+  });
+
   app.put<{ Body: unknown }>('/api/admin/geraet', async (anfrage) => {
     const koerper = z
       .object({

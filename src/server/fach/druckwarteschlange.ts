@@ -227,8 +227,10 @@ export class Druckschleife {
     private readonly protokoll: (text: string) => void,
     /** Jeder hier gelesene Druckerzustand geht auch an die Anzeige. */
     private readonly beiStatus: (status: DruckerStatus) => void = () => undefined,
-    /** Was der Treiber nach einem gelungenen Druck meldet (etwa das Papier). */
-    private readonly beiErfolg: (text: string) => void = () => undefined,
+    /** Nach jedem gelungenen Druck: was der Treiber meldet (etwa das Papier) und wie viele Blatt. */
+    private readonly beiErfolg: (meldung: string | null, kopien: number) => void = () => undefined,
+    /** Vor jedem Druck abwarten - etwa eine laufende Abfrage des Papiervorrats. */
+    private readonly vorDemDruck: () => Promise<void> = async () => undefined,
   ) {}
 
   /** Klemmt ein Auftrag bei Windows schon so lange, dass jemand nachsehen muss? */
@@ -329,8 +331,9 @@ export class Druckschleife {
 
       try {
         await sorgeFuerSeitenbild(auftrag.pfadPdf).catch(() => undefined);
+        await this.vorDemDruck().catch(() => undefined);
         const meldung = await this.drucker().drucke(auftrag.pfadPdf, auftrag.kopien);
-        if (meldung) this.beiErfolg(meldung);
+        this.beiErfolg(meldung || null, auftrag.kopien);
         holeDb()
           .prepare("UPDATE druckauftraege SET status = 'gedruckt', gedruckt = ?, fehlertext = NULL WHERE id = ?")
           .run(jetzt(), auftrag.id);

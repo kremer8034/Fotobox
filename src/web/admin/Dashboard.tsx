@@ -16,6 +16,7 @@ interface Status {
   stoerung: string | null;
   warteschlangeOffen: number;
   materialRest: number;
+  druckerVorrat?: { rest: number } | null;
   speicherFreiGb: number;
   aktivesEvent: { id: string; name: string; probelauf: boolean } | null;
 }
@@ -71,7 +72,7 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
             ton={status.warteschlangeOffen > 5 ? 'warnung' : undefined}
           />
           <Kennzahl
-            name="Material (Blatt)"
+            name={status.druckerVorrat ? 'Papier laut Drucker' : 'Material (Blatt, gezählt)'}
             wert={String(status.materialRest)}
             ton={status.materialRest < 50 ? 'warnung' : 'gut'}
           />

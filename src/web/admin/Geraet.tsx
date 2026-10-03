@@ -83,6 +83,8 @@ export function GeraetSeite() {
         </p>
       </div>
 
+      <Papiervorrat />
+
       <DruckWarteschlange />
 
       <div className="karte">
@@ -243,6 +245,84 @@ export function GeraetSeite() {
     await api.sende('/api/admin/geraet/kalibrierdruck', { preset: '10x15-quer' });
     setzeMeldung('Testbild in der Warteschlange. Es zählt nicht in den Auslagenersatz.');
   }
+}
+
+interface VorratAntwort {
+  vorrat: {
+    rest: number;
+    gesamt: number | null;
+    zustand: string | null;
+    gelesen: string;
+    nachgerechnet: boolean;
+  } | null;
+  hinweis: string | null;
+}
+
+/**
+ * Der Papiervorrat, wie ihn der DNP-Drucker selbst zaehlt - dieselbe Zahl wie
+ * "Media Remaining" in DNPs PrinterInfo. Vorher gab es nur den eigenen Zaehler,
+ * der nach jeder neuen Rolle von Hand auf 700 gesetzt werden musste.
+ */
+function Papiervorrat() {
+  const [stand, setzeStand] = useState<VorratAntwort | null>(null);
+  const [liest, setzeLiest] = useState(false);
+
+  useEffect(() => {
+    const lade = () => api.hole<VorratAntwort>('/api/admin/drucker/vorrat').then(setzeStand).catch(() => undefined);
+    void lade();
+    const takt = setInterval(() => void lade(), 15_000);
+    return () => clearInterval(takt);
+  }, []);
+
+  async function jetztLesen() {
+    setzeLiest(true);
+    try {
+      setzeStand(await api.sende<VorratAntwort>('/api/admin/drucker/vorrat', {}));
+    } finally {
+      setzeLiest(false);
+    }
+  }
+
+  if (!stand) return null;
+  const v = stand.vorrat;
+  return (
+    <div className="karte">
+      <h2>Papiervorrat laut Drucker</h2>
+      {v ? (
+        <>
+          <div className="zeile" style={{ alignItems: 'baseline' }}>
+            <div className={`kennzahl${v.rest < 50 ? ' kennzahl--warnung' : ' kennzahl--gut'}`}>
+              <span className="kennzahl__wert">{v.rest}</span>
+              <span className="kennzahl__name">Blatt übrig{v.gesamt ? ` von ${v.gesamt}` : ''}</span>
+            </div>
+          </div>
+          <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginBottom: 0 }}>
+            Gelesen um{' '}
+            {new Date(v.gelesen).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+            {v.zustand ? ` · Drucker: ${v.zustand}` : ''}
+            {v.nachgerechnet ? ' · seitdem gedruckte Blatt abgezogen, der Drucker wird wieder gefragt, sobald er ruht' : ''}
+          </p>
+        </>
+      ) : (
+        <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+          {stand.hinweis ?? 'Noch nicht gelesen.'} Solange zählt die Fotobox selbst mit (Servicemenü „Neue Rolle
+          eingelegt“).
+        </p>
+      )}
+      {v && stand.hinweis && (
+        <p style={{ fontSize: '0.82rem', color: 'var(--warnung)', marginBottom: 0 }}>{stand.hinweis}</p>
+      )}
+      <div className="zeile" style={{ marginTop: '0.6rem' }}>
+        <button className="knopf knopf--neben" disabled={liest} onClick={() => void jetztLesen()}>
+          {liest ? 'Frage den Drucker …' : 'Jetzt vom Drucker lesen'}
+        </button>
+      </div>
+      <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)', marginBottom: 0 }}>
+        Die Fotobox fragt den Drucker über DNPs Programm PrinterInfo (CspStat.dll) – dieselbe Zahl wie dort unter
+        „Media Remaining“. Gefragt wird nur, wenn gerade nichts gedruckt wird, sonst kann der Drucker hängen bleiben.
+      </p>
+    </div>
+  );
 }
 
 interface DruckZustand {

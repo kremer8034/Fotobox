@@ -6,7 +6,8 @@ import { Druckschleife, offeneAuftraege } from './fach/druckwarteschlange.js';
 import { MockKamera } from './treiber/kamera-mock.js';
 import { DigiCamControlKamera } from './treiber/kamera-digicamcontrol.js';
 import { MockDrucker } from './treiber/drucker-mock.js';
-import { listeWindowsDrucker, WindowsDrucker, type GefundenerDrucker } from './treiber/drucker-windows.js';
+import { istDnp, listeWindowsDrucker, WindowsDrucker, type GefundenerDrucker } from './treiber/drucker-windows.js';
+import { deuteDnpStatus, findeCspStat, leseDnpVorrat, type DnpVorrat } from './treiber/dnp-vorrat.js';
 import type { KameraGrund, KameraTreiber } from './treiber/kamera.js';
 import {
   cameraControlExe,
@@ -16,7 +17,7 @@ import {
   type Massnahme,
 } from './treiber/digicamcontrol-waechter.js';
 import type { DruckerStatus, DruckerTreiber } from './treiber/drucker.js';
-import type { Betriebsstatus, Stoerung } from '../shared/typen.js';
+import type { Betriebsstatus, DruckerVorrat, Stoerung } from '../shared/typen.js';
 import type { SitzungZustand } from './fach/sitzungen.js';
 
 /**
@@ -77,14 +78,139 @@ export class Betrieb {
       () => this.drucker,
       (text) => protokolliere('warnung', 'druck', text),
       (status) => this.uebernimmDruckerStatus(status),
-      (meldung) => {
+      (meldung, kopien) => {
+        this.letzteDruckUebergabe = Date.now();
+        this.blattSeitLesung += kopien;
         // Einmal ins Protokoll, nicht bei jedem Blatt: Welches Papier der
         // Treiber genommen hat, aendert sich nur, wenn jemand dort etwas umstellt.
-        if (meldung === this.letzteDruckMeldung) return;
+        if (!meldung || meldung === this.letzteDruckMeldung) return;
         this.letzteDruckMeldung = meldung;
         protokolliere('info', 'druck', `An Windows uebergeben. ${meldung}`);
       },
+      // Waehrend der Drucker nach seinem Vorrat gefragt wird, nicht drucken.
+      () => this.vorratAbfrage ?? Promise.resolve(),
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Papiervorrat direkt vom DNP-Drucker
+  // -------------------------------------------------------------------------
+
+  /** Zuletzt vom Drucker gelesen - samt Zeitpunkt. */
+  private vorrat: (DnpVorrat & { gelesen: number }) | null = null;
+  /** Blatt, die seit dem Lesen an Windows gingen - so stimmt die Zahl auch zwischen zwei Abfragen. */
+  private blattSeitLesung = 0;
+  private letzteDruckUebergabe = 0;
+  private vorratAbfrage: Promise<void> | null = null;
+  private letzterVorratVersuch = 0;
+  /** Warum der Vorrat nicht gelesen werden kann; null, wenn es klappt. */
+  vorratHinweis: string | null = null;
+  private dnpDll: string | null | undefined = undefined;
+  private dnpDllGesucht = 0;
+
+  /** Wie lange der Drucker nach dem letzten Auftrag noch arbeitet, bevor er gefragt werden darf. */
+  private static readonly RUHE_NACH_DRUCK_MS = 90_000;
+  /** Ohne Druck reicht es, den Vorrat alle zehn Minuten zu lesen - etwa nach einem Rollenwechsel. */
+  private static readonly VORRAT_ALLE_MS = 10 * 60_000;
+
+  /** Kann die Box den Vorrat ueberhaupt beim Drucker erfragen? Nur echte Hardware unter Windows mit DNP. */
+  private vorratLesbar(): boolean {
+    if (!this.optionen.echteHardware || process.platform !== 'win32') return false;
+    const name = leseGeraet().druckerName;
+    return Boolean(name) && istDnp(name, '');
+  }
+
+  /** Ruht der Drucker? Laut DNP kann eine Abfrage waehrend des Druckens ihn blockieren. */
+  private druckerRuht(): boolean {
+    return (
+      !this.druckerBeschaeftigt &&
+      offeneAuftraege() === 0 &&
+      Date.now() - this.letzteDruckUebergabe >= Betrieb.RUHE_NACH_DRUCK_MS
+    );
+  }
+
+  private vorratFaellig(): boolean {
+    if (!this.vorratLesbar() || this.vorratAbfrage || this.aktiveSitzung || !this.druckerRuht()) return false;
+    const seitVersuch = Date.now() - this.letzterVorratVersuch;
+    if (!this.vorrat) return seitVersuch >= Betrieb.VORRAT_ALLE_MS || this.letzterVorratVersuch === 0;
+    if (this.blattSeitLesung > 0) return seitVersuch >= 30_000;
+    return seitVersuch >= Betrieb.VORRAT_ALLE_MS;
+  }
+
+  /**
+   * Den Vorrat beim Drucker lesen. Nur, wenn er ruht - auch auf Knopfdruck.
+   * @returns die Restblaetter oder null mit Grund in vorratHinweis
+   */
+  async leseDruckerVorrat(): Promise<number | null> {
+    if (!this.vorratLesbar()) {
+      this.vorratHinweis = 'Nur mit einem DNP-Drucker unter Windows.';
+      return null;
+    }
+    if (this.vorratAbfrage) await this.vorratAbfrage;
+    else if (!this.druckerRuht()) {
+      this.vorratHinweis = 'Der Drucker arbeitet gerade - gefragt wird, sobald er ruht.';
+      return null;
+    } else {
+      this.vorratAbfrage = this.frageVorrat().finally(() => {
+        this.vorratAbfrage = null;
+      });
+      await this.vorratAbfrage;
+    }
+    return this.vorrat ? this.vorrat.rest : null;
+  }
+
+  private async frageVorrat(): Promise<void> {
+    this.letzterVorratVersuch = Date.now();
+    // Nach PrinterInfo nicht bei jeder Runde die Platte durchsuchen.
+    if (this.dnpDll === undefined || (this.dnpDll === null && Date.now() - this.dnpDllGesucht > Betrieb.VORRAT_ALLE_MS)) {
+      this.dnpDll = findeCspStat();
+      this.dnpDllGesucht = Date.now();
+      if (this.dnpDll) protokolliere('info', 'druck', `DNP PrinterInfo gefunden: ${this.dnpDll}`);
+    }
+    if (!this.dnpDll) {
+      this.vorratHinweis =
+        'DNP PrinterInfo ist nicht installiert. Damit liest die Fotobox den Papiervorrat direkt vom Drucker.';
+      return;
+    }
+    const blattVorher = this.blattSeitLesung;
+    try {
+      const gelesen = await leseDnpVorrat(this.dnpDll);
+      const vorher = this.vorrat?.rest;
+      this.vorrat = { ...gelesen, gelesen: Date.now() };
+      // Was waehrend der Abfrage gedruckt wurde, zaehlt weiter.
+      this.blattSeitLesung = Math.max(0, this.blattSeitLesung - blattVorher);
+      if (this.vorratHinweis || vorher === undefined) {
+        protokolliere('info', 'druck', `Papiervorrat laut Drucker: ${gelesen.rest} Blatt.`);
+      }
+      else if (vorher !== undefined && gelesen.rest > vorher + 5) {
+        protokolliere('info', 'druck', `Neue Rolle erkannt: ${gelesen.rest} Blatt laut Drucker.`);
+      }
+      this.vorratHinweis = null;
+    } catch (fehler) {
+      const text = fehler instanceof Error ? fehler.message : String(fehler);
+      if (text !== this.vorratHinweis) protokolliere('warnung', 'druck', `Papiervorrat nicht lesbar: ${text}`);
+      this.vorratHinweis = text;
+    }
+  }
+
+  /** Der Vorrat, wie ihn die Oberflaeche zeigt. Ein Tag alter Wert gilt nicht mehr. */
+  druckerVorrat(): DruckerVorrat | null {
+    if (!this.vorrat || Date.now() - this.vorrat.gelesen > 24 * 3600_000) return null;
+    return {
+      rest: Math.max(0, this.vorrat.rest - this.blattSeitLesung),
+      gesamt: this.vorrat.gesamt,
+      zustand: deuteDnpStatus(this.vorrat.status),
+      gelesen: new Date(this.vorrat.gelesen).toISOString(),
+      nachgerechnet: this.blattSeitLesung > 0,
+    };
+  }
+
+  /** Restblaetter: laut Drucker, wenn er sie meldet - sonst der Zaehler der Veranstaltung. */
+  materialRest(): number {
+    const vomDrucker = this.druckerVorrat();
+    if (vomDrucker) return vomDrucker.rest;
+    const event = holeAktivesEvent();
+    return event ? Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht) : 0;
   }
 
   /** Ein frisch gelesener Druckerzustand - aus der Beobachtung oder vor einem Druck. */
@@ -374,6 +500,8 @@ export class Betrieb {
           protokolliere('info', 'kamera', 'Kamera ist wieder verbunden.');
         }
 
+        if (this.vorratFaellig()) await this.leseDruckerVorrat();
+
         if (!this.druckerPruefungFaellig()) {
           await pause(3000);
           continue;
@@ -464,9 +592,8 @@ export class Betrieb {
       liveViewLaeuft: this.liveViewGewuenscht,
       stoerung: this.aktuelleStoerung(),
       warteschlangeOffen: offeneAuftraege(),
-      materialRest: event
-        ? Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht)
-        : 0,
+      materialRest: this.materialRest(),
+      druckerVorrat: this.druckerVorrat(),
       speicherFreiGb: await freierSpeicherGb(geraet.datenpfad),
       aktivesEvent: event ? { id: event.id, name: event.name, probelauf: event.probelauf } : null,
     };
