@@ -18,6 +18,8 @@ ihn auf der Box verstehst.
 - **Foto ging verloren, obwohl es da war:** Windows meldete beim Schreiben der
   Kameradatei kurz „Datei gesperrt“, und die Aufnahme brach ab. Das wird jetzt
   übergangen; die Fotobox sieht zusätzlich selbst im Ordner nach.
+- digiCamControl wird zuverlässiger minimiert: kurz nach dem Start mehrmals,
+  und das Live-View-Fenster erst, wenn es wirklich aufgegangen ist.
 - Wird in der Verwaltung ein anderer Drucker gewählt, läuft die Warteschlange
   sofort wieder an, auch wenn sie nach einem Fehldruck angehalten war.
 

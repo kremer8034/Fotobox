@@ -77,7 +77,11 @@ export class DigiCamControlKamera implements KameraTreiber {
     await this.befehl('LiveViewWnd_Show');
     // Das Live-View-Fenster von digiCamControl wuerde sonst ueber dem
     // Vollbild-Browser landen. Genau solche Kleinigkeiten kosten sonst einen
-    // Abend auf der ersten Veranstaltung.
+    // Abend auf der ersten Veranstaltung. digiCamControl baut das Fenster
+    // erst nach der Antwort auf - sofort minimiert, traf es noch kein Fenster.
+    // So macht es auch digiCamControls eigener Webcam-Weg: zeigen, kurz
+    // warten, minimieren.
+    await new Promise((r) => setTimeout(r, 800));
     await this.befehl('All_Minimize').catch(() => undefined);
     this.liveView = true;
   }

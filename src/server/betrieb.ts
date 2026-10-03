@@ -292,8 +292,13 @@ export class Betrieb {
 
         // Frisch gestartet, oeffnet digiCamControl sein Fenster ueber dem
         // Kiosk. Sobald es antwortet, wieder minimieren.
+        // Der Webserver antwortet oft schon, bevor das Hauptfenster steht -
+        // deshalb nach 5 und 15 Sekunden noch einmal.
         if (kameraStatus.antwortet && !this.kameraAntwortete) {
           await this.kamera.fensterWeg?.().catch(() => undefined);
+          for (const nachMs of [5000, 15_000]) {
+            setTimeout(() => void this.kamera.fensterWeg?.().catch(() => undefined), nachMs).unref?.();
+          }
         }
         this.kameraAntwortete = kameraStatus.antwortet;
 
