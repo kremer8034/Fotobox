@@ -80,12 +80,22 @@ $skript = "import('$modul').then((m) => m.starteMitRueckfrage(process.env.PROBE_
 & "$programm\node\node.exe" --input-type=module -e $skript
 Pruefe ($LASTEXITCODE -eq 0) 'Update-Setup ueber die Verwaltung gestartet'
 $fertig = $false
-for ($i = 0; $i -lt 600 -and -not $fertig; $i++) {
+for ($i = 0; $i -lt 300 -and -not $fertig; $i++) {
   Start-Sleep 1
-  if (Test-Path $log2) { $fertig = (Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Log closed' }
+  if (Test-Path $log2) { $fertig = [bool]((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Log closed') }
+}
+if (-not $fertig) {
+  # Was laeuft da noch - und hat das Setup ueberhaupt ein Protokoll angelegt?
+  Write-Host "`n--- Prozesse rund um das Setup ---"
+  Get-CimInstance Win32_Process | Where-Object {
+    $_.Name -like '*Setup*' -or $_.Name -like 'is-*' -or $_.Name -like '*.tmp' -or $_.CommandLine -like '*Fotobox-Setup*'
+  } | ForEach-Object { Write-Host "  $($_.ProcessId) $($_.Name): $($_.CommandLine)" }
+  Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host "  Fenster: $($_.ProcessName) - $($_.MainWindowTitle)" }
+  $temp = Get-ChildItem $env:TEMP -Filter 'Setup Log*.txt' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+  if ($temp) { Write-Host "`n--- $($temp.FullName) ---"; Get-Content $temp.FullName -Tail 40 }
 }
 Pruefe $fertig 'Update-Setup ist durchgelaufen'
-Pruefe ((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Installation process succeeded') 'Update-Setup meldet Erfolg'
+Pruefe ([bool]((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Installation process succeeded')) 'Update-Setup meldet Erfolg'
 $sicherungen = @(Get-ChildItem "$daten\sicherungen" -Directory -Filter 'vor-update_*' -ErrorAction SilentlyContinue)
 Pruefe ($sicherungen.Count -ge 1) 'Datenbank vor dem Update gesichert'
 Pruefe ($sicherungen.Count -ge 1 -and (Test-Path (Join-Path $sicherungen[0].FullName 'fotobox.db'))) 'Sicherung enthaelt fotobox.db'
