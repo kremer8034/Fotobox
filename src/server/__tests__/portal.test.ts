@@ -230,8 +230,10 @@ describe('Selbstdiagnose', () => {
       JSON.stringify({
         adapter: { index: 7, name: 'Ethernet', beschreibung: 'Realtek', verbunden: true, dhcp: true, adressen: '192.168.254.23', dhcpServer: '192.168.254.254' },
         firewall: false,
+        port80: 'World Wide Web Publishing Service',
       }),
     );
+    expect(roh.port80).toBe('World Wide Web Publishing Service');
     expect(roh.adapter).toEqual([
       { index: 7, name: 'Ethernet', beschreibung: 'Realtek', verbunden: true, dhcp: true, adressen: ['192.168.254.23'], dhcpServer: '192.168.254.254' },
     ]);
@@ -243,6 +245,7 @@ describe('Selbstdiagnose', () => {
       {
         windows: true,
         firewall: false,
+        port80: null,
         adapter: [{ index: 7, name: 'Ethernet', beschreibung: '', verbunden: true, dhcp: true, adressen: ['192.168.254.23'], dhcpServer: '192.168.254.254' }],
       },
       { vonets: true, anschluesse: [], zustand: null, schalter: false },
@@ -260,6 +263,7 @@ describe('Selbstdiagnose', () => {
       {
         windows: true,
         firewall: true,
+        port80: null,
         adapter: [{ index: 7, name: 'Ethernet', beschreibung: '', verbunden: true, dhcp: false, adressen: [PORTAL_ADRESSE], dhcpServer: null }],
       },
       {
@@ -279,6 +283,7 @@ describe('Selbstdiagnose', () => {
     const grund = {
       windows: true,
       firewall: true,
+      port80: null as string | null,
       adapter: [{ index: 7, name: 'Ethernet', beschreibung: '', verbunden: true, dhcp: false, adressen: [PORTAL_ADRESSE], dhcpServer: null }],
     };
     const belegt = bewerte(grund, { vonets: true, anschluesse: [{ port: 53, ergebnis: 'EADDRINUSE' }], zustand: null, schalter: false });
@@ -293,9 +298,33 @@ describe('Selbstdiagnose', () => {
     expect(fremd.bereit).toBe(false);
   });
 
+  it('Anschluss 80 von einem Windows-Webdienst gehalten: nennt ihn, nicht bereit - laeuft das eigene Portal, zaehlt es nicht', async () => {
+    const { bewerte } = await import('../portal/diagnose.js');
+    const adapter = [{ index: 7, name: 'Ethernet', beschreibung: '', verbunden: true, dhcp: false, adressen: [PORTAL_ADRESSE], dhcpServer: null }];
+    const iis = bewerte(
+      { windows: true, firewall: true, port80: 'World Wide Web Publishing Service', adapter },
+      { vonets: true, anschluesse: [{ port: 80, ergebnis: 'listen EACCES' }], zustand: null, schalter: false },
+    );
+    expect(iis.bereit).toBe(false);
+    const hinweis = iis.zeilen.find((z) => z.titel === 'Anschlüsse frei')?.hinweis ?? '';
+    expect(hinweis).toContain('„World Wide Web Publishing Service“');
+    expect(hinweis).toContain('Deaktiviert');
+    // Schon vor dem Einrichten sichtbar.
+    const vorher = bewerte(
+      { windows: true, firewall: false, port80: 'node', adapter: [{ ...adapter[0]!, dhcp: true, adressen: ['192.168.254.23'] }] },
+      { vonets: true, anschluesse: [], zustand: null, schalter: false },
+    );
+    expect(vorher.zeilen.find((z) => z.titel === 'Anschlüsse frei')?.ok).toBe(false);
+    const eigenes = bewerte(
+      { windows: true, firewall: true, port80: 'node', adapter },
+      { vonets: true, anschluesse: [], zustand: { dhcp: true, dns: true, portal: true, geraete: 0, fremderDhcp: null, fehler: [] }, schalter: true },
+    );
+    expect(eigenes.bereit).toBe(true);
+  });
+
   it('ausserhalb von Windows: nur ein Hinweis, nichts einschaltbar', async () => {
     const { bewerte } = await import('../portal/diagnose.js');
-    const d = bewerte({ windows: false, adapter: [], firewall: false }, { vonets: null, anschluesse: [], zustand: null, schalter: false });
+    const d = bewerte({ windows: false, adapter: [], firewall: false, port80: null }, { vonets: null, anschluesse: [], zustand: null, schalter: false });
     expect(d.bereit).toBe(false);
     expect(d.zeilen).toHaveLength(1);
   });

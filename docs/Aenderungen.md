@@ -15,6 +15,8 @@ ihn auf der Box verstehst.
 - **Standardmäßig aus.** Ausgeschaltet läuft die Box genau wie bisher.
 - **Selbstdiagnose:** Die Karte prüft Kabel, Adresse, Vonets, Firewall und
   ob ein zweites Gerät Adressen verteilt – und sagt jeweils, was zu tun ist.
+  Hält ein Windows-Webdienst (etwa IIS) den Anschluss 80, nennt sie ihn mit
+  Namen.
   „Netzwerk für das Portal einrichten“ stellt die Box mit einer
   Windows-Rückfrage um; „Zurücksetzen (wie vorher)“ macht es rückgängig.
 - **WLAN-Daten bleiben gespeichert:** WLAN-Name und Passwort des Vonets

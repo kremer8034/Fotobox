@@ -31,6 +31,8 @@ export interface Rohdiagnose {
   adapter: Netzadapter[];
   /** Firewall-Freigaben fuer das Portal vorhanden? */
   firewall: boolean;
+  /** Wer haelt Anschluss 80 fuer alle Adressen besetzt? null = niemand. */
+  port80: string | null;
 }
 
 export interface Pruefzeile {
@@ -60,12 +62,27 @@ $liste = @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue |
       verbunden = ($_.Status -eq 'Up'); dhcp = ("$($ip.Dhcp)" -eq 'Enabled'); adressen = $adr; dhcpServer = "$($cfg.DHCPServer)" }
   })
 $fw = @(Get-NetFirewallRule -Group 'Fotobox Portal' -ErrorAction SilentlyContinue | Where-Object { $_.Enabled -eq 'True' }).Count
-[pscustomobject]@{ adapter = $liste; firewall = ($fw -ge 3) } | ConvertTo-Json -Compress -Depth 4
+# Anschluss 80: Haelt ihn der Windows-Webdienst (HTTP.sys, Prozess 4), den
+# dahinter laufenden Dienst nennen - sonst sieht man nur "System".
+$p80 = $null
+$l80 = @(Get-NetTCPConnection -LocalPort 80 -State Listen -ErrorAction SilentlyContinue |
+  Where-Object { $_.LocalAddress -in '0.0.0.0', '${PORTAL_ADRESSE}' }) | Select-Object -First 1
+if ($l80) {
+  if ($l80.OwningProcess -eq 4) {
+    $d = @(Get-Service W3SVC, WAS, PeerDistSvc, MsDepSvc, ReportServer -ErrorAction SilentlyContinue |
+      Where-Object { $_.Status -eq 'Running' } | ForEach-Object { $_.DisplayName })
+    $p80 = if ($d.Count) { $d -join ', ' } else { 'Windows-Webdienst (HTTP.sys)' }
+  } else {
+    $p80 = "$((Get-Process -Id $l80.OwningProcess -ErrorAction SilentlyContinue).ProcessName)"
+    if (-not $p80) { $p80 = "Prozess $($l80.OwningProcess)" }
+  }
+}
+[pscustomobject]@{ adapter = $liste; firewall = ($fw -ge 3); port80 = $p80 } | ConvertTo-Json -Compress -Depth 4
 `;
 
 /** Liest den Zustand der Netzwerkanschluesse aus Windows. */
 export async function leseRohdiagnose(): Promise<Rohdiagnose> {
-  if (process.platform !== 'win32') return { windows: false, adapter: [], firewall: false };
+  if (process.platform !== 'win32') return { windows: false, adapter: [], firewall: false, port80: null };
   try {
     const { stdout } = await fuehreAus(
       'powershell.exe',
@@ -81,7 +98,7 @@ export async function leseRohdiagnose(): Promise<Rohdiagnose> {
 
 /** Die JSON-Ausgabe von PowerShell deuten - auch, wenn sie Einzelwerte statt Listen liefert. */
 export function deuteRohdiagnose(json: string): Rohdiagnose {
-  const roh = JSON.parse(json.trim()) as { adapter?: unknown; firewall?: unknown };
+  const roh = JSON.parse(json.trim()) as { adapter?: unknown; firewall?: unknown; port80?: unknown };
   const liste = Array.isArray(roh.adapter) ? roh.adapter : roh.adapter ? [roh.adapter] : [];
   const adapter = liste.map((a) => {
     const e = a as Record<string, unknown>;
@@ -97,7 +114,8 @@ export function deuteRohdiagnose(json: string): Rohdiagnose {
       dhcpServer: server && server !== '255.255.255.255' ? server : null,
     };
   });
-  return { windows: true, adapter, firewall: roh.firewall === true };
+  const port80 = typeof roh.port80 === 'string' && roh.port80.trim() ? roh.port80.trim() : null;
+  return { windows: true, adapter, firewall: roh.firewall === true, port80 };
 }
 
 /** Der Anschluss mit dem Vonets: der mit der Portal-Adresse, sonst der verbundene. */
@@ -215,17 +233,26 @@ export function bewerte(roh: Rohdiagnose, zusatz: Zusatzbefunde): PortalDiagnose
       : { titel: 'Firewall-Freigaben', ok: false, hinweis: 'Fehlen noch – kommen mit „Netzwerk für das Portal einrichten“.' },
   );
 
-  const belegt = zusatz.anschluesse.filter((a) => a.ergebnis !== true);
-  if (eingerichtet) {
+  // Anschluss 80 haelt oft ein Windows-Webdienst (IIS, BranchCache) - das
+  // zeigt sich schon vor dem Einrichten, und dann mit Namen.
+  const port80 = zusatz.zustand?.portal ? null : roh.port80;
+  const belegt = zusatz.anschluesse.filter((a) => a.ergebnis !== true && !(port80 && a.port === 80));
+  if (eingerichtet || port80) {
+    const teile: string[] = [];
+    if (port80) {
+      teile.push(
+        `Anschluss 80 hält „${port80}“. In Windows unter „Dienste“ diesen Dienst beenden und den Starttyp auf „Deaktiviert“ stellen.`,
+      );
+    }
+    if (belegt.length) {
+      teile.push(
+        `Belegt: ${belegt.map((b) => b.port).join(', ')}. Läuft am PC der Windows-Hotspot („Mobiler Hotspot“) oder ein anderer Server? ` +
+          'Dann ausschalten.',
+      );
+    }
     zeilen.push(
-      belegt.length
-        ? {
-            titel: 'Anschlüsse frei',
-            ok: false,
-            hinweis:
-              `Belegt: ${belegt.map((b) => b.port).join(', ')}. Läuft am PC der Windows-Hotspot („Mobiler Hotspot“) oder ein anderer Server? ` +
-              'Dann ausschalten.',
-          }
+      teile.length
+        ? { titel: 'Anschlüsse frei', ok: false, hinweis: teile.join(' ') }
         : { titel: 'Anschlüsse frei', ok: true, hinweis: 'Adress-, Namens- und Portaldienst können starten.' },
     );
   }
@@ -244,7 +271,7 @@ export function bewerte(roh: Rohdiagnose, zusatz: Zusatzbefunde): PortalDiagnose
     });
   }
 
-  const bereit = eingerichtet && roh.firewall && !fremd && belegt.length === 0;
+  const bereit = eingerichtet && roh.firewall && !fremd && belegt.length === 0 && !port80;
   return { windows: true, adapter, eingerichtet, bereit, zeilen };
 }
 

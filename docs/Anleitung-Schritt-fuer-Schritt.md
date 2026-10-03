@@ -424,7 +424,10 @@ Box genau wie bisher.
 3. Zurück in der Karte: **„Netzwerk für das Portal einrichten“**. Windows
    fragt nach Administratorrechten – zustimmen.
 4. **„Erneut prüfen“**: Alle Zeilen der Selbstdiagnose sollten grün sein. Was
-   noch fehlt, steht dort mit dem nächsten Handgriff.
+   noch fehlt, steht dort mit dem nächsten Handgriff. Meldet sie, dass ein
+   Dienst den **Anschluss 80** hält (etwa „World Wide Web Publishing
+   Service“): Windows-Taste → „Dienste“ öffnen, den genannten Dienst
+   doppelklicken, **Beenden** und Starttyp **„Deaktiviert“**.
 5. Den Schalter **„Galerie öffnet sich beim WLAN-Beitritt“** einschalten.
 
 **Ausprobieren:** Veranstaltung mit Galerie starten, mit dem eigenen Handy

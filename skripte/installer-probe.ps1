@@ -211,6 +211,11 @@ $env:PROBE_PROGRAMM = $programm
 Pruefe ($LASTEXITCODE -eq 0) "Netzdiagnose findet die Firewall-Freigabe, Ordnerdialog laesst sich uebersetzen (Code $LASTEXITCODE)"
 
 Write-Host "`n=== 2f. Captive Portal: Diagnose, Dienste, Einrichtungs-Skripte"
+# Haelt ein Windows-Webdienst Anschluss 80 (auf dem Testrechner moeglich, auf
+# der Box auch), muss die Selbstdiagnose ihn mit Namen nennen.
+$l80 = @(Get-NetTCPConnection -LocalPort 80 -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '0.0.0.0' })
+Write-Host "Anschluss 80 vorher: $(if ($l80) { ($l80 | ForEach-Object { "$($_.LocalAddress) Prozess $($_.OwningProcess)" }) -join '; ' } else { 'frei' })"
+$env:PROBE_P80 = if ($l80) { '1' } else { '0' }
 $portalSkript = @'
 const { join } = await import('node:path');
 const { pathToFileURL } = await import('node:url');
@@ -224,8 +229,10 @@ let fehler = 0;
 try {
   const roh = await diagnose.leseRohdiagnose();
   const d = diagnose.bewerte(roh, { vonets: null, anschluesse: [], zustand: null, schalter: false });
-  console.log('Diagnose: ' + roh.adapter.length + ' Kabel-Anschluss/-Anschluesse, ' + d.zeilen.length + ' Zeilen');
+  console.log('Diagnose: ' + roh.adapter.length + ' Kabel-Anschluss/-Anschluesse, ' + d.zeilen.length + ' Zeilen, Anschluss 80: ' + (roh.port80 ?? 'frei'));
+  if (process.env.PROBE_P80 === '1' && !roh.port80) { console.error('Diagnose: Anschluss 80 ist belegt, die Diagnose sieht es nicht'); fehler++; }
 } catch (f) { console.error('Diagnose: ' + f.message); fehler++; }
+if (process.env.PROBE_NUR_DIAGNOSE === '1') process.exit(fehler);
 // Die Dienste muessen sich unter Windows an ihre echten Anschluesse binden lassen.
 for (const [name, dienst] of [
   ['DHCP 67', new DhcpDienst('127.0.0.1', 67)],
@@ -242,8 +249,24 @@ writeFileSync(join(process.env.TEMP, 'portal-aus.ps1'), diagnose.zuruecksetzenSk
 process.exit(fehler);
 '@
 $env:PROBE_PROGRAMM = $programm
+$env:PROBE_NUR_DIAGNOSE = '1'
 & "$programm\node\node.exe" --input-type=module -e $portalSkript
-Pruefe ($LASTEXITCODE -eq 0) "Portal: Diagnose liest Windows, Dienste binden 53/67/80 (Code $LASTEXITCODE)"
+Pruefe ($LASTEXITCODE -eq 0) "Portal: Selbstdiagnose liest Windows und erkennt einen belegten Anschluss 80 (Code $LASTEXITCODE)"
+# Dann Anschluss 80 freimachen - so, wie es die Diagnose auf der Box empfiehlt.
+foreach ($dienst in 'W3SVC', 'WAS', 'PeerDistSvc', 'MsDepSvc') {
+  if ((Get-Service $dienst -ErrorAction SilentlyContinue).Status -eq 'Running') {
+    Stop-Service $dienst -Force -ErrorAction SilentlyContinue
+    Write-Host "Dienst angehalten: $dienst"
+  }
+}
+$env:PROBE_NUR_DIAGNOSE = '0'
+& "$programm\node\node.exe" --input-type=module -e $portalSkript
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "Anschluss 80 nachher:"
+  Get-NetTCPConnection -LocalPort 80 -State Listen -ErrorAction SilentlyContinue | Format-Table LocalAddress, OwningProcess | Out-String | Write-Host
+  netsh http show servicestate view=requestq verbose=no | Select-String -Pattern ':80[/:]' -Context 3, 0 | Out-String | Write-Host
+}
+Pruefe ($LASTEXITCODE -eq 0) "Portal: Dienste binden 53/67/80 (Code $LASTEXITCODE)"
 foreach ($datei in 'portal-ein.ps1', 'portal-aus.ps1') {
   $syntax = $null
   [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $env:TEMP $datei), [ref]$null, [ref]$syntax) | Out-Null

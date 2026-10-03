@@ -110,7 +110,7 @@ export function holePortal(): Portalsteuerung | null {
 /** Fehlermeldungen des Betriebssystems in Worte fassen. */
 function erklaere(text: string): string {
   if (/EADDRINUSE/.test(text)) return 'der Anschluss ist schon belegt (läuft der Windows-Hotspot oder ein anderer Dienst?)';
-  if (/EACCES/.test(text)) return 'Windows verweigert den Anschluss';
+  if (/EACCES/.test(text)) return 'Windows verweigert den Anschluss (meist hält ihn ein Windows-Webdienst – die Selbstdiagnose nennt ihn)';
   if (/EADDRNOTAVAIL/.test(text)) return 'die Portal-Adresse ist am Netzwerkanschluss nicht eingerichtet';
   return text;
 }
