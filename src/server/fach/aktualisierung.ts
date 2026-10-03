@@ -261,8 +261,13 @@ export function starteMitRueckfrage(pfad: string, protokoll: string): Promise<vo
     // sicher. Mit -Command kamen sie je nach Maskierung nicht an, und der
     // Start scheiterte, ohne dass es jemand sah.
     const kodiert = Buffer.from(befehl, 'utf16le').toString('base64');
+    // Bewusst NICHT "detached": Auf Windows startete eine abgeloeste
+    // PowerShell das Setup zwar ("gestartet"), aber es verschwand sofort
+    // wieder, ohne ein Protokoll anzulegen - genau das war der Fehler an der
+    // Box. Im Probelauf auf GitHub nachgestellt und mit drei Varianten
+    // verglichen: nur die nicht abgeloeste lief durch. Das Setup selbst
+    // ueberlebt das Ende des Servers trotzdem, PowerShell ist da laengst fertig.
     const kind = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', kodiert], {
-      detached: true,
       stdio: ['ignore', 'ignore', 'pipe'],
       windowsHide: true,
     });

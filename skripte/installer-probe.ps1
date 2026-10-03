@@ -94,36 +94,6 @@ if (-not $fertig) {
   $temp = Get-ChildItem $env:TEMP -Filter 'Setup Log*.txt' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
   if ($temp) { Write-Host "`n--- $($temp.FullName) ---"; Get-Content $temp.FullName -Tail 40 }
 }
-if (-not $fertig) {
-  # Varianten, wie Node das Setup starten kann - welche laeuft durch?
-  $js = @'
-const { spawn } = require('node:child_process');
-const setup = process.env.PROBE_SETUP, log = process.env.PROBE_LOG, variante = process.env.PROBE_VARIANTE;
-const argumente = `/SILENT /SUPPRESSMSGBOXES /NORESTART /LOG="${log}"`;
-const text = (s) => `'${s.replace(/'/g, "''")}'`;
-const befehl = `try { Start-Process -FilePath ${text(setup)} -ArgumentList ${text(argumente)} -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }`;
-const k = Buffer.from(befehl, 'utf16le').toString('base64');
-const ps = ['-NoProfile', '-NonInteractive', '-EncodedCommand', k];
-let kind;
-if (variante === 'B') kind = spawn('powershell.exe', ps, { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
-if (variante === 'C') kind = spawn('powershell.exe', ps, { detached: true, stdio: 'ignore' });
-if (variante === 'D') kind = spawn('cmd.exe', ['/d', '/s', '/c', `start "" "${setup}" ${argumente}`], { windowsHide: true, windowsVerbatimArguments: true, stdio: 'ignore' });
-kind.on('exit', (c) => console.log('  Startprozess beendet mit', c));
-'@
-  $jsDatei = Join-Path $PWD 'variante.cjs'
-  Set-Content -Path $jsDatei -Value $js -Encoding utf8
-  foreach ($v in @('B', 'C', 'D')) {
-    $env:PROBE_VARIANTE = $v
-    $env:PROBE_LOG = Join-Path $PWD "variante-$v.log"
-    & "$programm\node\node.exe" $jsDatei
-    $ok = $false
-    for ($i = 0; $i -lt 150 -and -not $ok; $i++) {
-      Start-Sleep 1
-      if (Test-Path $env:PROBE_LOG) { $ok = [bool]((Get-Content $env:PROBE_LOG -Raw -ErrorAction SilentlyContinue) -match 'Log closed') }
-    }
-    Write-Host ("  Variante {0}: {1}" -f $v, $(if ($ok) { 'LAEUFT DURCH' } else { 'scheitert' }))
-  }
-}
 Pruefe $fertig 'Update-Setup ist durchgelaufen'
 Pruefe ([bool]((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Installation process succeeded')) 'Update-Setup meldet Erfolg'
 $sicherungen = @(Get-ChildItem "$daten\sicherungen" -Directory -Filter 'vor-update_*' -ErrorAction SilentlyContinue)
@@ -132,7 +102,7 @@ Pruefe ($sicherungen.Count -ge 1 -and (Test-Path (Join-Path $sicherungen[0].Full
 Pruefe (Test-Path "$programm\node\node.exe") 'Programm nach dem Update vollstaendig'
 $regeln = @(Get-NetFirewallRule -DisplayName 'Fotobox Galerie' -ErrorAction SilentlyContinue)
 Pruefe ($regeln.Count -eq 1) "nach dem Update weiter genau eine Firewall-Regel (gefunden: $($regeln.Count))"
-$log = Get-Content (Join-Path $PWD 'installation-2.log') -Raw
+$log = Get-Content (Join-Path $PWD 'installation-2.log') -Raw -ErrorAction SilentlyContinue
 Pruefe ($log -notmatch 'DeleteFile failed|RemoveDirectory failed|Failed to') 'keine gesperrten Dateien beim Austausch'
 
 Write-Host "`n=== 4. Deinstallation"
