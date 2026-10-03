@@ -6,6 +6,13 @@ ihn auf der Box verstehst.
 
 ## 1.0.4
 
+- **„Kiosk schließen“ schließt jetzt wirklich:** Der Knopf im Servicemenü
+  meldete „Kiosk wird geschlossen“, der Browser blieb aber offen. Der Befehl,
+  der ihn beenden sollte, lief unter Windows gar nicht erst an. Jetzt geht der
+  Kiosk-Browser zu, und du landest auf dem Windows-Desktop. Zurück geht es mit
+  „Fotobox starten“ auf dem Desktop. Klappt es doch einmal nicht, steht der
+  Grund unter „Was zuletzt gehakt hat“. Auf demselben Weg wurde auch
+  „PC herunterfahren“ abgesichert.
 - **Drucken geht jetzt wirklich bis zum Drucker:** Bisher übergab die Fotobox
   jedes Bild an SumatraPDF – und das meldete im stillen Druckmodus „erledigt“,
   auch wenn es den Drucker gar nicht erreicht hatte. Die Box zeigte „an

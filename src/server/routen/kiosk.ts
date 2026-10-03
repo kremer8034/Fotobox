@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -23,6 +23,7 @@ import {
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
 import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
+import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
 import {
   adresseZuOft,
   drosselGreift,
@@ -645,10 +646,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       return { ok: true, simuliert: true };
     }
     protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenue).');
-    spawn('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], {
-      detached: true,
-      stdio: 'ignore',
-    }).unref();
+    // Nicht abgeloest starten - siehe schliesseKioskBrowser.
+    execFile('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], { windowsHide: true }, (fehler) => {
+      if (fehler) protokolliere('warnung', 'system', `Herunterfahren gescheitert: ${fehler.message}`);
+    });
     return { ok: true, simuliert: false };
   });
 
@@ -685,19 +686,14 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       protokolliere('info', 'system', 'Kiosk schliessen angefordert (Entwicklungsbetrieb - nur protokolliert).');
       return { ok: true, simuliert: true };
     }
-    protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).');
-    // Nur die Browser-Instanz mit dem Kiosk-Profil - ein anderes offenes
-    // Chrome-Fenster bleibt unberuehrt.
-    spawn(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        "Start-Sleep -Milliseconds 800; Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*Fotobox-Kiosk*' -and ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
-      ],
-      { detached: true, stdio: 'ignore', windowsHide: true },
-    ).unref();
+    // Nicht abwarten: Die Antwort soll den Browser noch erreichen, bevor er zugeht.
+    void schliesseKioskBrowser().then(
+      (anzahl) =>
+        anzahl > 0
+          ? protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).')
+          : protokolliere('warnung', 'system', 'Kiosk schliessen: Kein Kiosk-Browser gefunden.'),
+      (fehler: Error) => protokolliere('warnung', 'system', `Kiosk schliessen gescheitert: ${fehler.message}`),
+    );
     return { ok: true, simuliert: false };
   });
 

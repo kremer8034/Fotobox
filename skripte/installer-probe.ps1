@@ -120,6 +120,36 @@ try {
   Remove-Printer -Name 'Fotobox Druckprobe' -ErrorAction SilentlyContinue
 }
 
+Write-Host "`n=== 2c. Kiosk schliessen beendet den Kiosk-Browser"
+# Der Knopf im Servicemenue meldete auf der Box "Kiosk wird geschlossen",
+# der Browser blieb aber offen. Hier ein echter Chrome mit dem Kiosk-Profil.
+$browser = @(
+  "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+  "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+  "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+function KioskBrowser {
+  return @(Get-CimInstance Win32_Process | Where-Object {
+      $_.CommandLine -like '*Fotobox-Kiosk*' -and ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe')
+    })
+}
+if (-not $browser) {
+  Pruefe $false 'Chrome oder Edge fuer den Test vorhanden'
+} else {
+  $profil = Join-Path $env:TEMP 'Fotobox-Kiosk'
+  Start-Process $browser -ArgumentList @('--headless=new', '--remote-debugging-port=9333', '--no-first-run', "--user-data-dir=$profil", 'about:blank') | Out-Null
+  $laeuft = $false
+  for ($i = 0; $i -lt 30 -and -not $laeuft; $i++) { Start-Sleep 1; $laeuft = (KioskBrowser).Count -gt 0 }
+  Pruefe $laeuft 'Kiosk-Browser fuer den Test gestartet'
+  $modul = 'file:///' + ("$programm\dist\server\fach\kiosk-browser.js" -replace '\\', '/')
+  $skript = "import('$modul').then((m) => m.schliesseKioskBrowser(0)).then((n) => { console.log('beendet: ' + n); process.exit(n > 0 ? 0 : 1); }, (f) => { console.error(f.message); process.exit(1); })"
+  & "$programm\node\node.exe" --input-type=module -e $skript
+  Pruefe ($LASTEXITCODE -eq 0) 'Kiosk schliessen findet den Browser'
+  $weg = $false
+  for ($i = 0; $i -lt 10 -and -not $weg; $i++) { Start-Sleep 1; $weg = (KioskBrowser).Count -eq 0 }
+  Pruefe $weg 'Kiosk-Browser ist zu'
+}
+
 Write-Host "`n=== 3. Update ueber die laufende Installation - so, wie es die Verwaltung startet"
 # Genau der Weg aus der Verwaltung ("Jetzt installieren"): starteMitRueckfrage
 # aus dem installierten Programm, mit dem mitgelieferten Node. Vorher war
