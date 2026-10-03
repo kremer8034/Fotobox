@@ -94,6 +94,15 @@ if (-not $fertig) {
   $temp = Get-ChildItem $env:TEMP -Filter 'Setup Log*.txt' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
   if ($temp) { Write-Host "`n--- $($temp.FullName) ---"; Get-Content $temp.FullName -Tail 40 }
 }
+if (-not $fertig) {
+  # Gegenprobe: derselbe Aufruf, aber Windows PowerShell wartet auf das Setup
+  # und meldet seinen Exitcode - endet es sofort, sieht man warum.
+  Write-Host "`n--- Gegenprobe: Setup ueber Windows PowerShell mit Exitcode ---"
+  $log3 = Join-Path $PWD 'installation-gegenprobe.log'
+  $befehl = "`$p = Start-Process -FilePath '$((Resolve-Path $Setup).Path)' -ArgumentList '/SILENT /SUPPRESSMSGBOXES /NORESTART /LOG=""$log3""' -PassThru; if (`$p.WaitForExit(300000)) { 'Exitcode: ' + `$p.ExitCode } else { 'laeuft noch nach 5 Minuten' }"
+  powershell.exe -NoProfile -NonInteractive -Command $befehl
+  if (Test-Path $log3) { Get-Content $log3 -Tail 30 } else { Write-Host '  (kein Protokoll)' }
+}
 Pruefe $fertig 'Update-Setup ist durchgelaufen'
 Pruefe ([bool]((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Installation process succeeded')) 'Update-Setup meldet Erfolg'
 $sicherungen = @(Get-ChildItem "$daten\sicherungen" -Directory -Filter 'vor-update_*' -ErrorAction SilentlyContinue)
