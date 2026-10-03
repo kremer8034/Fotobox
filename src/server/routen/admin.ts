@@ -60,6 +60,7 @@ import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
 import {
+  absenderVollstaendig,
   leseMailzugang,
   listeAdressen,
   loescheAdresse,
@@ -199,6 +200,10 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
             port: z.number().int().min(1).max(65535),
             benutzer: z.string().trim().max(200),
             absender: z.string().trim().min(3).max(200),
+          })
+          .refine((m) => absenderVollstaendig(m.absender, m.benutzer), {
+            message:
+              'Der Absender braucht eine Mailadresse - etwa „Fotobox <fotobox@example.de>“. Steht als Benutzername eine Mailadresse, reicht auch nur der Name.',
           })
           .nullable()
           .optional(),

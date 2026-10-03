@@ -387,7 +387,10 @@ Knopf gar nicht.
    App-Passwort liegt auf der Box, und wer den PC in der Hand hat, könnte es
    finden.
 3. Postausgangsserver, Port (465 oder 587), Benutzername, App-Passwort und
-   Absender eintragen, **Speichern**.
+   Absender eintragen, **Speichern**. Als Absender reicht ein Name wie
+   „Fotobox“, wenn der Benutzername die Mailadresse ist – die Box macht
+   daraus „Fotobox <adresse>“. Sonst Name und Adresse eintragen:
+   `Fotobox <fotobox@example.de>`.
 4. **Testmail senden** an dich selbst. Kommt sie an, passt alles.
 
 Die Verbindung zum Mailserver ist immer verschlüsselt; ohne Verschlüsselung

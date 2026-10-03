@@ -619,7 +619,7 @@ function MailKarte({
           />
         </div>
       </div>
-      {feld('absender', 'Absender, etwa Fotobox <fotobox@example.de>')}
+      {feld('absender', 'Absender, etwa Fotobox <fotobox@example.de> – oder nur „Fotobox“, wenn der Benutzername die Mailadresse ist')}
       <div className="zeile">
         <button
           className="knopf"

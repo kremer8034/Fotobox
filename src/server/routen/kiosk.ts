@@ -15,6 +15,7 @@ import {
   holeAusgabe,
   setzeVerborgen,
   darfKioskLoeschen,
+  darfKioskVerschicken,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -29,7 +30,6 @@ import {
   adresseZuOft,
   drosselGreift,
   einwilligungstextFuer,
-  FOTO_FRISCH_MS,
   istOnline,
   leseMailzugang,
   pruefeAdresse,
@@ -420,6 +420,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         ausgabeId: z.string(),
         adresse: z.string().max(254),
         einwilligung: z.literal(true),
+        // Ergebnisseite: nur das gerade fertige Foto. Galerie am Touchscreen:
+        // jedes Foto, das dort ohnehin jeder sieht.
+        aus: z.enum(['ergebnis', 'galerie']).default('ergebnis'),
       })
       .parse(anfrage.body);
 
@@ -448,15 +451,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(429).send({ fehler: 'An diese Adresse sind heute schon genug Fotos gegangen.' });
     }
 
-    // Nur das Foto, das gerade eben fertig wurde - nicht jedes beliebige aus
-    // der Galerie, und keines, das der Gastgeber herausgenommen hat.
+    // Siehe darfKioskVerschicken. Die Route ist nur an der Box selbst
+    // erreichbar, nicht vom Handy.
     const ausgabe = holeAusgabe(koerper.ausgabeId);
-    if (
-      !ausgabe ||
-      ausgabe.eventId !== event.id ||
-      ausgabe.verborgen ||
-      Date.now() - Date.parse(ausgabe.erstellt) > FOTO_FRISCH_MS
-    ) {
+    if (!ausgabe || !darfKioskVerschicken(event.id, ausgabe.id, koerper.aus)) {
       return antwort.code(404).send({ fehler: 'Dieses Foto lässt sich nicht mehr verschicken.' });
     }
 
@@ -497,6 +495,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       // Galerie im Probelauf nicht wie ein Fehler aussieht, sagt sie das.
       probelauf: event.probelauf,
       nachdruckMoeglich: event.einstellungen.druckAktiv && !druckLimitErreicht(event.id),
+      // Wie auf der Ergebnisseite: der Knopf erscheint nur, wenn es auch geht.
+      emailMoeglich: event.einstellungen.emailAktiv && leseMailzugang() !== null && (await istOnline()),
+      einwilligungstext: einwilligungstextFuer(event),
       // Auch der Betreuer druckt nicht ueber das Druck-Limit hinaus.
       kopienMax: Math.min(event.einstellungen.kopienMax, limitRest ?? Infinity),
       bilder: galerieEintraege(event.id, { mitVerborgenen: anfrage.query.alle === '1' }).map((e) => ({

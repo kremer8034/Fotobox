@@ -27,6 +27,15 @@ ihn auf der Box verstehst.
   Gerät kein Mailserver eingetragen, erscheint der Knopf „Per E-Mail
   schicken“ nicht. Das steht jetzt unter „Ausgabe“ und im Startbereit-Check,
   statt still zu passieren.
+- **E-Mail aus der Galerie:** In der Galerie am Touchscreen hat jedes Foto
+  jetzt auch „Per E-Mail schicken“ – nicht nur das gerade entstandene auf der
+  Ergebnisseite. Es gelten dieselben Grenzen (Einwilligung, höchstens drei
+  Mails je Adresse und Tag, Tageslimit); Fotos, die der Gastgeber aus der
+  Galerie genommen hat, lassen sich nicht verschicken.
+- **Absender in der Mail:** Stand unter „Absender“ nur ein Name wie
+  „Fotobox“, kam die Mail ohne lesbaren Absender an. Ist der Benutzername
+  eine Mailadresse, wird daraus jetzt „Fotobox <adresse>“. Ein Name ohne
+  jede Adresse lässt sich nicht mehr speichern.
 
 ## 1.0.5
 

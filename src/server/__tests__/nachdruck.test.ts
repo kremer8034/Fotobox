@@ -56,3 +56,28 @@ describe('Foto am Ergebnis loeschen', () => {
     expect(status()).toEqual({ status: 'fehlgeschlagen', berechnen: 0 });
   });
 });
+
+describe('Foto per E-Mail am Kiosk', () => {
+  it('Ergebnisseite: nur frisch - Galerie: jedes, das dort steht', async () => {
+    const { darfKioskVerschicken, setzeVerborgen } = await import('../fach/sitzungen.js');
+    const db = holeDb();
+    db.prepare("INSERT INTO sitzungen (id, event_id, vorlage_id, gestartet, ist_test) VALUES ('m1', 'mail', 'v', '2026-10-03', 0)").run();
+    db.prepare("INSERT INTO sitzungen (id, event_id, vorlage_id, gestartet, ist_test) VALUES ('m2', 'mail', 'v', '2026-10-03', 1)").run();
+    db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('m-alt', 'm1', '/a.jpg', '/a.pdf', '2026-10-03T18:00:00.000Z')").run();
+    db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('m-weg', 'm1', '/b.jpg', '/b.pdf', '2026-10-03T18:01:00.000Z')").run();
+    db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('m-probe', 'm2', '/c.jpg', '/c.pdf', '2026-10-03T18:02:00.000Z')").run();
+    setzeVerborgen('m-weg', true);
+    const spaeter = Date.parse('2026-10-03T22:00:00.000Z');
+
+    // Von der Ergebnisseite ist das Foto nach vier Stunden zu alt ...
+    expect(darfKioskVerschicken('mail', 'm-alt', 'ergebnis', spaeter)).toBe(false);
+    expect(darfKioskVerschicken('mail', 'm-alt', 'ergebnis', Date.parse('2026-10-03T18:05:00.000Z'))).toBe(true);
+    // ... aus der Galerie geht es noch.
+    expect(darfKioskVerschicken('mail', 'm-alt', 'galerie', spaeter)).toBe(true);
+    // Nicht, was die Galerie nicht zeigt: herausgenommen, Probelauf, andere Feier.
+    expect(darfKioskVerschicken('mail', 'm-weg', 'galerie', spaeter)).toBe(false);
+    expect(darfKioskVerschicken('mail', 'm-probe', 'galerie', spaeter)).toBe(false);
+    expect(darfKioskVerschicken('anderes', 'm-alt', 'galerie', spaeter)).toBe(false);
+    expect(darfKioskVerschicken('mail', 'gibtsnicht', 'galerie', spaeter)).toBe(false);
+  });
+});

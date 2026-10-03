@@ -10,6 +10,7 @@ import { miniatur } from '../bild/vorschau.js';
 import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
 import { holeVorlage } from './vorlagen.js';
+import { FOTO_FRISCH_MS } from './email.js';
 import { fotoEbenen, type Ausgabe, type Veranstaltung, type Vorlage } from '../../shared/typen.js';
 
 /**
@@ -370,6 +371,24 @@ export function darfKioskLoeschen(eventId: string, ausgabeId: string, jetztMs = 
     .get(eventId) as { id: string; erstellt: string } | undefined;
   if (!zeile || zeile.id !== ausgabeId) return false;
   return jetztMs - new Date(zeile.erstellt).getTime() <= 15 * 60_000;
+}
+
+/**
+ * Darf dieses Foto am Kiosk per E-Mail verschickt werden? Von der
+ * Ergebnisseite nur das gerade fertige (FOTO_FRISCH_MS), aus der Galerie jedes,
+ * das dort steht - also nie ein Probelauf-Foto und keines, das der Gastgeber
+ * herausgenommen hat.
+ */
+export function darfKioskVerschicken(
+  eventId: string,
+  ausgabeId: string,
+  aus: 'ergebnis' | 'galerie',
+  jetztMs = Date.now(),
+): boolean {
+  const ausgabe = holeAusgabe(ausgabeId);
+  if (!ausgabe || ausgabe.eventId !== eventId || ausgabe.verborgen) return false;
+  if (aus === 'galerie') return galerieEintraege(eventId).some((e) => e.ausgabeId === ausgabeId);
+  return jetztMs - Date.parse(ausgabe.erstellt) <= FOTO_FRISCH_MS;
 }
 
 export function holeAusgabe(
