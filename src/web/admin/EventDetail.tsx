@@ -432,6 +432,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           )}
           <Adressen eventId={id} />
+          {e.emailAktiv && <MailHinweis />}
           {e.galerieAktiv && <GalerieNetz eventId={id} />}
           {e.galerieAktiv && (
             <div className="zeile" style={{ fontSize: '0.8rem', color: 'var(--schrift-leise)' }}>
@@ -1360,5 +1361,30 @@ function GalerieNetz({ eventId }: { eventId: string }) {
       )}
       {stand.hinweis && <p style={{ margin: 0, color: 'var(--warnung)' }}>{stand.hinweis}</p>}
     </div>
+  );
+}
+
+/**
+ * E-Mail ist an, aber unter Geraet steht kein Mailserver: Dann fehlt der
+ * Knopf "Per E-Mail schicken" auf der Ergebnisseite - vorher ohne Erklaerung.
+ */
+function MailHinweis() {
+  const [fehlt, setzeFehlt] = useState(false);
+  useEffect(() => {
+    let aktiv = true;
+    api
+      .hole<{ mail: unknown | null }>('/api/admin/geraet')
+      .then((g) => aktiv && setzeFehlt(!g.mail))
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, []);
+  if (!fehlt) return null;
+  return (
+    <p style={{ fontSize: '0.82rem', color: 'var(--warnung)', margin: '0.6rem 0' }}>
+      Noch kein Mailserver eingetragen (Verwaltung → Gerät → E-Mail). Solange erscheint der Knopf „Per E-Mail
+      schicken“ auf der Ergebnisseite nicht.
+    </p>
   );
 }

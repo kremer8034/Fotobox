@@ -4,6 +4,30 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.6
+
+- **14 neue, kräftige Filter:** Pop-Art, Warhol, Comic, Neon-Nacht, Wärmebild,
+  Glitch, Pink & Blau, Gold, Alien, Infrarot, Solar, Lomo, 70er und Film Noir.
+  Sie verändern das Foto deutlich – Farbflächen wie im Siebdruck,
+  Wärmekamera-Farben, verschobene Farbkanäle, Filmkorn, grüne Alien-Haut.
+  Damit sie die Gäste sehen, in der Veranstaltung unter „Vorlagen & Filter“
+  anhaken.
+- **Foto am Ergebnis löschen:** Neben „Fertig“ gibt es „Löschen“ (mit
+  Rückfrage). Das Foto wird nicht gedruckt – ein schon angestoßener Druck,
+  der noch wartet, wird verworfen – und erscheint in keiner Galerie. Löschen
+  lässt sich nur das gerade entstandene Foto; in der Galerie gibt es den
+  Knopf bewusst nicht. Wer sich vertan hat: Im Servicemenü unter „Galerie“
+  lässt es sich zurückholen.
+- **Handy-Galerie: „Teilen“:** Neben „Aufs Handy laden“ ein Teilen-Knopf.
+  Weil die Galerie ohne Internet im WLAN der Box läuft, lassen Handys das
+  direkte Teilen aus der Seite meist nicht zu; dann erklärt der Knopf den
+  Weg: Foto gedrückt halten und „Teilen“ wählen – das öffnet WhatsApp,
+  OneDrive & Co.
+- **E-Mail ohne Mailserver:** Ist E-Mail in der Veranstaltung an, aber unter
+  Gerät kein Mailserver eingetragen, erscheint der Knopf „Per E-Mail
+  schicken“ nicht. Das steht jetzt unter „Ausgabe“ und im Startbereit-Check,
+  statt still zu passieren.
+
 ## 1.0.5
 
 - **Papiervorrat vom Drucker – jetzt auch mit PrinterInfo unter C:\DNPPIA:**

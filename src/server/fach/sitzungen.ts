@@ -355,6 +355,23 @@ export function galerieEintraege(
   }));
 }
 
+/**
+ * Darf der Kiosk dieses Foto loeschen? Nur das gerade entstandene: das
+ * juengste der laufenden Veranstaltung, hoechstens eine Viertelstunde alt.
+ * So kann am Touchscreen niemand die Fotos anderer Gaeste verschwinden
+ * lassen - fuer aeltere Bilder gibt es das Servicemenue mit PIN.
+ */
+export function darfKioskLoeschen(eventId: string, ausgabeId: string, jetztMs = Date.now()): boolean {
+  const zeile = holeDb()
+    .prepare(
+      `SELECT a.id, a.erstellt FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id
+        WHERE s.event_id = ? ORDER BY a.erstellt DESC LIMIT 1`,
+    )
+    .get(eventId) as { id: string; erstellt: string } | undefined;
+  if (!zeile || zeile.id !== ausgabeId) return false;
+  return jetztMs - new Date(zeile.erstellt).getTime() <= 15 * 60_000;
+}
+
 export function holeAusgabe(
   id: string,
 ): (Ausgabe & { eventId: string; istTest: boolean; verborgen: boolean }) | null {

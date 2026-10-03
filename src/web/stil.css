@@ -1893,3 +1893,23 @@ html.handy-ansicht body {
   opacity: 1;
 }
 
+/* Ergebnisseite: Loeschen ist da, aber zurueckhaltend - kein Hauptknopf. */
+.ergebnis__loeschen {
+  border-color: rgba(229, 115, 115, 0.6);
+  color: #f2a7a7;
+}
+
+.ergebnis__frage {
+  display: flex;
+  gap: var(--abstand);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.handy__tipp--hervor {
+  color: var(--schrift);
+  background: var(--flaeche);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+}

@@ -14,6 +14,7 @@ import {
   galerieEintraege,
   holeAusgabe,
   setzeVerborgen,
+  darfKioskLoeschen,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -21,7 +22,7 @@ import {
   zahlDerFotos,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
-import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
+import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin, verwirfAuftraegeVon } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
 import {
@@ -510,6 +511,28 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         ),
       })),
     };
+  });
+
+  /**
+   * Ergebnisseite: "Foto löschen". Das Bild verschwindet aus der Galerie
+   * (Touchscreen und Handys) und wird nicht mehr gedruckt. Nur fuer das
+   * gerade entstandene Foto - siehe darfKioskLoeschen. Die Dateien bleiben,
+   * im Servicemenue (mit PIN) laesst es sich zurueckholen.
+   */
+  app.post<{ Params: { id: string } }>('/api/kiosk/ausgabe/:id/loeschen', async (anfrage, antwort) => {
+    const event = holeAktivesEvent();
+    const ausgabe = holeAusgabe(anfrage.params.id);
+    if (!event || !ausgabe || ausgabe.eventId !== event.id || !darfKioskLoeschen(event.id, ausgabe.id)) {
+      return antwort.code(403).send({ fehler: 'Dieses Foto lässt sich hier nicht mehr löschen.' });
+    }
+    setzeVerborgen(ausgabe.id, true);
+    const verworfen = verwirfAuftraegeVon(ausgabe.id);
+    protokolliere(
+      'info',
+      'galerie',
+      `Foto ${ausgabe.id.slice(0, 8)} am Ergebnis gelöscht${verworfen > 0 ? `, ${verworfen} Druckauftrag verworfen` : ''}.`,
+    );
+    return { ok: true };
   });
 
   /**

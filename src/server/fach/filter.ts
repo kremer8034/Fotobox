@@ -91,6 +91,21 @@ export const FILTER_OPERATION = z.discriminatedUnion('op', [
   z.object({ op: z.literal('farbmatrix'), matrix: z.array(wert(-3, 3)).length(9) }),
   z.object({ op: z.literal('vignette'), staerke: wert(0, 1) }),
   z.object({ op: z.literal('lut'), datei: z.string().regex(/^[A-Za-z0-9_-]{1,64}\.cube$/) }),
+  z.object({ op: z.literal('posterisieren'), stufen: wert(2, 16) }),
+  z.object({
+    op: z.literal('verlaufskarte'),
+    farben: z.array(z.string().regex(/^#[0-9a-fA-F]{6}$/)).min(2).max(8),
+    stufen: wert(2, 16).optional(),
+  }),
+  z.object({
+    op: z.literal('teiltonung'),
+    schatten: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    lichter: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    staerke: wert(0, 1),
+  }),
+  z.object({ op: z.literal('koernung'), staerke: wert(0, 1) }),
+  z.object({ op: z.literal('kanalversatz'), staerke: wert(0, 0.05) }),
+  z.object({ op: z.literal('solarisation'), schwelle: wert(0, 1) }),
 ]);
 
 export const FILTER_EINGABE = z.object({

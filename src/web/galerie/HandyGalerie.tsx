@@ -51,6 +51,9 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   const [getrennt, setzeGetrennt] = useState(false);
   const [gross, setzeGross] = useState<string | null>(() => fotoAusAdresse());
   const [grossFehlt, setzeGrossFehlt] = useState(false);
+  const [teilHilfe, setzeTeilHilfe] = useState(false);
+  // Fuer jedes Foto neu: Die Hilfe zum Teilen erscheint erst auf Knopfdruck.
+  useEffect(() => setzeTeilHilfe(false), [gross]);
 
   useEffect(() => {
     const laden = async () => {
@@ -169,6 +172,32 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   // Vom Gastgeber herausgenommen, waehrend es hier offen war.
   const nichtMehrDa = grossFehlt || (gross !== null && !galerie.bilder.some((b) => b.id === gross));
 
+  /**
+   * Das Teilen-Menue des Handys (WhatsApp, Facebook, OneDrive ...). Mit einer
+   * Datei geht das nur auf verschluesselten Seiten (https) - die Galerie laeuft
+   * offline im WLAN der Box ueber http. Dann erklaert der Knopf den Weg ueber
+   * langes Druecken auf das Bild, der auch ohne https das Teilen-Menue oeffnet.
+   */
+  async function teilen(id: string) {
+    const kannTeilen = typeof navigator.share === 'function' && window.isSecureContext;
+    if (!kannTeilen) {
+      setzeTeilHilfe(true);
+      return;
+    }
+    try {
+      const antwort = await fetch(`/medien/download/${token}/${id}.jpg`);
+      const datei = new File([await antwort.blob()], `Fotobox-${id.slice(0, 8)}.jpg`, { type: 'image/jpeg' });
+      if (navigator.canShare && !navigator.canShare({ files: [datei] })) {
+        setzeTeilHilfe(true);
+        return;
+      }
+      await navigator.share({ files: [datei], title: galerie?.veranstaltung ?? 'Fotobox' });
+    } catch (fehler) {
+      // Abgebrochen ist kein Fehler.
+      if ((fehler as Error)?.name !== 'AbortError') setzeTeilHilfe(true);
+    }
+  }
+
   if (gross) {
     return (
       <div className="handy">
@@ -193,9 +222,20 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
             >
               Aufs Handy laden
             </a>
-            <p className="handy__tipp">
-              Am iPhone geht es auch so: Bild gedrückt halten und „Zu Fotos hinzufügen" wählen.
-            </p>
+            <button className="knopf handy__laden" onClick={() => void teilen(gross)}>
+              Teilen (WhatsApp, OneDrive …)
+            </button>
+            {teilHilfe ? (
+              <p className="handy__tipp handy__tipp--hervor">
+                Direkt aus der Seite teilen lässt dein Handy hier nicht zu – die Galerie läuft ohne Internet im
+                WLAN der Fotobox. So geht es: <strong>das Foto oben gedrückt halten</strong> und „Teilen“ bzw.
+                „Bild teilen“ wählen. Oder erst aufs Handy laden und aus der Fotos-App teilen.
+              </p>
+            ) : (
+              <p className="handy__tipp">
+                Am iPhone geht es auch so: Bild gedrückt halten und „Zu Fotos hinzufügen" wählen.
+              </p>
+            )}
           </>
         )}
 

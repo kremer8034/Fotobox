@@ -3,6 +3,7 @@ import { toene } from './toene.js';
 import { EmailEingabe } from './Email.js';
 import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
 import { useZeitgeber } from './zeitgeber.js';
+import { api } from '../api.js';
 
 /**
  * Ergebnis und Ausgabe auf einer Seite: das fertige Layout gross oben, darunter
@@ -38,6 +39,9 @@ export function Ergebnis({
   const hoechstens = Math.min(ausgabe.kopienMax, ausgabe.druckRest ?? Infinity);
   const [kopien, setzeKopien] = useState(Math.max(1, Math.min(ausgabe.kopienVorgabe, hoechstens)));
   const [emailOffen, setzeEmailOffen] = useState(false);
+  // Erst fragen, dann loeschen - ein Fehltipp soll kein Foto kosten.
+  const [loeschenFragen, setzeLoeschenFragen] = useState(false);
+  const [loeschFehler, setzeLoeschFehler] = useState<string | null>(null);
   // Jede Beruehrung zaehlt als Eingabe. Vorher lief die Uhr auch weiter,
   // waehrend der Gast an der Kopienzahl drehte - und die Seite verschwand
   // unter seinem Finger.
@@ -61,7 +65,17 @@ export function Ergebnis({
   // seines Vorgaengers, mit aktivem Druckknopf. Waehrend der E-Mail-Eingabe
   // steht die Uhr: Wer eine Adresse tippt, braucht laenger als 20 Sekunden,
   // und die Eingabe hat ihren eigenen Leerlauf.
-  useZeitgeber(beiFertig, emailOffen ? null : rueckkehrSekunden * 1000, [druck.quittung, beruehrt]);
+  useZeitgeber(beiFertig, emailOffen || loeschenFragen ? null : rueckkehrSekunden * 1000, [druck.quittung, beruehrt]);
+
+  async function loeschen() {
+    try {
+      await api.sende(`/api/kiosk/ausgabe/${ausgabeId}/loeschen`, {});
+      beiFertig();
+    } catch (fehler) {
+      setzeLoeschenFragen(false);
+      setzeLoeschFehler(fehler instanceof Error ? fehler.message : 'Das Foto ließ sich nicht löschen.');
+    }
+  }
 
   const druckMoeglich = ausgabe.druckAktiv && !ausgabe.druckLimitErreicht && hoechstens >= 1 && !gedruckt;
 
@@ -98,7 +112,37 @@ export function Ergebnis({
         <button className="knopf" onClick={beiFertig}>
           Fertig
         </button>
+
+        {/* Gefaellt das Foto nicht: weg damit - es wird nicht gedruckt und
+            erscheint in keiner Galerie. In der Galerie selbst gibt es das
+            bewusst nicht, sonst koennte jeder fremde Fotos loeschen. */}
+        <button className="knopf ergebnis__loeschen" onClick={() => setzeLoeschenFragen(true)}>
+          Löschen
+        </button>
       </div>
+
+      {loeschenFragen && (
+        <div className="quittung">
+          <div className="quittung__karte">
+            <p className="quittung__text">Foto wirklich löschen?</p>
+            <p style={{ margin: '0 0 1.2rem', color: 'var(--schrift-leise)' }}>
+              Es wird nicht gedruckt und erscheint in keiner Galerie.
+            </p>
+            <div className="ergebnis__frage">
+              <button className="knopf knopf--haupt" onClick={() => setzeLoeschenFragen(false)}>
+                Behalten
+              </button>
+              <button className="knopf ergebnis__loeschen" onClick={() => void loeschen()}>
+                Ja, löschen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loeschFehler && (
+        <Quittung text={loeschFehler} fehlgeschlagen beiZurueck={() => setzeLoeschFehler(null)} />
+      )}
 
       {emailOffen && (
         <EmailEingabe
