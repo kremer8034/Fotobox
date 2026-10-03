@@ -332,6 +332,10 @@ export interface EventEinstellungen {
   startUntertitel: string;
   logoDatei?: string;
   farbeAkzent: string;
+  /** Hintergrundbild des Startbildschirms (Dateiname im Ordner "hintergruende"), null = keins. */
+  hintergrundDatei: string | null;
+  /** Wie stark das Hintergrundbild abgedunkelt wird, damit Schrift und Knoepfe lesbar bleiben (0-80 %). */
+  hintergrundAbdunkeln: number;
 
   fokus: Fokusverhalten;
   einwilligungstext: string;
@@ -358,6 +362,8 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   startTitel: 'Fotobox',
   startUntertitel: 'Tippt auf den Knopf und los geht es!',
   farbeAkzent: '#c8963e',
+  hintergrundDatei: null,
+  hintergrundAbdunkeln: 35,
   fokus: 'fest',
   // {loeschfrist} wird durch die eingestellte Zahl von Tagen ersetzt - der Text
   // hatte vorher "nach der Veranstaltung" versprochen, geloescht wurde aber

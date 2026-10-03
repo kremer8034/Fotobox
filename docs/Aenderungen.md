@@ -15,6 +15,12 @@ ihn auf der Box verstehst.
   Drucker, die Windows kennt, der DNP-Drucker oben mit ★. Kein Abtippen des
   Namens mehr. Stimmt der eingetragene Name nicht und gibt es genau einen
   DNP-Drucker, trägt die Box ihn beim Start selbst ein.
+- **Hintergrundbild für den Startbildschirm:** In der Veranstaltung unter
+  „Aussehen & PIN“ ein Bild auswählen. Es füllt den ganzen Bildschirm hinter
+  Titel und Knöpfen; ein Regler dunkelt es ab, damit alles lesbar bleibt. Die
+  Vorschau daneben zeigt, wie es aussieht.
+- Die Galerie am Touchscreen sagt im Probelauf, dass Testfotos dort nicht
+  erscheinen, statt einfach leer zu sein.
 - Fehlt in digiCamControl eine Einstellung, sagen Übersicht und
   Startbereit-Check jetzt genau, welcher Haken unter File → Settings →
   Webserver fehlt.

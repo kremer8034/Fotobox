@@ -283,6 +283,37 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { datei: name, ...masse };
   });
 
+  /**
+   * Hintergrundbild fuer den Startbildschirm einer Veranstaltung.
+   *
+   * Es wird gleich beim Hochladen gedreht (EXIF), auf hoechstens 2560 x 1440
+   * verkleinert und als JPEG abgelegt: Ein 20-Megapixel-Handyfoto als
+   * Hintergrund wuerde den Kiosk bei jedem Start ausbremsen. Der Dateiname
+   * wird vergeben, nie aus der Anfrage uebernommen.
+   */
+  app.post('/api/admin/hintergrund', async (anfrage, antwort) => {
+    const datei = await anfrage.file?.();
+    if (!datei) return antwort.code(400).send({ fehler: 'Keine Datei empfangen.' });
+    let jpeg: Buffer;
+    try {
+      const inhalt = await datei.toBuffer();
+      const info = await sharp(inhalt).metadata();
+      if (!['png', 'jpeg', 'webp'].includes(info.format ?? '')) throw new Error();
+      jpeg = await sharp(inhalt)
+        .rotate()
+        .resize({ width: 2560, height: 1440, fit: 'inside', withoutEnlargement: true })
+        .flatten({ background: '#000000' })
+        .jpeg({ quality: 88 })
+        .toBuffer();
+    } catch {
+      return antwort.code(400).send({ fehler: 'Die Datei ist kein lesbares PNG-, JPEG- oder WEBP-Bild.' });
+    }
+    await mkdir(wurzel.hintergruende, { recursive: true });
+    const name = `${randomUUID()}.jpg`;
+    await writeFile(join(wurzel.hintergruende, name), jpeg);
+    return { datei: name };
+  });
+
   // --------------------------------------------------------------- Schriften
 
   /**

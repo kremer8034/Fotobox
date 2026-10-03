@@ -121,6 +121,65 @@ button {
   gap: var(--abstand);
 }
 
+/*
+ * Startbildschirm mit Hintergrundbild: randlos ueber die ganze Flaeche, der
+ * Ausschnitt mittig. Die Abdunkelung kommt als Verlauf aus dem Kiosk (je
+ * Veranstaltung einstellbar); der Schatten haelt helle Schrift auch auf
+ * unruhigen Stellen lesbar.
+ */
+.kiosk--hintergrund {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.kiosk--hintergrund .titel,
+.kiosk--hintergrund .untertitel {
+  text-shadow: 0 0.08rem 0.5rem rgba(0, 0, 0, 0.75);
+}
+
+.kiosk--hintergrund .untertitel {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Vorschau des Startbildschirms in der Verwaltung, im Format des Touchscreens. */
+.hintergrund-vorschau {
+  width: 22rem;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.5rem;
+  border: 1px solid var(--kante);
+  background: var(--flaeche) center / cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  text-align: center;
+  padding: 0.6rem;
+  overflow: hidden;
+  text-shadow: 0 0.05rem 0.3rem rgba(0, 0, 0, 0.75);
+}
+
+.hintergrund-vorschau strong {
+  font-size: 1.1rem;
+}
+
+.hintergrund-vorschau span {
+  font-size: 0.62rem;
+  color: var(--schrift-leise);
+}
+
+.hintergrund-vorschau .hintergrund-vorschau__knopf {
+  margin-top: 0.3rem;
+  padding: 0.35rem 1.2rem;
+  border-radius: 0.3rem;
+  background: var(--akzent);
+  color: var(--akzent-schrift);
+  font-weight: 700;
+  text-shadow: none;
+}
+
 .knopf {
   min-height: var(--knopf-haupt);
   min-width: var(--ziel-min);

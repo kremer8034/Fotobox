@@ -27,6 +27,8 @@ interface EventVoll {
     startTitel: string;
     startUntertitel: string;
     farbeAkzent: string;
+    hintergrundDatei: string | null;
+    hintergrundAbdunkeln: number;
     einwilligungstext: string;
     emailLoeschfristTage: number;
     vorlagen: string[];
@@ -445,6 +447,16 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           )}
         </div>
+      )}
+
+      {reiter === 'aussehen' && (
+        <HintergrundKarte
+          datei={e.hintergrundDatei}
+          abdunkeln={e.hintergrundAbdunkeln}
+          titel={e.startTitel}
+          untertitel={e.startUntertitel}
+          beiAenderung={(teil) => speichere(teil)}
+        />
       )}
 
       {reiter === 'aussehen' && (
@@ -1178,4 +1190,113 @@ function VoreinstellungKarte({ eventId }: { eventId: string }) {
       setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
     }
   }
+}
+
+/**
+ * Hintergrundbild des Startbildschirms. Ausgewaehlt ueber den normalen
+ * Dateidialog; der Server verkleinert es und legt es ab. Die kleine Vorschau
+ * zeigt den Startbildschirm im Seitenverhaeltnis des Touchscreens (16:9) - so
+ * sieht man vorher, welcher Ausschnitt bleibt und ob die Schrift lesbar ist.
+ */
+function HintergrundKarte({
+  datei,
+  abdunkeln,
+  titel,
+  untertitel,
+  beiAenderung,
+}: {
+  datei: string | null;
+  abdunkeln: number;
+  titel: string;
+  untertitel: string;
+  beiAenderung: (teil: { hintergrundDatei?: string | null; hintergrundAbdunkeln?: number }) => Promise<void>;
+}) {
+  const [laedt, setzeLaedt] = useState(false);
+  const [fehler, setzeFehler] = useState<string | null>(null);
+  const [dunkel, setzeDunkel] = useState(abdunkeln);
+  const auswahl = useRef<HTMLInputElement>(null);
+
+  useEffect(() => setzeDunkel(abdunkeln), [abdunkeln]);
+
+  async function hochladen(bild: File) {
+    setzeLaedt(true);
+    setzeFehler(null);
+    try {
+      const antwort = await api.sendeDatei<{ datei: string }>('/api/admin/hintergrund', bild);
+      await beiAenderung({ hintergrundDatei: antwort.datei });
+    } catch (f) {
+      setzeFehler(f instanceof Error ? f.message : 'Das Bild ließ sich nicht hochladen.');
+    } finally {
+      setzeLaedt(false);
+      if (auswahl.current) auswahl.current.value = '';
+    }
+  }
+
+  const deckkraft = dunkel / 100;
+  return (
+    <div className="karte">
+      <h2>Hintergrundbild am Startbildschirm</h2>
+      <div className="zeile" style={{ alignItems: 'flex-start' }}>
+        <div
+          className="hintergrund-vorschau"
+          style={
+            datei
+              ? {
+                  backgroundImage: `linear-gradient(rgba(0, 0, 0, ${deckkraft}), rgba(0, 0, 0, ${deckkraft})), url("/medien/hintergrund/${datei}")`,
+                }
+              : undefined
+          }
+        >
+          <strong>{titel}</strong>
+          <span>{untertitel}</span>
+          <span className="hintergrund-vorschau__knopf">Foto starten</span>
+        </div>
+        <div style={{ flex: 1, minWidth: '14rem' }}>
+          <input
+            ref={auswahl}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            style={{ display: 'none' }}
+            onChange={(ev) => {
+              const bild = ev.target.files?.[0];
+              if (bild) void hochladen(bild);
+            }}
+          />
+          <div className="zeile">
+            <button className="knopf knopf--neben" disabled={laedt} onClick={() => auswahl.current?.click()}>
+              {laedt ? 'Wird hochgeladen …' : datei ? 'Anderes Bild wählen …' : 'Bild auswählen …'}
+            </button>
+            {datei && (
+              <button className="knopf knopf--neben" disabled={laedt} onClick={() => void beiAenderung({ hintergrundDatei: null })}>
+                Entfernen
+              </button>
+            )}
+          </div>
+          {fehler && <p style={{ color: 'var(--warnung)' }}>{fehler}</p>}
+          {datei && (
+            <div className="feld" style={{ marginTop: '0.8rem' }}>
+              <label htmlFor="hintergrund-dunkel">Abdunkeln: {dunkel} %</label>
+              <input
+                id="hintergrund-dunkel"
+                type="range"
+                min={0}
+                max={80}
+                step={5}
+                value={dunkel}
+                onChange={(ev) => setzeDunkel(Number(ev.target.value))}
+                onPointerUp={() => void beiAenderung({ hintergrundAbdunkeln: dunkel })}
+                onKeyUp={() => void beiAenderung({ hintergrundAbdunkeln: dunkel })}
+              />
+            </div>
+          )}
+          <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)' }}>
+            PNG, JPEG oder WEBP. Das Bild füllt den ganzen Bildschirm und liegt hinter Titel und
+            Knöpfen; was nicht ins Format 16:9 passt, wird oben und unten bzw. links und rechts
+            abgeschnitten. Am besten ein Querformat mit mindestens 1920 × 1080 Pixeln. Abdunkeln hält
+            Schrift und Knöpfe lesbar.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -93,6 +93,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         titel: event.einstellungen.startTitel,
         untertitel: event.einstellungen.startUntertitel,
         akzent: event.einstellungen.farbeAkzent,
+        hintergrund: event.einstellungen.hintergrundDatei
+          ? `/medien/hintergrund/${event.einstellungen.hintergrundDatei}`
+          : null,
+        abdunkeln: event.einstellungen.hintergrundAbdunkeln,
         qrAufStartseite: event.einstellungen.qrAufStartseite && event.einstellungen.galerieAktiv,
         // Fertige Adresse vom Server, nie im Browser zusammengesetzt - siehe
         // galerieUrl(). null, wenn die Box keine Netzwerkadresse hat.
@@ -487,6 +491,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     const limitRest = druckRest(event.id);
     return {
       veranstaltung: event.name,
+      // Probelauf-Fotos stehen bewusst nicht in der Galerie. Damit eine leere
+      // Galerie im Probelauf nicht wie ein Fehler aussieht, sagt sie das.
+      probelauf: event.probelauf,
       nachdruckMoeglich: event.einstellungen.druckAktiv && !druckLimitErreicht(event.id),
       // Auch der Betreuer druckt nicht ueber das Druck-Limit hinaus.
       kopienMax: Math.min(event.einstellungen.kopienMax, limitRest ?? Infinity),

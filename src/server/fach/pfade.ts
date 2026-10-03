@@ -30,6 +30,8 @@ export interface Wurzelpfade {
   vorlagen: string;
   luts: string;
   events: string;
+  /** Hintergrundbilder der Startbildschirme. */
+  hintergruende: string;
 }
 
 export function wurzelpfade(datenpfad: string): Wurzelpfade {
@@ -39,6 +41,7 @@ export function wurzelpfade(datenpfad: string): Wurzelpfade {
     vorlagen: join(datenpfad, 'vorlagen'),
     luts: join(datenpfad, 'luts'),
     events: join(datenpfad, 'events'),
+    hintergruende: join(datenpfad, 'hintergruende'),
   };
 }
 
