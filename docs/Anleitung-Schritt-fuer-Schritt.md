@@ -86,6 +86,10 @@ darf es nicht mitbringen, deshalb einmal von Hand:
        via webserver") – ohne diesen Haken antwortet digiCamControl zwar, löst
        aber nicht aus und zeigt kein Livebild.
    - Der Port muss **5513** sein.
+   - Unter den allgemeinen Einstellungen (ganz oben) **„Minimiert starten“**
+     anhaken. Dann geht digiCamControl beim Start nicht im Vollbild über den
+     Kiosk auf. Es läuft trotzdem im Hintergrund – das muss es auch, denn es
+     steuert die Kamera.
    - Schließe digiCamControl ganz. Der Webserver startet erst beim nächsten
      Programmstart; die Fotobox startet digiCamControl dann selbst.
 

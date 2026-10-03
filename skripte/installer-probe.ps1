@@ -68,15 +68,41 @@ $status = Invoke-RestMethod "http://127.0.0.1:$Port/api/admin/status"
 Pruefe ($null -ne $status.version) "meldet Version $($status.version)"
 Pruefe (Test-Path "$daten\fotobox.db") 'Datenbank im Datenordner'
 
-Write-Host "`n=== 3. Update ueber die laufende Installation"
-Pruefe ((Installiere (Join-Path $PWD 'installation-2.log')) -eq 0) 'Update-Setup endet ohne Fehler'
+Write-Host "`n=== 3. Update ueber die laufende Installation - so, wie es die Verwaltung startet"
+# Genau der Weg aus der Verwaltung ("Jetzt installieren"): starteMitRueckfrage
+# aus dem installierten Programm, mit dem mitgelieferten Node. Vorher war
+# dieser Weg nur unter Linux getestet - auf der Box kam die Rueckfrage nie.
+$log2 = Join-Path $PWD 'installation-2.log'
+$env:PROBE_SETUP = (Resolve-Path $Setup).Path
+$env:PROBE_LOG = $log2
+$modul = 'file:///' + ("$programm\dist\server\fach\aktualisierung.js" -replace '\\', '/')
+$skript = "import('$modul').then((m) => m.starteMitRueckfrage(process.env.PROBE_SETUP, process.env.PROBE_LOG)).then(() => console.log('Setup gestartet'), (f) => { console.error(f.message); process.exit(1); })"
+& "$programm\node\node.exe" --input-type=module -e $skript
+Pruefe ($LASTEXITCODE -eq 0) 'Update-Setup ueber die Verwaltung gestartet'
+$fertig = $false
+for ($i = 0; $i -lt 300 -and -not $fertig; $i++) {
+  Start-Sleep 1
+  if (Test-Path $log2) { $fertig = [bool]((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Log closed') }
+}
+if (-not $fertig) {
+  # Was laeuft da noch - und hat das Setup ueberhaupt ein Protokoll angelegt?
+  Write-Host "`n--- Prozesse rund um das Setup ---"
+  Get-CimInstance Win32_Process | Where-Object {
+    $_.Name -like '*Setup*' -or $_.Name -like 'is-*' -or $_.Name -like '*.tmp' -or $_.CommandLine -like '*Fotobox-Setup*'
+  } | ForEach-Object { Write-Host "  $($_.ProcessId) $($_.Name): $($_.CommandLine)" }
+  Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { Write-Host "  Fenster: $($_.ProcessName) - $($_.MainWindowTitle)" }
+  $temp = Get-ChildItem $env:TEMP -Filter 'Setup Log*.txt' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+  if ($temp) { Write-Host "`n--- $($temp.FullName) ---"; Get-Content $temp.FullName -Tail 40 }
+}
+Pruefe $fertig 'Update-Setup ist durchgelaufen'
+Pruefe ([bool]((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Installation process succeeded')) 'Update-Setup meldet Erfolg'
 $sicherungen = @(Get-ChildItem "$daten\sicherungen" -Directory -Filter 'vor-update_*' -ErrorAction SilentlyContinue)
 Pruefe ($sicherungen.Count -ge 1) 'Datenbank vor dem Update gesichert'
 Pruefe ($sicherungen.Count -ge 1 -and (Test-Path (Join-Path $sicherungen[0].FullName 'fotobox.db'))) 'Sicherung enthaelt fotobox.db'
 Pruefe (Test-Path "$programm\node\node.exe") 'Programm nach dem Update vollstaendig'
 $regeln = @(Get-NetFirewallRule -DisplayName 'Fotobox Galerie' -ErrorAction SilentlyContinue)
 Pruefe ($regeln.Count -eq 1) "nach dem Update weiter genau eine Firewall-Regel (gefunden: $($regeln.Count))"
-$log = Get-Content (Join-Path $PWD 'installation-2.log') -Raw
+$log = Get-Content (Join-Path $PWD 'installation-2.log') -Raw -ErrorAction SilentlyContinue
 Pruefe ($log -notmatch 'DeleteFile failed|RemoveDirectory failed|Failed to') 'keine gesperrten Dateien beim Austausch'
 
 Write-Host "`n=== 4. Deinstallation"

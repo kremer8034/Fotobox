@@ -266,6 +266,15 @@ export class Druckschleife {
     return this.angehalten;
   }
 
+  /**
+   * Nur die Sperre nach einem Fehldruck loesen, ohne Fehldrucke nachzuholen -
+   * etwa nachdem in der Verwaltung ein anderer Drucker gewaehlt wurde.
+   */
+  gibFrei(): void {
+    this.angehalten = false;
+    this.letzterFehler = null;
+  }
+
   private async schleife(): Promise<void> {
     while (!this.gestoppt) {
       if (this.angehalten) {
@@ -322,4 +331,34 @@ export class Druckschleife {
 
 function pause(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Die letzten Auftraege ueber alle Veranstaltungen - fuer die Anzeige unter Geraet. */
+export function letzteAuftraege(anzahl = 15): {
+  id: string;
+  veranstaltung: string;
+  quelle: string;
+  status: string;
+  kopien: number;
+  angefordert: string;
+  gedruckt: string | null;
+  fehlertext: string | null;
+}[] {
+  return holeDb()
+    .prepare(
+      `SELECT d.id, e.name AS veranstaltung, d.quelle, d.status, d.kopien, d.angefordert, d.gedruckt, d.fehlertext
+         FROM druckauftraege d JOIN events e ON e.id = d.event_id
+        ORDER BY d.angefordert DESC LIMIT ?`,
+    )
+    .all(anzahl) as ReturnType<typeof letzteAuftraege>;
+}
+
+/** Alle noch wartenden Auftraege verwerfen - sie werden nicht mehr gedruckt. */
+export function verwirfWartende(): number {
+  return holeDb()
+    .prepare(
+      `UPDATE druckauftraege SET status = 'fehlgeschlagen', fehlertext = 'Von Hand verworfen.'
+        WHERE status = 'wartend'`,
+    )
+    .run().changes;
 }

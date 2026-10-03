@@ -4,6 +4,36 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.3
+
+> **Von Version 1.0.2 aus bitte einmal von Hand installieren:** Dort startet
+> „Jetzt installieren“ das Setup nicht. Die Datei `Fotobox-Setup-1.0.3.exe`
+> von der Releases-Seite laden und doppelklicken. Ab 1.0.3 geht das Update
+> wieder aus der Verwaltung.
+
+- **Druckwarteschlange sichtbar:** Unter Gerät steht jetzt, was mit den
+  Druckaufträgen los ist – wie viele bei der Fotobox und wie viele bei Windows
+  warten, die letzten Aufträge mit ihrem Status und, falls die Schleife nach
+  einem Fehldruck angehalten hat, die Fehlermeldung von Windows. Dazu die Knöpfe
+  „Fortsetzen“ und „Wartende verwerfen“.
+- **Druck nach einem Update repariert:** Startete die Fotobox, bevor der
+  Drucker eingetragen war, scheiterten die wartenden Aufträge mit „Kein Drucker
+  ausgewählt“, und die Warteschlange blieb danach angehalten. Jetzt warten die
+  Aufträge, bis ein Drucker gewählt ist, und gehen dann von selbst los.
+- **Foto ging verloren, obwohl es da war:** Windows meldete beim Schreiben der
+  Kameradatei kurz „Datei gesperrt“, und die Aufnahme brach ab. Das wird jetzt
+  übergangen; die Fotobox sieht zusätzlich selbst im Ordner nach.
+- **Update aus der Verwaltung repariert:** Nach „Jetzt installieren“ kam die
+  Windows-Rückfrage nicht, und das Setup startete nie – ohne Hinweis. Jetzt
+  meldet die Verwaltung, ob das Setup wirklich läuft, und sagt, wo die
+  Rückfrage steckt, falls sie nur in der Taskleiste blinkt. Klappt es nicht,
+  öffnet „Setup von Hand starten“ den Ordner mit der schon geladenen und
+  geprüften Setup-Datei.
+- digiCamControl wird zuverlässiger minimiert: kurz nach dem Start mehrmals,
+  und das Live-View-Fenster erst, wenn es wirklich aufgegangen ist.
+- Wird in der Verwaltung ein anderer Drucker gewählt, läuft die Warteschlange
+  sofort wieder an, auch wenn sie nach einem Fehldruck angehalten war.
+
 ## 1.0.2
 
 - **Kamera-Verbindung repariert:** Die Fotobox erreichte digiCamControl nicht,

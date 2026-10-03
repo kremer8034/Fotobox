@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deuteStatus, deuteDruckerliste, druckerVorschlag } from '../treiber/drucker-windows.js';
+import { deuteStatus, deuteDruckerliste, druckerVorschlag, WindowsDrucker } from '../treiber/drucker-windows.js';
+import { druckerBlockiert } from '../treiber/drucker.js';
 
 /**
  * Die Windows-Abfrage selbst laeuft nur unter Windows; ihre Antwort zu deuten
@@ -79,5 +80,15 @@ describe('Druckerauswahl', () => {
       ]),
     );
     expect(druckerVorschlag('DS-RX1', zwei)).toBeNull();
+  });
+});
+
+describe('Ohne gewaehlten Drucker', () => {
+  // An der Box direkt nach einem Update: Der Server lief schon, der Drucker
+  // war noch nicht eingetragen. Die Auftraege scheiterten und die Warteschlange
+  // blieb angehalten. Jetzt warten sie, bis ein Drucker da ist.
+  it('gilt als blockiert, damit Auftraege warten statt zu scheitern', async () => {
+    const status = await new WindowsDrucker('', '').pruefe();
+    expect(druckerBlockiert(status.zustand)).toBe(true);
   });
 });

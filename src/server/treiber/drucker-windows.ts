@@ -24,8 +24,13 @@ export class WindowsDrucker implements DruckerTreiber {
   ) {}
 
   async pruefe(): Promise<DruckerStatus> {
+    // Ohne Drucker gilt er als nicht erreichbar: Die Auftraege warten dann,
+    // bis einer gewaehlt ist. Vorher hiess das "unbekannt", die Schleife
+    // schickte trotzdem los, jeder Auftrag scheiterte mit "Kein Drucker
+    // ausgewaehlt" - und die Warteschlange blieb danach angehalten. Genau so
+    // geschehen direkt nach einem Update, bevor der Drucker eingetragen war.
     if (!this.druckerName) {
-      return { zustand: 'unbekannt', meldung: 'Kein Drucker ausgewaehlt.' };
+      return { zustand: 'offline', meldung: 'Kein Drucker ausgewaehlt.' };
     }
     try {
       // PrinterStatus und DetectedErrorState aus WMI, dazu die Auftraege, die

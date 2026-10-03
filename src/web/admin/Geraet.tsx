@@ -91,6 +91,8 @@ export function GeraetSeite() {
         </p>
       </div>
 
+      <DruckWarteschlange />
+
       <div className="karte">
         <h2>Druckkalibrierung</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
@@ -245,6 +247,137 @@ export function GeraetSeite() {
     await api.sende('/api/admin/geraet/kalibrierdruck', { preset: '10x15-quer' });
     setzeMeldung('Testbild in der Warteschlange. Es zählt nicht in den Auslagenersatz.');
   }
+}
+
+interface DruckZustand {
+  angehalten: boolean;
+  letzterFehler: string | null;
+  drucker: { zustand: string; meldung?: string; auftraegeBeimSystem?: number } | null;
+  offen: number;
+  auftraege: {
+    id: string;
+    veranstaltung: string;
+    quelle: string;
+    status: string;
+    kopien: number;
+    angefordert: string;
+    fehlertext: string | null;
+  }[];
+}
+
+const AUFTRAG_STATUS: Record<string, string> = {
+  wartend: 'wartet',
+  laeuft: 'wird gesendet',
+  gedruckt: 'an Windows übergeben',
+  fehlgeschlagen: 'fehlgeschlagen',
+};
+
+const QUELLE: Record<string, string> = {
+  kiosk: 'Kiosk',
+  galerie: 'Galerie',
+  servicemenue: 'Servicemenü',
+  testdruck: 'Testdruck',
+};
+
+/**
+ * Was gerade in der Druckwarteschlange passiert. Vorher stand nur "Testbild in
+ * der Warteschlange" da - ob die Schleife nach einem Fehldruck angehalten war
+ * oder bei Windows noch Auftraege klemmten, sah man nirgends.
+ */
+function DruckWarteschlange() {
+  const [zustand, setzeZustand] = useState<DruckZustand | null>(null);
+  const [meldung, setzeMeldung] = useState<string | null>(null);
+
+  async function lade() {
+    try {
+      setzeZustand(await api.hole<DruckZustand>('/api/admin/druck/zustand'));
+    } catch {
+      // Beim naechsten Takt wieder.
+    }
+  }
+
+  useEffect(() => {
+    void lade();
+    const takt = setInterval(() => void lade(), 3000);
+    return () => clearInterval(takt);
+  }, []);
+
+  if (!zustand) return null;
+  const beiWindows = zustand.drucker?.auftraegeBeimSystem ?? 0;
+
+  return (
+    <div className="karte">
+      <h2>Druckwarteschlange</h2>
+      {zustand.angehalten && (
+        <p style={{ color: 'var(--warnung)' }}>
+          <strong>Angehalten nach einem Fehldruck.</strong>{' '}
+          {zustand.letzterFehler ? `Windows bzw. SumatraPDF meldete: „${zustand.letzterFehler}“.` : ''} Nach dem
+          Beheben auf „Fortsetzen“ tippen.
+        </p>
+      )}
+      {beiWindows >= 2 && (
+        <p style={{ color: 'var(--warnung)' }}>
+          Bei Windows liegen noch {beiWindows} Aufträge für diesen Drucker. Solange dort zwei oder mehr warten,
+          schickt die Fotobox nichts nach. In Windows unter Einstellungen → Drucker → {'„'}Druckwarteschlange
+          öffnen{'“'} nachsehen und hängende Aufträge abbrechen.
+        </p>
+      )}
+      <p style={{ fontSize: '0.82rem', margin: '0 0 0.6rem' }}>
+        Wartend bei der Fotobox: <strong>{zustand.offen}</strong> · Bei Windows: <strong>{beiWindows}</strong>
+        {zustand.drucker?.meldung ? ` · Windows: ${zustand.drucker.meldung}` : ''}
+      </p>
+      <div className="zeile">
+        <button
+          className="knopf knopf--neben"
+          onClick={async () => {
+            const a = await api.sende<{ wartend: number }>('/api/admin/druck/fortsetzen', {});
+            setzeMeldung(`Fortgesetzt – ${a.wartend} Auftrag/Aufträge warten auf den Druck.`);
+            void lade();
+          }}
+        >
+          Fortsetzen (Fehldrucke nachholen)
+        </button>
+        <button
+          className="knopf knopf--neben"
+          disabled={zustand.offen === 0}
+          onClick={async () => {
+            if (!window.confirm('Alle wartenden Aufträge verwerfen? Sie werden nicht mehr gedruckt.')) return;
+            const a = await api.sende<{ verworfen: number }>('/api/admin/druck/verwerfen', {});
+            setzeMeldung(`${a.verworfen} Auftrag/Aufträge verworfen.`);
+            void lade();
+          }}
+        >
+          Wartende verwerfen
+        </button>
+      </div>
+      {meldung && <p style={{ color: 'var(--akzent)', fontSize: '0.82rem' }}>{meldung}</p>}
+      {zustand.auftraege.length > 0 && (
+        <table className="liste" style={{ marginTop: '0.6rem', fontSize: '0.78rem' }}>
+          <thead>
+            <tr>
+              <th>Zeit</th>
+              <th>Veranstaltung</th>
+              <th>Quelle</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {zustand.auftraege.map((a) => (
+              <tr key={a.id}>
+                <td>{new Date(a.angefordert).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                <td>{a.veranstaltung}</td>
+                <td>{QUELLE[a.quelle] ?? a.quelle}</td>
+                <td style={{ color: a.status === 'fehlgeschlagen' ? 'var(--warnung)' : undefined }}>
+                  {AUFTRAG_STATUS[a.status] ?? a.status}
+                  {a.fehlertext ? ` – ${a.fehlertext}` : ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 }
 
 interface GefundenerDrucker {
@@ -493,11 +626,12 @@ interface UpdateInfo {
 }
 
 interface UpdateStand {
-  phase: 'bereit' | 'laedt' | 'prueft' | 'startet' | 'gestartet' | 'simuliert' | 'fehler';
+  phase: 'bereit' | 'laedt' | 'prueft' | 'startet' | 'rueckfrage' | 'gestartet' | 'simuliert' | 'fehler';
   version: string | null;
   geladen: number;
   gesamt: number;
   meldung: string | null;
+  datei: string | null;
   aktuell: string;
 }
 
@@ -519,7 +653,7 @@ function SoftwareKarte() {
   useEffect(() => {
     void api.hole<UpdateStand>('/api/admin/update/stand').then((s) => {
       setzeStand(s);
-      if (['laedt', 'prueft', 'startet', 'gestartet'].includes(s.phase)) {
+      if (['laedt', 'prueft', 'startet', 'rueckfrage', 'gestartet'].includes(s.phase)) {
         vorher.current = s.aktuell;
         setzeBeobachten(true);
       }
@@ -548,7 +682,7 @@ function SoftwareKarte() {
     return () => clearInterval(uhr);
   }, [beobachten]);
 
-  const laeuft = stand !== null && ['laedt', 'prueft', 'startet'].includes(stand.phase);
+  const laeuft = stand !== null && ['laedt', 'prueft', 'startet', 'rueckfrage'].includes(stand.phase);
   const prozent = stand && stand.gesamt > 0 ? Math.min(100, Math.round((stand.geladen / stand.gesamt) * 100)) : 0;
 
   return (
@@ -598,8 +732,27 @@ function SoftwareKarte() {
 
       {stand && stand.phase === 'laedt' && <p>Wird geladen … {prozent} %</p>}
       {stand && stand.phase === 'prueft' && <p>Prüfsumme wird kontrolliert …</p>}
-      {stand && ['gestartet', 'simuliert', 'fehler'].includes(stand.phase) && stand.meldung && !meldung && (
-        <p style={{ color: stand.phase === 'fehler' ? 'var(--fehler, #c33)' : undefined }}>{stand.meldung}</p>
+      {stand && ['rueckfrage', 'gestartet', 'simuliert', 'fehler'].includes(stand.phase) && stand.meldung && !meldung && (
+        <p
+          style={{
+            color: stand.phase === 'fehler' ? 'var(--fehler, #c33)' : stand.phase === 'rueckfrage' ? 'var(--akzent)' : undefined,
+            fontWeight: stand.phase === 'rueckfrage' ? 700 : undefined,
+          }}
+        >
+          {stand.meldung}
+        </p>
+      )}
+      {/* Ausweg, falls die Rueckfrage nicht erscheint oder abgelehnt wurde. */}
+      {stand?.datei && ['rueckfrage', 'fehler'].includes(stand.phase) && (
+        <div style={{ marginBottom: '0.6rem' }}>
+          <button className="knopf knopf--neben" onClick={() => void vonHand()}>
+            Setup von Hand starten
+          </button>
+          <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)' }}>
+            Öffnet den Ordner mit der schon geladenen und geprüften Setup-Datei. Dort die markierte Datei
+            doppelklicken und mit „Ja“ bestätigen.
+          </p>
+        </div>
       )}
       {meldung && <p>{meldung}</p>}
 
@@ -610,6 +763,19 @@ function SoftwareKarte() {
       </p>
     </div>
   );
+
+  async function vonHand() {
+    try {
+      const a = await api.sende<{ datei: string; geoeffnet: boolean }>('/api/admin/update/von-hand', {});
+      setzeMeldung(
+        a.geoeffnet
+          ? `Der Ordner ist offen (ggf. in der Taskleiste). Datei: ${a.datei}`
+          : `Die Setup-Datei liegt hier: ${a.datei}`,
+      );
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
+  }
 
   async function suche() {
     setzeSucht(true);
