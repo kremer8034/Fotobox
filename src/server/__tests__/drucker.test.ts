@@ -88,7 +88,16 @@ describe('Ohne gewaehlten Drucker', () => {
   // war noch nicht eingetragen. Die Auftraege scheiterten und die Warteschlange
   // blieb angehalten. Jetzt warten sie, bis ein Drucker da ist.
   it('gilt als blockiert, damit Auftraege warten statt zu scheitern', async () => {
-    const status = await new WindowsDrucker('', '').pruefe();
+    const status = await new WindowsDrucker('').pruefe();
     expect(druckerBlockiert(status.zustand)).toBe(true);
+  });
+});
+
+describe('Druck ohne Druckbild', () => {
+  // Frueher sprang hier SumatraPDF ein - und meldete Erfolg, auch wenn nichts
+  // gedruckt wurde. Jetzt scheitert der Auftrag sichtbar, mit einem Hinweis,
+  // was zu tun ist.
+  it('scheitert mit einem Hinweis statt still zu "drucken"', async () => {
+    await expect(new WindowsDrucker('DS-RX1').drucke('/gibt/es/nicht.pdf', 1)).rejects.toThrow(/fehlt das Druckbild/);
   });
 });

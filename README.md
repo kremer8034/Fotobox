@@ -74,7 +74,7 @@ Umgebungsvariablen:
 **Eine Setup-Datei:** `Fotobox-Setup-<Version>.exe` von der
 [Releases-Seite](https://github.com/kremer8034/fotobox/releases) laden,
 doppelklicken, „Installieren“. Sie bringt alles mit – eigenes Node.js, fertig
-gebautes Programm, SumatraPDF – und richtet Autostart, Firewall-Freigabe und
+gebautes Programm – und richtet Autostart, Firewall-Freigabe und
 Energieeinstellungen ein. An der Box braucht es dafür weder Internet noch
 Kommandozeile. Auf dem Desktop landen **„Fotobox starten“** (Server und Kiosk)
 und **„Fotobox Verwaltung“**.
@@ -111,8 +111,7 @@ Autostart).
    und das Programm einmal starten.
 4. **Drucker wählen** unter *Gerät → Drucker* – die Liste zeigt alle
    Windows-Drucker, der DNP steht mit ★ oben. Gedruckt wird direkt über
-   Windows; das mitgelieferte SumatraPDF ist nur noch Ersatzweg für
-   Druckdateien aus Versionen vor 1.0.4.
+   Windows, ohne Zusatzprogramm.
 5. **Besitzer-PIN vergeben.** Ohne sie lässt sich keine Veranstaltung starten;
    eine ausgelieferte Standard-PIN gibt es bewusst nicht.
 6. **Kamera**: Netzteil mit Dummy-Akku verwenden, LED-Dauerlicht aufstellen,

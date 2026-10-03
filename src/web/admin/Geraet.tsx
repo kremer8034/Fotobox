@@ -4,7 +4,6 @@ import { api } from '../api.js';
 interface Geraet {
   datenpfad: string;
   druckerName: string;
-  sumatraPfad: string;
   digicamcontrolPfad: string;
   speicherWarnungGb: number;
   besitzerPinGesetzt: boolean;
@@ -76,14 +75,6 @@ export function GeraetSeite() {
             gewaehlt={geraet.druckerName}
             beiWahl={(name) => void speichere({ druckerName: name })}
           />
-          <div className="feld" style={{ flex: 1 }}>
-            <label>SumatraPDF.exe (nur Ersatzweg für Druckdateien vor 1.0.4)</label>
-            <input
-              value={geraet.sumatraPfad}
-              onChange={(e) => setzeGeraet({ ...geraet, sumatraPfad: e.target.value })}
-              onBlur={() => void speichere({ sumatraPfad: geraet.sumatraPfad })}
-            />
-          </div>
         </div>
         <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)', marginBottom: 0 }}>
           Gedruckt wird direkt über Windows: Die Fotobox wählt im Treiber das Papier 6 × 4 Zoll (10 × 15) und
@@ -238,8 +229,12 @@ export function GeraetSeite() {
   }
 
   async function speichere(teil: Record<string, unknown>) {
-    await api.aendere('/api/admin/geraet', teil);
+    const antwort = await api.aendere<{ kameraHinweis?: string }>('/api/admin/geraet', teil);
     await lade();
+    if (antwort?.kameraHinweis) {
+      setzeMeldung(antwort.kameraHinweis);
+      return;
+    }
     setzeMeldung('Gespeichert.');
     setTimeout(() => setzeMeldung(null), 1500);
   }

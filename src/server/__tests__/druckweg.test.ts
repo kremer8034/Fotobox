@@ -148,6 +148,16 @@ describe('Fehlertext des Druckhelfers', () => {
     expect(druckfehlerText({ killed: true, stderr: '' })).toMatch(/zwei Minuten/);
     expect(druckfehlerText(new Error('spawn powershell.exe ENOENT'))).toBe('spawn powershell.exe ENOENT');
   });
+
+  // So kam es im Windows-Probelauf an: Fortschrittsanzeige als CLIXML hinter
+  // der eigentlichen Meldung. Die muss trotzdem durchkommen.
+  it('übersieht die Fortschrittsanzeige von PowerShell (CLIXML)', () => {
+    const stderr =
+      "Windows kennt keinen Drucker mit dem Namen 'Gibt es nicht'.\r\n#< CLIXML\r\n" +
+      '<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04"><Obj S="progress" RefId="0">' +
+      '<PR N="Record"><AV>Preparing modules for first use.</AV></PR></Obj></Objs>';
+    expect(druckfehlerText({ stderr })).toBe("Windows kennt keinen Drucker mit dem Namen 'Gibt es nicht'.");
+  });
 });
 
 describe('Druck-Limit', () => {

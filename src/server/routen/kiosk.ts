@@ -197,7 +197,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     // Zielordner der Kamera auf 01_originale des aktiven Events setzen: Die
     // Datei entsteht dort, wo sie ohnehin hingehoert.
     const pfade = eventpfade(event.ordner, sitzung.istTest);
-    await betrieb.kamera.setzeZielordner(pfade.originale).catch(() => undefined);
+    await setzeZielordner(pfade.originale);
     await betrieb.starteLiveView();
 
     return {
@@ -235,7 +235,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Sitzung: Startet digiCamControl zwischendurch neu, vergisst es ihn
         // und legt das naechste Foto in seinen Standardordner - wir warteten
         // dann vergeblich.
-        await betrieb.kamera.setzeZielordner(pfade.originale).catch(() => undefined);
+        await setzeZielordner(pfade.originale);
 
         // Erst den Waechter aufsetzen, dann ausloesen - sonst geht eine sehr
         // schnelle Kamera durch die Lappen.
@@ -640,16 +640,26 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
    * Laeuft ohne Adminrechte: Das Herunterfahren des eigenen Rechners darf unter
    * Windows jeder angemeldete Benutzer.
    */
-  app.post('/api/kiosk/service/herunterfahren', async () => {
+  app.post('/api/kiosk/service/herunterfahren', async (_anfrage, antwort) => {
     if (process.platform !== 'win32' || !konfig.echteHardware) {
       protokolliere('info', 'system', 'Herunterfahren angefordert (Entwicklungsbetrieb - nur protokolliert).');
       return { ok: true, simuliert: true };
     }
+    // shutdown kehrt sofort zurueck und plant nur - also darauf warten und
+    // einen Fehler auch melden. Vorher hiess es "faehrt in 15 Sekunden
+    // herunter", egal ob Windows den Befehl angenommen hatte.
+    try {
+      await new Promise<void>((fertig, fehler) =>
+        execFile('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], { windowsHide: true, timeout: 15_000 }, (f) =>
+          f ? fehler(f) : fertig(),
+        ),
+      );
+    } catch (fehler) {
+      const text = fehler instanceof Error ? fehler.message : String(fehler);
+      protokolliere('warnung', 'system', `Herunterfahren gescheitert: ${text}`);
+      return antwort.code(500).send({ fehler: 'Windows hat das Herunterfahren abgelehnt. Bitte über das Startmenü ausschalten.' });
+    }
     protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenue).');
-    // Nicht abgeloest starten - siehe schliesseKioskBrowser.
-    execFile('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], { windowsHide: true }, (fehler) => {
-      if (fehler) protokolliere('warnung', 'system', `Herunterfahren gescheitert: ${fehler.message}`);
-    });
     return { ok: true, simuliert: false };
   });
 
@@ -696,6 +706,25 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     );
     return { ok: true, simuliert: false };
   });
+
+  /**
+   * Zielordner der Kamera setzen. Scheitert es, geht die Aufnahme trotzdem
+   * weiter (digiCamControl hat den Ordner vielleicht noch von vorher) - aber
+   * es steht im Protokoll, statt still verschluckt zu werden. Derselbe Fehler
+   * nur einmal, nicht bei jedem Foto.
+   */
+  let letzterZielordnerFehler = '';
+  async function setzeZielordner(ordner: string): Promise<void> {
+    try {
+      await betrieb.kamera.setzeZielordner(ordner);
+      letzterZielordnerFehler = '';
+    } catch (fehler) {
+      const text = fehler instanceof Error ? fehler.message : String(fehler);
+      if (text === letzterZielordnerFehler) return;
+      letzterZielordnerFehler = text;
+      protokolliere('warnung', 'kamera', `Fotoordner nicht gesetzt, Fotos landen womöglich woanders: ${text}`);
+    }
+  }
 
   /** Blatt bis zum Druck-Limit der Feier; null, wenn kein Limit gesetzt ist. */
   function druckRest(eventId: string): number | null {

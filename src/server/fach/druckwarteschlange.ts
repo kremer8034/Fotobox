@@ -19,7 +19,7 @@ import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../tr
  * Faellt der Drucker aus, bleiben die Auftraege stehen, statt still verloren zu
  * gehen. Nach dem Papierwechsel laeuft die Schlange weiter.
  *
- * Wichtig dabei: Vor jedem Auftrag wird der Drucker gefragt. SumatraPDF meldet
+ * Wichtig dabei: Vor jedem Auftrag wird der Drucker gefragt. Der Druckbefehl meldet
  * "fertig", sobald der Auftrag in der Windows-Warteschlange liegt - auch bei
  * leerem Papier. Vorher wanderte deshalb bei einer leeren Rolle alles sofort
  * zu Windows, galt als gedruckt und war fuer unsere Schlange verloren: kein

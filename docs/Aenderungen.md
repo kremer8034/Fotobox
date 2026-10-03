@@ -23,7 +23,25 @@ ihn auf der Box verstehst.
   Grund in Windows' eigenen Worten unter Gerät → Druckwarteschlange, statt
   dass ein Druck still verschwindet. Nach dem ersten Druck steht im Protokoll,
   welches Papier der Treiber genommen hat. Die Druckkalibrierung gilt
-  unverändert weiter.
+  unverändert weiter. SumatraPDF wird nicht mehr gebraucht und beim Update
+  entfernt; das Feld dafür unter Gerät → Drucker ist weg.
+- **Keine stillen Fehlschläge mehr:** Der Code wurde gezielt nach Stellen
+  durchsucht, die „erledigt“ melden, ohne es zu prüfen. Gefunden und behoben:
+  - Den **Fotoordner der Kamera** hat digiCamControl manchmal nicht
+    übernommen. Die Fotobox hielt das für gelungen, weil digiCamControl auch
+    bei einem Fehler „alles in Ordnung“ (HTTP 200) antwortet und den Fehler
+    nur in den Text schreibt. Jetzt zählt nur ein echtes „OK“, sonst steht
+    der Grund unter „Was zuletzt gehakt hat“.
+  - Dasselbe bei **ISO, Blende und Verschlusszeit**: Lehnt die Kamera einen
+    Wert ab, sagt die Verwaltung das jetzt, statt „Gespeichert.“ zu zeigen.
+  - **„PC herunterfahren“** meldete „fährt in 15 Sekunden herunter“, ohne zu
+    wissen, ob Windows zugestimmt hatte. Jetzt kommt eine Fehlermeldung, wenn
+    nicht.
+  - **Fehlermeldungen aus Windows** (Drucken, Update) waren manchmal nur
+    unlesbarer PowerShell-Text („Preparing modules for first use“). Jetzt
+    kommt der eigentliche Grund an.
+  - Ließ sich digiCamControl oder der Explorer nicht starten, konnte das den
+    ganzen Fotobox-Server mitreißen. Jetzt wird es abgefangen.
 - **Schloss öffnet schneller:** Eine Sekunde Gedrückthalten reicht jetzt statt
   zwei. Ein kurzes Antippen öffnet weiterhin nichts.
 - **Ansagen bei der Aufnahme groß und mittig:** „Gleich geht es los“, „Neue

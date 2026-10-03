@@ -21,7 +21,7 @@ laden (oder per USB-Stick mitbringen), doppelklicken, SmartScreen mit
 „Installieren“.
 
 Das Setup legt das Programm nach `C:\Program Files\Fotobox` (mit eigenem
-Node.js und SumatraPDF), den Datenordner nach `C:\Users\Public\Fotobox-Daten`,
+Node.js), den Datenordner nach `C:\Users\Public\Fotobox-Daten`,
 richtet den Autostart für den angemeldeten Benutzer ein, legt die
 Firewall-Freigabe für Port 8787 (nur privates Netz) an, schaltet
 Energiesparen am Netzteil ab und unterdrückt Update-Neustarts bei angemeldeten

@@ -162,9 +162,7 @@ export class DigiCamControlKamera implements KameraTreiber {
 
   async setzeZielordner(pfad: string): Promise<void> {
     const antwort = await this.frageRoh(`/?slc=set&param1=session.folder&param2=${encodeURIComponent(pfad)}`);
-    if (antwort.status < 200 || antwort.status >= 300) {
-      throw new Error(`Zielordner konnte nicht gesetzt werden (HTTP ${antwort.status}).`);
-    }
+    pruefeSetzAntwort(antwort, 'Zielordner');
   }
 
   async setzeBelichtung(werte: {
@@ -177,13 +175,38 @@ export class DigiCamControlKamera implements KameraTreiber {
       ['aperture', werte.blende],
       ['shutterspeed', werte.verschlusszeit],
     ];
+    // Alle Werte versuchen, auch wenn einer scheitert - und am Ende sagen, welche.
+    const fehler: string[] = [];
     for (const [name, wert] of paare) {
       if (!wert) continue;
-      await this.frageRoh(`/?slc=set&param1=${name}&param2=${encodeURIComponent(wert)}`).catch(
-        () => undefined,
-      );
+      try {
+        pruefeSetzAntwort(await this.frageRoh(`/?slc=set&param1=${name}&param2=${encodeURIComponent(wert)}`), name);
+      } catch (f) {
+        fehler.push(f instanceof Error ? f.message : String(f));
+      }
     }
+    if (fehler.length > 0) throw new Error(fehler.join(' '));
   }
+}
+
+/**
+ * Antwort auf "?slc=set" pruefen. digiCamControl antwortet immer mit HTTP 200:
+ * "OK", wenn es geklappt hat, sonst mit dem Text seiner Ausnahme (etwa "No
+ * camera connected"). Sind Befehle ueber den Webserver gesperrt, kommt gar
+ * nichts. Vorher galt jede 200 als Erfolg - ein nicht gesetzter Zielordner
+ * fiel erst auf, wenn das Foto nach einer Minute Warten nicht ankam.
+ */
+export function pruefeSetzAntwort(antwort: { status: number; text: string }, was: string): void {
+  const text = antwort.text.trim();
+  if (antwort.status >= 200 && antwort.status < 300 && text === 'OK') return;
+  if (antwort.status < 200 || antwort.status >= 300) {
+    throw new Error(`digiCamControl: ${was} nicht gesetzt (HTTP ${antwort.status}).`);
+  }
+  throw new Error(
+    text
+      ? `digiCamControl: ${was} nicht gesetzt - "${text.slice(0, 200)}".`
+      : `digiCamControl: ${was} nicht gesetzt - keine Antwort. Ist "Interaktion über Webserver erlauben" angehakt?`,
+  );
 }
 
 /** Rumpf mit "Transfer-Encoding: chunked" zusammensetzen. */

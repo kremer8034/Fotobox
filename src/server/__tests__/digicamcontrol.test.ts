@@ -171,6 +171,35 @@ describe('digiCamControl-Kamera', () => {
     }
   });
 
+  // digiCamControl antwortet auf "?slc=set" immer mit HTTP 200 - ob es
+  // geklappt hat, steht nur im Text. Vorher galt jede 200 als Erfolg.
+  it('nimmt einen gesetzten Zielordner nur mit "OK" als gesetzt', async () => {
+    const ok = new DigiCamControlKamera(await webserver(() => ({ text: 'OK' })));
+    await expect(ok.setzeZielordner('C:\\Fotos')).resolves.toBeUndefined();
+    await new Promise<void>((fertig) => server!.close(() => fertig()));
+
+    const fehler = new DigiCamControlKamera(await webserver(() => ({ text: 'No camera connected' })));
+    await expect(fehler.setzeZielordner('C:\\Fotos')).rejects.toThrow(/No camera connected/);
+    await new Promise<void>((fertig) => server!.close(() => fertig()));
+
+    const gesperrt = new DigiCamControlKamera(await webserver(() => ({ text: '' })));
+    await expect(gesperrt.setzeZielordner('C:\\Fotos')).rejects.toThrow(/Interaktion über Webserver/);
+  });
+
+  it('versucht alle Belichtungswerte und nennt die abgelehnten', async () => {
+    const gesehen: string[] = [];
+    const kamera = new DigiCamControlKamera(
+      await webserver((url) => {
+        gesehen.push(url);
+        return { text: url.includes('param1=iso') ? 'Wrong value' : 'OK' };
+      }),
+    );
+    await expect(kamera.setzeBelichtung({ iso: '6400', blende: '5.6', verschlusszeit: '1/125' })).rejects.toThrow(
+      /iso nicht gesetzt/,
+    );
+    expect(gesehen).toHaveLength(3);
+  });
+
   it('meldet "antwortet nicht", wenn niemand zuhoert', async () => {
     const basis = await webserver(() => ({ text: '' }));
     await new Promise<void>((fertig) => server!.close(() => fertig()));

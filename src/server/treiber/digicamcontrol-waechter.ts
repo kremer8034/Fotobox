@@ -114,7 +114,12 @@ export function windowsSteuerung(exe: () => string): ProzessSteuerung {
     },
     starte() {
       const datei = exe();
-      spawn(datei, [], { cwd: dirname(datei), detached: true, stdio: 'ignore' }).unref();
+      // Abgeloest ist hier richtig: CameraControl.exe ist ein Fensterprogramm
+      // und soll einen Neustart des Servers ueberleben. Aber ohne "error"-
+      // Handler beendete ein Startfehler (Datei weg, keine Rechte) den Server.
+      spawn(datei, [], { cwd: dirname(datei), detached: true, stdio: 'ignore' })
+        .on('error', (f) => console.error(`digiCamControl nicht gestartet: ${f.message}`))
+        .unref();
     },
     async beende() {
       await fuehreAus('taskkill', ['/IM', 'CameraControl.exe', '/F'], {

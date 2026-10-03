@@ -10,7 +10,7 @@ import { leseKonfig } from './konfig.js';
 import { oeffneDb, schliesseDb } from './db/index.js';
 import { leseGeraet, schreibeGeraet } from './db/geraet.js';
 import { wurzelpfade } from './fach/pfade.js';
-import { findeDigiCamControl, findeSumatra } from './fach/hilfsprogramme.js';
+import { findeDigiCamControl } from './fach/hilfsprogramme.js';
 import { legeStandardvorlagenAn } from './fach/vorlagen.js';
 import { legeEingebauteFilterAn } from './fach/filter.js';
 import { holeAktivesEvent, listeEvents } from './fach/events.js';
@@ -53,13 +53,6 @@ if (geraet.datenpfad !== konfig.datenpfad) {
 
 // Hilfsprogramme beim ersten Start selbst suchen. Eingetragene Pfade bleiben
 // unangetastet - wer von Hand etwas anderes gesetzt hat, behaelt es.
-if (!geraet.sumatraPfad) {
-  const gefunden = findeSumatra();
-  if (gefunden) {
-    schreibeGeraet({ sumatraPfad: gefunden });
-    protokolliere('info', 'geraet', `SumatraPDF gefunden: ${gefunden}`);
-  }
-}
 if (!existsSync(geraet.digicamcontrolPfad)) {
   const gefunden = findeDigiCamControl();
   if (gefunden) schreibeGeraet({ digicamcontrolPfad: gefunden });

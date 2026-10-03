@@ -66,7 +66,7 @@ export class Betrieb {
       ? new DigiCamControlKamera()
       : new MockKamera();
     this.drucker = optionen.echteHardware
-      ? new WindowsDrucker(geraet.druckerName, geraet.sumatraPfad)
+      ? new WindowsDrucker(geraet.druckerName)
       : new MockDrucker(optionen.mockDruckOrdner);
     const exe = () => cameraControlExe(leseGeraet().digicamcontrolPfad);
     this.kameraProgramm =
@@ -126,7 +126,7 @@ export class Betrieb {
   ladeTreiberNeu(): void {
     const geraet = leseGeraet();
     if (this.optionen.echteHardware) {
-      this.drucker = new WindowsDrucker(geraet.druckerName, geraet.sumatraPfad);
+      this.drucker = new WindowsDrucker(geraet.druckerName);
     }
     // Der neue Drucker soll sofort gefragt werden, nicht erst in 20 Sekunden.
     this.letzteDruckerPruefung = 0;

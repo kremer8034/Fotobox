@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { seitenbildPfad } from '../bild/pdf.js';
+import { lesbarerFehler, OHNE_FORTSCHRITT } from './powershell.js';
 import type { DruckerStatus, DruckerTreiber, DruckerZustand } from './drucker.js';
 
 const fuehreAus = promisify(execFile);
@@ -25,6 +26,7 @@ const fuehreAus = promisify(execFile);
  * das Papier) kommt als Ausnahme - und damit als Text bis in die Verwaltung.
  */
 const DRUCKHELFER = `
+${OHNE_FORTSCHRITT}
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 try {
@@ -80,7 +82,8 @@ function verpackt(skript: string): string {
  * Kalibrierung eingerechnet (siehe schreibeSeitenbild). Bis 1.0.3 ging das PDF
  * an SumatraPDF - das meldete mit "-silent" aber jeden Fehlschlag als Erfolg.
  * Die Box zeigte "an Windows uebergeben", in der Windows-Warteschlange kam
- * nie etwas an. SumatraPDF bleibt nur fuer Druckdateien ohne Seitenbild.
+ * nie etwas an. Deshalb gibt es keinen SumatraPDF-Ersatzweg mehr: Ein
+ * Druckweg, der Fehler verschluckt, ist schlimmer als gar keiner.
  *
  * Randlos und ICC-Farbprofil werden einmalig im DNP-Windows-Treiber
  * eingestellt.
@@ -88,10 +91,7 @@ function verpackt(skript: string): string {
 export class WindowsDrucker implements DruckerTreiber {
   readonly name = 'Windows-Silent-Print';
 
-  constructor(
-    private readonly druckerName: string,
-    private readonly sumatraPfad: string,
-  ) {}
+  constructor(private readonly druckerName: string) {}
 
   async pruefe(): Promise<DruckerStatus> {
     // Ohne Drucker gilt er als nicht erreichbar: Die Auftraege warten dann,
@@ -113,7 +113,8 @@ export class WindowsDrucker implements DruckerTreiber {
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          `$p = Get-CimInstance Win32_Printer -Filter "Name='${name}'";` +
+          OHNE_FORTSCHRITT +
+            `$p = Get-CimInstance Win32_Printer -Filter "Name='${name}'";` +
             'if ($null -eq $p) { "fehlt" } else {' +
             ` $muster = [WildcardPattern]::Escape('${name}') + ', *';` +
             ' $j = @(Get-CimInstance Win32_PrintJob | Where-Object { $_.Name -like $muster });' +
@@ -131,14 +132,12 @@ export class WindowsDrucker implements DruckerTreiber {
     }
   }
 
-  async drucke(pdfPfad: string, kopien: number): Promise<string | void> {
+  async drucke(pdfPfad: string, kopien: number): Promise<string> {
     if (!this.druckerName) throw new Error('Kein Drucker ausgewaehlt.');
     const seite = seitenbildPfad(pdfPfad);
-    if (existsSync(seite)) return this.druckeSeitenbild(seite, kopien);
-    return this.druckeMitSumatra(pdfPfad, kopien);
-  }
-
-  private async druckeSeitenbild(seite: string, kopien: number): Promise<string> {
+    if (!existsSync(seite)) {
+      throw new Error('Zu diesem Auftrag fehlt das Druckbild. Bitte das Foto aus der Galerie neu drucken.');
+    }
     try {
       const { stdout } = await fuehreAus(
         'powershell.exe',
@@ -160,35 +159,13 @@ export class WindowsDrucker implements DruckerTreiber {
       throw new Error(`Windows hat den Druck nicht angenommen: ${druckfehlerText(fehler)}`);
     }
   }
-
-  private async druckeMitSumatra(pdfPfad: string, kopien: number): Promise<void> {
-    if (!this.sumatraPfad || !existsSync(this.sumatraPfad)) {
-      throw new Error(
-        'SumatraPDF wurde nicht gefunden. Pfad unter Geraet > Drucker eintragen.',
-      );
-    }
-    // SumatraPDF druckt ohne Dialog. "noscale" ist entscheidend: Jede Skalierung
-    // durch den Treiber wuerde die Druckkalibrierung wirkungslos machen.
-    const argumente = [
-      '-print-to',
-      this.druckerName,
-      '-print-settings',
-      `noscale,${kopien}x`,
-      '-silent',
-      '-exit-when-done',
-      pdfPfad,
-    ];
-    await fuehreAus(this.sumatraPfad, argumente, { timeout: 120_000, windowsHide: true });
-  }
 }
 
 /** Aus einem gescheiterten Aufruf den Satz machen, den ein Mensch lesen kann. */
 export function druckfehlerText(fehler: unknown): string {
   const f = fehler as { stderr?: string; killed?: boolean; message?: string };
   if (f?.killed) return 'Keine Antwort von Windows innerhalb von zwei Minuten.';
-  const text = (f?.stderr ?? '').trim();
-  if (text) return text.split(/\r?\n/).filter(Boolean).at(-1)!;
-  return f?.message ?? String(fehler);
+  return lesbarerFehler(f?.stderr ?? '') || (f?.message ?? String(fehler));
 }
 
 /**
@@ -257,7 +234,8 @@ export async function listeWindowsDrucker(): Promise<GefundenerDrucker[]> {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      '[Console]::OutputEncoding = [Text.Encoding]::UTF8;' +
+      OHNE_FORTSCHRITT +
+        '[Console]::OutputEncoding = [Text.Encoding]::UTF8;' +
         ' @(Get-CimInstance Win32_Printer | Select-Object Name, DriverName, PortName, WorkOffline)' +
         ' | ConvertTo-Json -Compress',
     ],

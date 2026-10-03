@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { OHNE_FORTSCHRITT } from '../treiber/powershell.js';
 
 const fuehreAus = promisify(execFile);
 
@@ -17,6 +18,7 @@ const fuehreAus = promisify(execFile);
  */
 export async function schliesseKioskBrowser(verzoegerungMs = 800): Promise<number> {
   const skript =
+    OHNE_FORTSCHRITT +
     `Start-Sleep -Milliseconds ${Math.max(0, Math.round(verzoegerungMs))};` +
     ' $n = 0;' +
     ' Get-CimInstance Win32_Process |' +

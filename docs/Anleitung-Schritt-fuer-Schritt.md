@@ -96,9 +96,7 @@ darf es nicht mitbringen, deshalb einmal von Hand:
 ## Schritt 6: Drucken ohne Druckdialog — schon erledigt
 
 Die Fotobox druckt direkt über Windows, ohne Zusatzprogramm. Sie wählt im
-Treiber selbst das Papier 6 × 4 Zoll (10 × 15) und legt das Bild quer. Das
-mitgelieferte SumatraPDF dient nur noch als Ersatzweg für Druckdateien aus
-Versionen vor 1.0.4.
+Treiber selbst das Papier 6 × 4 Zoll (10 × 15) und legt das Bild quer.
 
 ## Schritt 7: Was das Setup sonst noch erledigt hat
 
@@ -238,8 +236,6 @@ Rot spürbar daneben.
 2. Unter **Drucker** eintragen:
    - **Drucker**: in der Liste den aus Schritt 13 wählen (der DNP steht mit
      ★ oben)
-   - **SumatraPDF.exe**: steht schon da und wird nur noch als Ersatzweg
-     gebraucht
 3. Klicke einmal irgendwo daneben — es speichert von selbst.
 
 ## Schritt 15: Trocken testen (ohne Papier zu verbrauchen)

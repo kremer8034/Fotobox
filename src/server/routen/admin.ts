@@ -123,7 +123,6 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     const koerper = z
       .object({
         druckerName: z.string().optional(),
-        sumatraPfad: z.string().optional(),
         digicamcontrolPfad: z.string().optional(),
         speicherWarnungGb: z.number().min(0).optional(),
         kamera: z
@@ -155,7 +154,6 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
 
     const aenderung: Parameters<typeof schreibeGeraet>[0] = {};
     if (koerper.druckerName !== undefined) aenderung.druckerName = koerper.druckerName;
-    if (koerper.sumatraPfad !== undefined) aenderung.sumatraPfad = koerper.sumatraPfad;
     if (koerper.digicamcontrolPfad !== undefined)
       aenderung.digicamcontrolPfad = koerper.digicamcontrolPfad;
     if (koerper.speicherWarnungGb !== undefined)
@@ -169,7 +167,18 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (koerper.mail === null) schreibeMailPasswort(null);
     else if (koerper.mailPasswort) schreibeMailPasswort(koerper.mailPasswort);
     betrieb.ladeTreiberNeu();
-    if (koerper.kamera) await betrieb.kamera.setzeBelichtung(koerper.kamera).catch(() => undefined);
+    if (koerper.kamera) {
+      try {
+        await betrieb.kamera.setzeBelichtung(koerper.kamera);
+      } catch (fehler) {
+        // Gespeichert ist der Wert trotzdem - er wird beim naechsten Start
+        // erneut gesetzt. Aber die Kamera hat ihn gerade nicht uebernommen,
+        // und das soll man sehen, statt "Gespeichert." zu lesen.
+        const text = fehler instanceof Error ? fehler.message : String(fehler);
+        protokolliere('warnung', 'kamera', `Belichtung nicht übernommen: ${text}`);
+        return { ...geraetFuerBrowser(), kameraHinweis: `Gespeichert, aber die Kamera hat es nicht übernommen: ${text}` };
+      }
+    }
     return geraetFuerBrowser();
   });
 
@@ -962,7 +971,10 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(409).send({ fehler: 'Es liegt keine geprüfte Setup-Datei bereit. Bitte zuerst „Jetzt installieren“.' });
     }
     if (process.platform !== 'win32') return { datei, geoeffnet: false };
-    spawn('explorer.exe', [`/select,${datei}`], { detached: true, stdio: 'ignore' }).unref();
+    // Ohne "error"-Handler wuerde ein Startfehler den ganzen Server beenden.
+    spawn('explorer.exe', [`/select,${datei}`], { stdio: 'ignore' }).on('error', (f) =>
+      protokolliere('warnung', 'update', `Explorer nicht geöffnet: ${f.message}`),
+    );
     return { datei, geoeffnet: true };
   });
 

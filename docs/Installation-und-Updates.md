@@ -48,7 +48,7 @@ Kalibrierung) steht in der
 
 | | |
 |---|---|
-| Programm | `C:\Program Files\Fotobox` – mit eigenem Node.js und SumatraPDF |
+| Programm | `C:\Program Files\Fotobox` – mit eigenem Node.js |
 | Daten | `C:\Users\Public\Fotobox-Daten` – Veranstaltungen, Fotos, Vorlagen, Einstellungen |
 | Autostart | Server und Kiosk starten beim Anmelden des Benutzers, der das Setup gestartet hat |
 | Firewall | eine Freigabe für Port 8787, nur im privaten Netzwerk (für die Handy-Galerie) |

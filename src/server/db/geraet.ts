@@ -42,7 +42,6 @@ export function leseGeraet(): Geraeteeinstellungen {
     besitzerPinHash: lies<string | null>('besitzerPinHash', null),
     speicherWarnungGb: lies('speicherWarnungGb', 5),
     digicamcontrolPfad: lies('digicamcontrolPfad', 'C:\\Program Files (x86)\\digiCamControl'),
-    sumatraPfad: lies('sumatraPfad', ''),
     mail: lies<MailEinstellungen | null>('mail', null),
   };
 }

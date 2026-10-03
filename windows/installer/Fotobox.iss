@@ -67,6 +67,10 @@ Name: "desktop"; Description: "Verknüpfungen auf dem Desktop anlegen"; GroupDes
 Type: filesandordirs; Name: "{app}\dist"
 Type: filesandordirs; Name: "{app}\node_modules"
 Type: filesandordirs; Name: "{app}\node"
+; Bis 1.0.3 mitgeliefert, seit 1.0.4 nicht mehr gebraucht.
+Type: files; Name: "{app}\windows\SumatraPDF.exe"
+Type: files; Name: "{app}\windows\SumatraPDF-Lizenz.txt"
+Type: files; Name: "{app}\windows\SumatraPDF-settings.txt"
 
 [Files]
 Source: "{#Paket}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
