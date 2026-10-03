@@ -584,7 +584,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       // Der Stand gehoert dazu: Wer ein Foto dieser Seite verschickt, soll
       // sehen koennen, wann es entstanden ist.
       stand: new Date().toISOString(),
-      veranstaltung: event ? { id: event.id, name: event.name, status: event.status } : null,
+      veranstaltung: event
+        ? { id: event.id, name: event.name, status: event.status, probelauf: event.probelauf }
+        : null,
       kamera: status.kamera,
       drucker: status.drucker,
       stoerung: status.stoerung,

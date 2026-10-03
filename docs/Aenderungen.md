@@ -4,6 +4,14 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.7
+
+- **Probelauf im Servicemenü:** Unter „Besitzer“ gibt es jetzt
+  „Probelauf starten“ und „Probelauf beenden“ – ohne den Umweg über die
+  Verwaltung. Läuft der Probelauf, steht das oben neben dem Namen der
+  Veranstaltung. Der Schalter fehlt bewusst im Betreuer-Menü: Probelauf-Drucke
+  zählen nicht in den Auslagenersatz.
+
 ## 1.0.6
 
 - **14 neue, kräftige Filter:** Pop-Art, Warhol, Comic, Neon-Nacht, Wärmebild,
