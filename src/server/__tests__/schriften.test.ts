@@ -162,6 +162,45 @@ describe('Schriftwahl im Druckweg', () => {
     // auf die Ersatzschrift faellt).
     const gefunden = await dunklePixel(umgebung.eigenerName);
     const unbekannt = await dunklePixel('Gibtesnichtxyz123');
-    expect(gefunden).not.toBe(unbekannt);
+    // Auf dem Windows-Testrechner scheiterte das zeitweise, ohne erkennbaren
+    // Grund im Code. Dann alles ausgeben, was fontconfig gesehen haben kann.
+    const diagnose = gefunden === unbekannt ? await schriftDiagnose(gefunden, dunklePixel) : '';
+    expect(gefunden, diagnose).not.toBe(unbekannt);
   });
 });
+
+/** Was beim Fehlschlag hilft: Dateien im Schriftenordner, Cache, Umgebung, Vergleichswerte. */
+async function schriftDiagnose(gefunden: number, zaehle: (schrift?: string) => Promise<number>): Promise<string> {
+  const { readdirSync, statSync } = await import('node:fs');
+  const liste = (ordner: string) => {
+    try {
+      return readdirSync(ordner)
+        .map((n) => `${n} (${statSync(join(ordner, n)).size} B)`)
+        .join(', ');
+    } catch (f) {
+      return `nicht lesbar: ${(f as Error).message}`;
+    }
+  };
+  let mitDatei = 'nicht versucht';
+  if (umgebung.eigeneDatei) {
+    try {
+      const { data } = await sharp({
+        text: { text: 'Anna & Ben', font: umgebung.eigenerName, fontfile: umgebung.eigeneDatei, dpi: 300 },
+      })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      mitDatei = `${data.length} Byte gerendert`;
+    } catch (f) {
+      mitDatei = `Fehler: ${(f as Error).message}`;
+    }
+  }
+  return [
+    `Schrift "${umgebung.eigenerName}" nicht gefunden (${gefunden} dunkle Pixel wie die Ersatzschrift).`,
+    `Schriftenordner: ${liste(umgebung.ordner)}`,
+    `Cache: ${liste(join(umgebung.ordner, '.cache'))}`,
+    `FONTCONFIG_FILE=${process.env.FONTCONFIG_FILE ?? '-'} FONTCONFIG_PATH=${process.env.FONTCONFIG_PATH ?? '-'} ` +
+      `PANGOCAIRO_BACKEND=${process.env.PANGOCAIRO_BACKEND ?? '-'}`,
+    `Mit fontfile direkt: ${mitDatei}`,
+    `Courier New: ${await zaehle('Courier New')}, Familie laut Datei: ${familieAus(umgebung.eigeneDatei!)}`,
+  ].join('\n');
+}
