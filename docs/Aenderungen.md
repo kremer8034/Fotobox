@@ -6,6 +6,15 @@ ihn auf der Box verstehst.
 
 ## 1.0.4
 
+- **Ansagen bei der Aufnahme groß und mittig:** „Gleich geht es los“, „Neue
+  Pose!“, „Bitte lächeln!“ stehen jetzt groß in der Bildmitte, halbtransparent
+  hinterlegt, sodass man sich dahinter noch sieht.
+- **Pfeil zur Kamera:** Unten in der Mitte zeigt ein wippender Pfeil mit „In
+  die Kamera schauen“ auf die Linse unter dem Bildschirm – damit die Gäste in
+  die Kamera schauen statt auf den Bildschirm.
+- **„Abbrechen“ während der Aufnahme:** Oben links führt ein Knopf zurück zum
+  Startbildschirm, etwa um doch eine andere Vorlage zu wählen. Während gerade
+  ausgelöst wird, ist er kurz ausgeblendet.
 - **„Die Kamera meldet sich gerade nicht“, obwohl sie auslöst – behoben:**
   digiCamControl schickt auf die Zustandsabfrage eine Antwort mit einer
   doppelten Längenangabe. Der Browser sieht darüber hinweg, die Fotobox brach

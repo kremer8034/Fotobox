@@ -47,12 +47,15 @@ export function Aufnahme({
   klaenge,
   beiFertig,
   beiAbbruch,
+  beiAbbrechen,
 }: {
   sitzung: SitzungStart;
   zeiten: Zeiten;
   klaenge: Toene;
   beiFertig: () => void;
   beiAbbruch: (grund: string) => void;
+  /** Der Gast bricht selbst ab - zurueck zum Startbildschirm. */
+  beiAbbrechen: () => void;
 }) {
   const [index, setzeIndex] = useState(1);
   const [phase, setzePhase] = useState<Phase>('bereitmachen');
@@ -257,17 +260,18 @@ export function Aufnahme({
             {restSekunden}
           </div>
         )}
+        {/*
+          Die Ansage gross und mittig auf dem Bild - vorher stand sie klein am
+          unteren Rand und ging unter. Halbtransparent hinterlegt, damit man
+          sich dahinter noch sieht.
+        */}
         {phase === 'bereitmachen' && (
-          <div className="bereitmachen">
-            {index === 1 ? 'Gleich geht es los — stellt euch auf!' : 'Neue Pose!'}
-          </div>
+          <div className="anweisung">{index === 1 ? 'Gleich geht es los — stellt euch auf!' : 'Neue Pose!'}</div>
         )}
-        {phase === 'ausloesen' && <div className="bereitmachen">Bitte lächeln!</div>}
-        {phase === 'verarbeiten' && (
-          <div className="bereitmachen bereitmachen--ruhig">Einen Moment …</div>
-        )}
+        {phase === 'ausloesen' && <div className="anweisung">Bitte lächeln!</div>}
+        {phase === 'verarbeiten' && <div className="anweisung anweisung--ruhig">Einen Moment …</div>}
         {phase === 'kamerasuche' && (
-          <div className="bereitmachen bereitmachen--ruhig">
+          <div className="anweisung anweisung--ruhig">
             Einen Moment — die Kamera macht sich bereit.
             {kameraWartetSeit !== null && jetzt - kameraWartetSeit > 15_000 && (
               <>
@@ -278,10 +282,33 @@ export function Aufnahme({
           </div>
         )}
         {phase === 'nochmal' && (
-          <div className="bereitmachen">Hoppla — das hat nicht geklappt. Gleich noch einmal!</div>
+          <div className="anweisung">Hoppla — das hat nicht geklappt. Gleich noch einmal!</div>
         )}
-        {phase === 'bestaetigung' && (
-          <div className="bereitmachen bereitmachen--ruhig">So sieht es aus!</div>
+        {phase === 'bestaetigung' && <div className="anweisung anweisung--ruhig">So sieht es aus!</div>}
+
+        {/*
+          Die Linse sitzt mittig unter dem Bildschirm. Wer auf den Bildschirm
+          schaut, schaut auf dem Foto an der Kamera vorbei - der Pfeil lenkt
+          den Blick nach unten in die Linse.
+        */}
+        {['bereitmachen', 'countdown', 'ausloesen'].includes(phase) && (
+          <div className="blick-zur-kamera" aria-hidden>
+            <span>In die Kamera schauen</span>
+            <span className="blick-zur-kamera__pfeil">↓</span>
+          </div>
+        )}
+
+        {/* Raus, solange gerade nicht ausgeloest wird - etwa um doch eine andere Vorlage zu nehmen. */}
+        {!['ausloesen', 'verarbeiten'].includes(phase) && (
+          <button
+            className="knopf knopf--neben aufnahme__abbrechen"
+            onClick={() => {
+              abgebrochen.current = true;
+              beiAbbrechen();
+            }}
+          >
+            Abbrechen
+          </button>
         )}
         {blitzt && <div className="blitz" />}
       </div>

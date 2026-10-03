@@ -587,6 +587,81 @@ button {
   text-align: center;
 }
 
+/*
+ * Die Ansage waehrend der Aufnahme: gross und mittig auf dem Live-Bild,
+ * halbtransparent hinterlegt. Rund 11 mm Schrift - aus zwei Metern lesbar.
+ */
+.anweisung {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 85%;
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 calc(3 * var(--mm)) rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.42);
+  padding: calc(5 * var(--mm)) calc(10 * var(--mm));
+  border-radius: calc(4 * var(--mm));
+  pointer-events: none;
+}
+
+.anweisung small {
+  display: block;
+  margin-top: calc(2 * var(--mm));
+  font-size: 0.45em;
+  font-weight: 600;
+}
+
+/* Feststellungen statt Aufrufe - etwas kleiner. */
+.anweisung--ruhig {
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+
+/* Pfeil nach unten zur Kameralinse, die mittig unter dem Bildschirm sitzt. */
+.blick-zur-kamera {
+  position: absolute;
+  bottom: calc(2 * var(--mm));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(1 * var(--mm));
+  padding: calc(1.5 * var(--mm)) calc(6 * var(--mm)) 0;
+  border-radius: calc(3 * var(--mm)) calc(3 * var(--mm)) 0 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--akzent);
+  font-size: 1rem;
+  font-weight: 700;
+  text-shadow: 0 0 calc(2 * var(--mm)) rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+.blick-zur-kamera__pfeil {
+  font-size: 3.2rem;
+  line-height: 0.9;
+  animation: pfeil-wippen 1s ease-in-out infinite;
+}
+
+@keyframes pfeil-wippen {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(2.5 * var(--mm))); }
+}
+
+/* Oben links - oben rechts liegt das Schloss. */
+.aufnahme__abbrechen {
+  position: absolute;
+  top: calc(3 * var(--mm));
+  left: calc(3 * var(--mm));
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.55);
+}
+
 /* Die Bestaetigung ist eine Feststellung, kein Aufruf - deshalb ruhiger. */
 .bereitmachen--ruhig {
   font-size: 1.1rem;
