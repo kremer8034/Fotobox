@@ -1040,6 +1040,7 @@ button {
 .statusliste__eintrag--gut { border-left-color: var(--gut); }
 .statusliste__eintrag--warnung { border-left-color: var(--warnung); }
 .statusliste__eintrag--fehler { border-left-color: var(--fehler); }
+.statusliste__eintrag--offen { border-left-color: var(--kante); color: var(--schrift-leise); }
 
 .statusliste__punkt {
   flex: none;
@@ -1056,6 +1057,7 @@ button {
 .statusliste__eintrag--gut .statusliste__punkt { background: var(--gut); color: #08210a; }
 .statusliste__eintrag--warnung .statusliste__punkt { background: var(--warnung); color: #2a1405; }
 .statusliste__eintrag--fehler .statusliste__punkt { background: var(--fehler); color: #2a0808; }
+.statusliste__eintrag--offen .statusliste__punkt { background: var(--kante); color: var(--schrift); }
 
 .statusliste__zahlen {
   margin: 0.8em 0 0;

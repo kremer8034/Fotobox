@@ -19,9 +19,10 @@ ihn auf der Box verstehst.
 - **Kein gezählter Materialvorrat mehr:** „Material Start“ und „Material
   Rest“ sind aus den Auslagen, der Auslagen-CSV und der Liste der
   Veranstaltungen verschwunden. Den Papiervorrat meldet allein der Drucker
-  (über DNP PrinterInfo) – in der Übersicht, im Servicemenü, auf der
-  Statusseite und im Startbereit-Check. Meldet er nichts, steht dort
-  „unbekannt“ statt einer geschätzten Zahl. „Neue Rolle eingelegt“ im
+  (über DNP PrinterInfo) – in der Übersicht, im Servicemenü („Noch 501 Blatt
+  Papier“, unter 50 Blatt als Warnung), auf der Statusseite und im
+  Startbereit-Check. Meldet er gerade nichts, steht dort „unbekannt“ bzw.
+  „Papierstand: Drucker meldet gerade nichts“ statt einer geschätzten Zahl. „Neue Rolle eingelegt“ im
   Servicemenü fragt jetzt nur noch den Drucker nach dem neuen Vorrat.
 
 ## 1.0.6
