@@ -18,8 +18,6 @@ import type { Veranstaltung } from '../../shared/typen.js';
  *    stehen - sonst lesen die Gaeste sie mit.
  */
 
-const A5_QUER: [number, number] = [595.28, 419.53];
-const RAND = 40;
 
 export interface Unterlagenangaben {
   betreuerPin: string;
@@ -40,14 +38,7 @@ export async function schreibeKurzanleitung(
     ? await QRCode.toBuffer(angaben.galerieUrl, { width: 400, margin: 1 })
     : null;
 
-  await schreibe(
-    pfad,
-    (d) => {
-      zeichneKurzanleitung(d, event, angaben, galerieQr);
-    },
-    A4,
-    0,
-  );
+  await schreibe(pfad, (d) => zeichneKurzanleitung(d, event, angaben, galerieQr));
 
   return pfad;
 }
@@ -189,6 +180,97 @@ function zeichneKurzanleitung(
     });
 }
 
+/*
+ * Der Aushang fuer die Gaeste - A4 hoch, im Stil der Kurzanleitung: dunkle
+ * Kopfleiste, darunter je QR-Code eine grosse Karte mit Nummer und einem Satz.
+ * Die Codes sind gut 6 cm gross, damit sie auch aus einem Meter Abstand und
+ * bei schummrigem Licht scannen. Bewusst ohne PIN - den lesen die Gaeste.
+ */
+function zeichneAushang(
+  d: PDFKit.PDFDocument,
+  event: Veranstaltung,
+  angaben: Unterlagenangaben,
+  wlanQr: Buffer | null,
+  galerieQr: Buffer | null,
+): void {
+  const [breite, hoehe] = A4;
+  const rand = 46;
+  const innen = breite - 2 * rand;
+
+  // Kopf
+  d.rect(0, 0, breite, 168).fill(FARBE.dunkel);
+  d.rect(0, 168, breite, 4).fill(FARBE.akzent);
+  d.font('Helvetica-Bold').fontSize(10).fillColor(FARBE.akzent)
+    .text('FOTOBOX', rand, 42, { characterSpacing: 3, width: innen, align: 'center', lineBreak: false });
+  d.font('Helvetica-Bold').fontSize(32).fillColor('#ffffff')
+    .text('Eure Fotos aufs Handy', rand, 60, { width: innen, align: 'center', lineBreak: false });
+  d.font('Helvetica').fontSize(13).fillColor(FARBE.kopfLeise)
+    .text('Handykamera öffnen und auf den Code halten – fertig.', rand, 104, { width: innen, align: 'center', lineBreak: false });
+  d.font('Helvetica-Bold').fontSize(12).fillColor('#ffffff')
+    .text(`${event.name} · ${datum(event)}`, rand, 132, { width: innen, align: 'center', height: 16, ellipsis: true });
+
+  const codes: { titel: string; text: string; zusatz?: string; qr: Buffer }[] = [];
+  if (wlanQr) {
+    codes.push({
+      titel: 'Ins WLAN',
+      text: 'Verbindet das Handy mit dem WLAN der Fotobox.',
+      zusatz: angaben.wlanName
+        ? `WLAN: ${angaben.wlanName}${angaben.wlanPasswort ? `\nPasswort: ${angaben.wlanPasswort}` : ''}`
+        : undefined,
+      qr: wlanQr,
+    });
+  }
+  if (galerieQr) {
+    codes.push({
+      titel: 'Galerie öffnen',
+      text: 'Zeigt alle Fotos des Abends. Antippen, speichern, teilen.',
+      zusatz: wlanQr ? 'Erst ins WLAN, dann diesen Code scannen.' : 'Das Handy muss im selben WLAN sein wie die Fotobox.',
+      qr: galerieQr,
+    });
+  }
+
+  // Je Code eine Karte, uebereinander - bei einem einzigen Code groesser.
+  const qrGroesse = codes.length === 1 ? 230 : 180;
+  const kartenHoehe = qrGroesse + 44;
+  const lueckeY = 22;
+  const gesamt = codes.length * kartenHoehe + (codes.length - 1) * lueckeY;
+  let y = 172 + Math.max(36, (hoehe - 172 - 90 - gesamt) / 2);
+
+  codes.forEach((c, i) => {
+    d.roundedRect(rand, y, innen, kartenHoehe, 12).lineWidth(1).fillAndStroke('#ffffff', '#e1e4e9');
+    d.rect(rand, y + 18, 4, kartenHoehe - 36).fill(FARBE.akzent);
+    // QR links
+    const qrX = rand + 22;
+    d.image(c.qr, qrX, y + 22, { width: qrGroesse });
+    // Text rechts
+    const tx = qrX + qrGroesse + 28;
+    const tb = innen - (tx - rand) - 22;
+    const ty = y + kartenHoehe / 2 - 58;
+    if (codes.length > 1) {
+      d.circle(tx + 15, ty + 15, 15).fill(FARBE.akzent);
+      d.font('Helvetica-Bold').fontSize(15).fillColor('#ffffff')
+        .text(String(i + 1), tx, ty + 7, { width: 30, align: 'center', lineBreak: false });
+    }
+    d.font('Helvetica-Bold').fontSize(22).fillColor(FARBE.text)
+      .text(c.titel, tx, ty + (codes.length > 1 ? 42 : 20), { width: tb });
+    d.font('Helvetica').fontSize(12).fillColor(FARBE.text).text(c.text, tx, d.y + 6, { width: tb });
+    if (c.zusatz) {
+      d.font('Helvetica-Bold').fontSize(11).fillColor(FARBE.leise).text(c.zusatz, tx, d.y + 8, { width: tb });
+    }
+    y += kartenHoehe + lueckeY;
+  });
+
+  // Fuss
+  const fussY = hoehe - 46 - 40;
+  d.roundedRect(rand, fussY, innen, 40, 10).fill(FARBE.flaeche);
+  d.font('Helvetica').fontSize(10).fillColor(FARBE.leise)
+    .text('Die Fotos bleiben im WLAN der Fotobox – nichts davon landet im Internet.', rand, fussY + 14, {
+      width: innen,
+      align: 'center',
+      lineBreak: false,
+    });
+}
+
 interface Karte {
   titel: string;
   punkte: string[];
@@ -258,43 +340,7 @@ export async function schreibeAushang(
         })
       : null;
 
-  await schreibe(pfad, (d) => {
-    d.fontSize(26).text('Eure Fotos aufs Handy', RAND, RAND, { align: 'center', width: A5_QUER[0] - 2 * RAND });
-    d.moveDown(0.4);
-    d.fontSize(12)
-      .fillColor('#444')
-      .text('Kamera aufs Quadrat halten — fertig.', { align: 'center', width: A5_QUER[0] - 2 * RAND });
-
-    const groesse = 170;
-    const y = 130;
-    const linksX = RAND + 30;
-    const rechtsX = A5_QUER[0] - RAND - 30 - groesse;
-
-    if (wlanQr) {
-      d.image(wlanQr, linksX, y, { width: groesse });
-      d.fillColor('#000')
-        .fontSize(13)
-        .text('1. Ins WLAN', linksX, y + groesse + 10, { width: groesse, align: 'center' });
-    }
-    if (galerieQr) {
-      d.image(galerieQr, rechtsX, y, { width: groesse });
-      d.fillColor('#000')
-        .fontSize(13)
-        .text(wlanQr ? '2. Galerie öffnen' : 'Galerie öffnen', rechtsX, y + groesse + 10, {
-          width: groesse,
-          align: 'center',
-        });
-    }
-
-    d.fontSize(10)
-      .fillColor('#777')
-      .text(
-        'Die Bilder bleiben im lokalen Netz der Fotobox.',
-        RAND,
-        A5_QUER[1] - RAND - 12,
-        { align: 'center', width: A5_QUER[0] - 2 * RAND },
-      );
-  });
+  await schreibe(pfad, (d) => zeichneAushang(d, event, angaben, wlanQr, galerieQr));
 
   return pfad;
 }
@@ -306,8 +352,8 @@ function datum(event: Veranstaltung): string {
 async function schreibe(
   pfad: string,
   inhalt: (d: PDFKit.PDFDocument) => void,
-  groesse: [number, number] = A5_QUER,
-  rand = RAND,
+  groesse: [number, number] = A4,
+  rand = 0,
 ): Promise<void> {
   await new Promise<void>((fertig, fehler) => {
     const d = new PDFDocument({ size: groesse, margin: rand, info: { Title: 'Fotobox' } });

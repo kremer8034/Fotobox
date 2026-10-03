@@ -111,7 +111,11 @@ describe('Unterlagen', () => {
       wlanName: 'Fotobox',
       wlanPasswort: 'geheim123',
     });
-    expect(readFileSync(pfad, 'latin1').startsWith('%PDF')).toBe(true);
+    const inhalt = readFileSync(pfad, 'latin1');
+    expect(inhalt.startsWith('%PDF')).toBe(true);
+    // A4 hoch wie die Kurzanleitung, eine Seite - und nirgends die PIN.
+    expect(inhalt).toMatch(/\/MediaBox \[0 0 595\.28 841\.89\]/);
+    expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 });
 

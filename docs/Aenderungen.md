@@ -25,9 +25,15 @@ ihn auf der Box verstehst.
   eigenen Karte, die drei Schritte zum Servicemenü, Papierwechsel, Störungen
   und die Notfallnummer übersichtlich auf einer Seite. Vorher stand die PIN
   mitten im Fließtext, und eine fast leere zweite Seite kam dazu.
+- **QR-Aushang neu gestaltet:** A4 hoch im selben Stil wie die
+  Kurzanleitung – große QR-Codes für WLAN und Galerie, darunter WLAN-Name und
+  Passwort in Klarschrift. Ohne WLAN-Code steht der Galerie-Code allein und
+  größer in der Mitte.
 - **Ordner für die Übergabe auswählen statt tippen:** „Ordner wählen …“
-  öffnet eine Auswahl mit allen Laufwerken (USB-Sticks oben) und Ordnern zum
-  Antippen; ein neuer Ordner lässt sich direkt anlegen.
+  öffnet den gewohnten Ordnerdialog von Windows – mit Schnellzugriff,
+  OneDrive und USB-Sticks. Der Pfad lässt sich weiterhin auch eintragen.
+- **Kamera unter Gerät:** Der Hinweis erklärt jetzt, dass ISO, Blende und
+  Verschlusszeit nur ankommen, wenn das Moduswahlrad der 600D auf „M“ steht.
 
 ## 1.0.4
 

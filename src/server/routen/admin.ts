@@ -57,7 +57,7 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
-import { laufwerke, legeOrdnerAn, listeOrdner } from '../fach/ordnerwahl.js';
+import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
 import {
   leseMailzugang,
@@ -149,31 +149,17 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     };
   });
 
-  /** Ordnerauswahl fuer die Uebergabe: ohne Pfad die Laufwerke, sonst die Unterordner. */
-  app.get<{ Querystring: { pfad?: string } }>('/api/admin/ordner', async (anfrage, antwort) => {
-    const pfad = anfrage.query.pfad?.trim();
-    if (!pfad) return { laufwerke: await laufwerke() };
+  /**
+   * Windows-Ordnerdialog fuer die Uebergabe - etwa ein Ordner in OneDrive
+   * oder ein USB-Stick. Er erscheint auf dem Bildschirm der Box; die Antwort
+   * kommt, sobald dort gewaehlt oder abgebrochen wurde.
+   */
+  app.post<{ Body: unknown }>('/api/admin/ordner/waehlen', async (anfrage, antwort) => {
+    const { start } = z.object({ start: z.string().max(500).default('') }).parse(anfrage.body ?? {});
     try {
-      return await listeOrdner(pfad);
+      return { pfad: await waehleOrdner('Ziel für die Übergabe wählen', start) };
     } catch (fehler) {
-      const code = (fehler as NodeJS.ErrnoException).code;
-      return antwort.code(400).send({
-        fehler:
-          code === 'ENOENT'
-            ? 'Diesen Ordner gibt es nicht (mehr). Ist der USB-Stick noch eingesteckt?'
-            : code === 'EACCES' || code === 'EPERM'
-              ? 'Auf diesen Ordner hat die Fotobox keinen Zugriff.'
-              : `Ordner nicht lesbar: ${(fehler as Error).message}`,
-      });
-    }
-  });
-
-  app.post<{ Body: unknown }>('/api/admin/ordner', async (anfrage, antwort) => {
-    const { pfad, name } = z.object({ pfad: z.string().min(1).max(500), name: z.string().max(80) }).parse(anfrage.body);
-    try {
-      return { pfad: await legeOrdnerAn(pfad, name) };
-    } catch (fehler) {
-      return antwort.code(400).send({ fehler: (fehler as Error).message });
+      return antwort.code(409).send({ fehler: (fehler as Error).message });
     }
   });
 
@@ -241,9 +227,9 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       try {
         await betrieb.kamera.setzeBelichtung(koerper.kamera);
       } catch (fehler) {
-        // Gespeichert ist der Wert trotzdem - er wird beim naechsten Start
-        // erneut gesetzt. Aber die Kamera hat ihn gerade nicht uebernommen,
-        // und das soll man sehen, statt "Gespeichert." zu lesen.
+        // Gespeichert ist der Wert trotzdem, aber die Kamera hat ihn nicht
+        // uebernommen - das soll man sehen, statt "Gespeichert." zu lesen.
+        // (Meist steht das Moduswahlrad nicht auf M.)
         const text = fehler instanceof Error ? fehler.message : String(fehler);
         protokolliere('warnung', 'kamera', `Belichtung nicht übernommen: ${text}`);
         return { ...geraetFuerBrowser(), kameraHinweis: `Gespeichert, aber die Kamera hat es nicht übernommen: ${text}` };

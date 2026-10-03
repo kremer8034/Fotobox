@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Zeiten } from '../api.js';
-import { OrdnerWahl } from './OrdnerWahl.js';
 import { STATUS_NAME, STATUS_WECHSEL, UEBERGAENGE, type EventStatus } from '../../shared/typen.js';
 
 interface EventVoll {
@@ -118,7 +117,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [zettelPin, setzeZettelPin] = useState('');
   const [zettel, setzeZettel] = useState<{ kurzanleitung: string; aushang: string | null } | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
-  const [ordnerWahlOffen, setzeOrdnerWahlOffen] = useState(false);
+  const [dialogOffen, setzeDialogOffen] = useState(false);
   const [telefon, setzeTelefon] = useState('');
   const [wlanName, setzeWlanName] = useState('');
   const [wlanPasswort, setzeWlanPasswort] = useState('');
@@ -643,17 +642,14 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             <div className="zeile">
               <div className="feld" style={{ flex: 1 }}>
                 <label>Ziel (USB-Stick oder Ordner)</label>
-                {/* Antippen oeffnet die Ordnerauswahl - tippen muss niemand mehr. */}
                 <input
                   value={zielPfad}
-                  readOnly
-                  onClick={() => setzeOrdnerWahlOffen(true)}
-                  placeholder="Noch kein Ziel gewählt – „Ordner wählen …“ antippen"
-                  style={{ cursor: 'pointer' }}
+                  onChange={(ev) => setzeZielPfad(ev.target.value)}
+                  placeholder="„Ordner wählen …“ antippen – oder den Pfad eintragen"
                 />
               </div>
-              <button className="knopf knopf--neben" onClick={() => setzeOrdnerWahlOffen(true)}>
-                Ordner wählen …
+              <button className="knopf knopf--neben" disabled={dialogOffen} onClick={() => void ordnerWaehlen()}>
+                {dialogOffen ? 'Dialog ist offen …' : 'Ordner wählen …'}
               </button>
               <button
                 className="knopf knopf--neben"
@@ -681,17 +677,6 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           )}
         </>
-      )}
-
-      {ordnerWahlOffen && (
-        <OrdnerWahl
-          start={zielPfad}
-          beiWahl={(pfad) => {
-            setzeZielPfad(pfad);
-            setzeOrdnerWahlOffen(false);
-          }}
-          beiAbbruch={() => setzeOrdnerWahlOffen(false)}
-        />
       )}
 
       {/* Fest in der Ecke statt oben auf der Seite: Wer unten die PIN eintippt,
@@ -823,6 +808,19 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
       setzeZettel(antwort.links);
       zeige('Zettel erzeugt - zum Öffnen und Drucken die Links unten nutzen.');
     });
+  }
+
+  /** Der Ordnerdialog von Windows - etwa fuer einen Ordner in OneDrive oder einen USB-Stick. */
+  async function ordnerWaehlen() {
+    setzeDialogOffen(true);
+    try {
+      const { pfad } = await api.sende<{ pfad: string | null }>('/api/admin/ordner/waehlen', { start: zielPfad });
+      if (pfad) setzeZielPfad(pfad);
+    } catch (u) {
+      zeige(u instanceof Error ? u.message : 'Der Ordnerdialog ließ sich nicht öffnen.');
+    } finally {
+      setzeDialogOffen(false);
+    }
   }
 
   async function uebergeben() {
