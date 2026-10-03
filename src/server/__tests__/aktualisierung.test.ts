@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -98,12 +98,56 @@ describe('Update installieren', () => {
         [SETUP]: () => new Response(inhalt),
         [SUMME]: () => new Response(`${richtig}  Fotobox-Setup-2.0.0.exe\n`),
       }),
-      starteInstaller: (pfad) => gestartet.push(pfad),
+      starteInstaller: (pfad) => {
+        gestartet.push(pfad);
+      },
     });
     await a.installiere(await info());
     expect(a.stand.phase).toBe('gestartet');
     expect(a.stand.geladen).toBe(inhalt.length);
     expect(gestartet).toEqual([join(ordner, 'Fotobox-Setup-2.0.0.exe')]);
+  });
+
+  // An der Box: "Jetzt installieren", die Verwaltung bat um das "Ja" - aber
+  // die Rueckfrage erschien nie, und niemand erfuhr davon.
+  it('meldet, wenn Windows das Setup nicht startet, und behält die Datei für den Start von Hand', async () => {
+    const ordner = mkdtempSync(join(tmpdir(), 'fotobox-update-'));
+    const a = new Aktualisierer({
+      ordner,
+      starten: true,
+      abruf: falschesGithub({
+        [SETUP]: () => new Response(inhalt),
+        [SUMME]: () => new Response(`${richtig}  Fotobox-Setup-2.0.0.exe\n`),
+      }),
+      starteInstaller: async () => {
+        throw new Error('Der Vorgang wurde durch den Benutzer abgebrochen');
+      },
+    });
+    await expect(a.installiere(await info())).rejects.toThrow(/nicht gestartet/);
+    expect(a.stand.phase).toBe('fehler');
+    expect(a.stand.meldung).toMatch(/abgebrochen/);
+    expect(a.stand.datei).toBe(join(ordner, 'Fotobox-Setup-2.0.0.exe'));
+    expect(existsSync(a.stand.datei!)).toBe(true);
+  });
+
+  it('wartet auf das Ja, bevor es "gestartet" meldet', async () => {
+    const ordner = mkdtempSync(join(tmpdir(), 'fotobox-update-'));
+    let ja: () => void = () => undefined;
+    const a = new Aktualisierer({
+      ordner,
+      starten: true,
+      abruf: falschesGithub({
+        [SETUP]: () => new Response(inhalt),
+        [SUMME]: () => new Response(`${richtig}  Fotobox-Setup-2.0.0.exe\n`),
+      }),
+      starteInstaller: () => new Promise<void>((r) => (ja = r)),
+    });
+    const laeuft = a.installiere(await info());
+    await vi.waitFor(() => expect(a.stand.phase).toBe('rueckfrage'));
+    expect(a.laeuft()).toBe(true);
+    ja();
+    await laeuft;
+    expect(a.stand.phase).toBe('gestartet');
   });
 
   it('verwirft eine beschädigte Datei und startet nichts', async () => {
@@ -116,7 +160,9 @@ describe('Update installieren', () => {
         [SETUP]: () => new Response(Buffer.from('manipuliert')),
         [SUMME]: () => new Response(richtig),
       }),
-      starteInstaller: (pfad) => gestartet.push(pfad),
+      starteInstaller: (pfad) => {
+        gestartet.push(pfad);
+      },
     });
     await expect(a.installiere(await info())).rejects.toThrow(/Prüfsumme/);
     expect(a.stand.phase).toBe('fehler');

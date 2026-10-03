@@ -68,8 +68,24 @@ $status = Invoke-RestMethod "http://127.0.0.1:$Port/api/admin/status"
 Pruefe ($null -ne $status.version) "meldet Version $($status.version)"
 Pruefe (Test-Path "$daten\fotobox.db") 'Datenbank im Datenordner'
 
-Write-Host "`n=== 3. Update ueber die laufende Installation"
-Pruefe ((Installiere (Join-Path $PWD 'installation-2.log')) -eq 0) 'Update-Setup endet ohne Fehler'
+Write-Host "`n=== 3. Update ueber die laufende Installation - so, wie es die Verwaltung startet"
+# Genau der Weg aus der Verwaltung ("Jetzt installieren"): starteMitRueckfrage
+# aus dem installierten Programm, mit dem mitgelieferten Node. Vorher war
+# dieser Weg nur unter Linux getestet - auf der Box kam die Rueckfrage nie.
+$log2 = Join-Path $PWD 'installation-2.log'
+$env:PROBE_SETUP = (Resolve-Path $Setup).Path
+$env:PROBE_LOG = $log2
+$modul = 'file:///' + ("$programm\dist\server\fach\aktualisierung.js" -replace '\\', '/')
+$skript = "import('$modul').then((m) => m.starteMitRueckfrage(process.env.PROBE_SETUP, process.env.PROBE_LOG)).then(() => console.log('Setup gestartet'), (f) => { console.error(f.message); process.exit(1); })"
+& "$programm\node\node.exe" --input-type=module -e $skript
+Pruefe ($LASTEXITCODE -eq 0) 'Update-Setup ueber die Verwaltung gestartet'
+$fertig = $false
+for ($i = 0; $i -lt 600 -and -not $fertig; $i++) {
+  Start-Sleep 1
+  if (Test-Path $log2) { $fertig = (Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Log closed' }
+}
+Pruefe $fertig 'Update-Setup ist durchgelaufen'
+Pruefe ((Get-Content $log2 -Raw -ErrorAction SilentlyContinue) -match 'Installation process succeeded') 'Update-Setup meldet Erfolg'
 $sicherungen = @(Get-ChildItem "$daten\sicherungen" -Directory -Filter 'vor-update_*' -ErrorAction SilentlyContinue)
 Pruefe ($sicherungen.Count -ge 1) 'Datenbank vor dem Update gesichert'
 Pruefe ($sicherungen.Count -ge 1 -and (Test-Path (Join-Path $sicherungen[0].FullName 'fotobox.db'))) 'Sicherung enthaelt fotobox.db'

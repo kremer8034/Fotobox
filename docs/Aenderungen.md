@@ -18,6 +18,12 @@ ihn auf der Box verstehst.
 - **Foto ging verloren, obwohl es da war:** Windows meldete beim Schreiben der
   Kameradatei kurz „Datei gesperrt“, und die Aufnahme brach ab. Das wird jetzt
   übergangen; die Fotobox sieht zusätzlich selbst im Ordner nach.
+- **Update aus der Verwaltung repariert:** Nach „Jetzt installieren“ kam die
+  Windows-Rückfrage nicht, und das Setup startete nie – ohne Hinweis. Jetzt
+  meldet die Verwaltung, ob das Setup wirklich läuft, und sagt, wo die
+  Rückfrage steckt, falls sie nur in der Taskleiste blinkt. Klappt es nicht,
+  öffnet „Setup von Hand starten“ den Ordner mit der schon geladenen und
+  geprüften Setup-Datei.
 - digiCamControl wird zuverlässiger minimiert: kurz nach dem Start mehrmals,
   und das Live-View-Fenster erst, wenn es wirklich aufgegangen ist.
 - Wird in der Verwaltung ein anderer Drucker gewählt, läuft die Warteschlange

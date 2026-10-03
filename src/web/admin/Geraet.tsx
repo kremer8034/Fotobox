@@ -626,11 +626,12 @@ interface UpdateInfo {
 }
 
 interface UpdateStand {
-  phase: 'bereit' | 'laedt' | 'prueft' | 'startet' | 'gestartet' | 'simuliert' | 'fehler';
+  phase: 'bereit' | 'laedt' | 'prueft' | 'startet' | 'rueckfrage' | 'gestartet' | 'simuliert' | 'fehler';
   version: string | null;
   geladen: number;
   gesamt: number;
   meldung: string | null;
+  datei: string | null;
   aktuell: string;
 }
 
@@ -652,7 +653,7 @@ function SoftwareKarte() {
   useEffect(() => {
     void api.hole<UpdateStand>('/api/admin/update/stand').then((s) => {
       setzeStand(s);
-      if (['laedt', 'prueft', 'startet', 'gestartet'].includes(s.phase)) {
+      if (['laedt', 'prueft', 'startet', 'rueckfrage', 'gestartet'].includes(s.phase)) {
         vorher.current = s.aktuell;
         setzeBeobachten(true);
       }
@@ -681,7 +682,7 @@ function SoftwareKarte() {
     return () => clearInterval(uhr);
   }, [beobachten]);
 
-  const laeuft = stand !== null && ['laedt', 'prueft', 'startet'].includes(stand.phase);
+  const laeuft = stand !== null && ['laedt', 'prueft', 'startet', 'rueckfrage'].includes(stand.phase);
   const prozent = stand && stand.gesamt > 0 ? Math.min(100, Math.round((stand.geladen / stand.gesamt) * 100)) : 0;
 
   return (
@@ -731,8 +732,27 @@ function SoftwareKarte() {
 
       {stand && stand.phase === 'laedt' && <p>Wird geladen … {prozent} %</p>}
       {stand && stand.phase === 'prueft' && <p>Prüfsumme wird kontrolliert …</p>}
-      {stand && ['gestartet', 'simuliert', 'fehler'].includes(stand.phase) && stand.meldung && !meldung && (
-        <p style={{ color: stand.phase === 'fehler' ? 'var(--fehler, #c33)' : undefined }}>{stand.meldung}</p>
+      {stand && ['rueckfrage', 'gestartet', 'simuliert', 'fehler'].includes(stand.phase) && stand.meldung && !meldung && (
+        <p
+          style={{
+            color: stand.phase === 'fehler' ? 'var(--fehler, #c33)' : stand.phase === 'rueckfrage' ? 'var(--akzent)' : undefined,
+            fontWeight: stand.phase === 'rueckfrage' ? 700 : undefined,
+          }}
+        >
+          {stand.meldung}
+        </p>
+      )}
+      {/* Ausweg, falls die Rueckfrage nicht erscheint oder abgelehnt wurde. */}
+      {stand?.datei && ['rueckfrage', 'fehler'].includes(stand.phase) && (
+        <div style={{ marginBottom: '0.6rem' }}>
+          <button className="knopf knopf--neben" onClick={() => void vonHand()}>
+            Setup von Hand starten
+          </button>
+          <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)' }}>
+            Öffnet den Ordner mit der schon geladenen und geprüften Setup-Datei. Dort die markierte Datei
+            doppelklicken und mit „Ja“ bestätigen.
+          </p>
+        </div>
       )}
       {meldung && <p>{meldung}</p>}
 
@@ -743,6 +763,19 @@ function SoftwareKarte() {
       </p>
     </div>
   );
+
+  async function vonHand() {
+    try {
+      const a = await api.sende<{ datei: string; geoeffnet: boolean }>('/api/admin/update/von-hand', {});
+      setzeMeldung(
+        a.geoeffnet
+          ? `Der Ordner ist offen (ggf. in der Taskleiste). Datei: ${a.datei}`
+          : `Die Setup-Datei liegt hier: ${a.datei}`,
+      );
+    } catch (fehler) {
+      setzeMeldung(fehler instanceof Error ? fehler.message : 'Hat nicht geklappt.');
+    }
+  }
 
   async function suche() {
     setzeSucht(true);

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { createReadStream, existsSync } from 'node:fs';
 import { basename, extname, join, resolve, sep } from 'node:path';
@@ -947,6 +948,23 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   });
 
   app.get('/api/admin/update/stand', async () => ({ ...aktualisierer.stand, aktuell: VERSION }));
+
+  /**
+   * Ausweg, falls die Windows-Rueckfrage nicht erscheint: den Ordner mit der
+   * schon geladenen und geprueften Setup-Datei im Explorer zeigen. Ein
+   * Doppelklick dort kommt aus dem Vordergrund - dann zeigt Windows die
+   * Rueckfrage zuverlaessig vorne. Geoeffnet wird nur die Datei, die der
+   * Aktualisierer selbst geladen hat, nie ein Pfad aus der Anfrage.
+   */
+  app.post('/api/admin/update/von-hand', async (_anfrage, antwort) => {
+    const datei = aktualisierer.stand.datei;
+    if (!datei || !existsSync(datei)) {
+      return antwort.code(409).send({ fehler: 'Es liegt keine geprüfte Setup-Datei bereit. Bitte zuerst „Jetzt installieren“.' });
+    }
+    if (process.platform !== 'win32') return { datei, geoeffnet: false };
+    spawn('explorer.exe', [`/select,${datei}`], { detached: true, stdio: 'ignore' }).unref();
+    return { datei, geoeffnet: true };
+  });
 
   /**
    * Was schiefging: Warnungen und Fehler aus dem Protokoll, neueste zuerst.

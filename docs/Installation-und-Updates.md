@@ -78,7 +78,11 @@ läuft gerade** – das Update beendet Kiosk und Server für etwa eine Minute.
    hat. **„Jetzt installieren“** antippen.
 4. Die Box lädt die Setup-Datei, **prüft die Prüfsumme** (eine beschädigte oder
    veränderte Datei wird verworfen) und startet sie.
-5. Windows fragt einmal nach Administratorrechten → **„Ja“**.
+5. Windows fragt einmal nach Administratorrechten → **„Ja“**. Erscheint kein
+   Fenster, blinkt unten in der Taskleiste ein Symbol mit Schild
+   („Benutzerkontensteuerung“) – darauf tippen. Klappt das nicht, öffnet
+   **„Setup von Hand starten“** den Ordner mit der schon geladenen und
+   geprüften Setup-Datei; dort doppelklicken.
 6. Ein Fortschrittsfenster erscheint, Kiosk und Server gehen kurz aus und
    starten danach von selbst wieder. Die Verwaltung meldet
    „Fertig – die Fotobox läuft jetzt mit Version …“.

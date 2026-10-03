@@ -116,7 +116,16 @@ export function lesePruefsumme(text: string): string | null {
   return /\b[0-9a-f]{64}\b/i.exec(text)?.[0].toLowerCase() ?? null;
 }
 
-export type UpdatePhase = 'bereit' | 'laedt' | 'prueft' | 'startet' | 'gestartet' | 'simuliert' | 'fehler';
+export type UpdatePhase =
+  | 'bereit'
+  | 'laedt'
+  | 'prueft'
+  | 'startet'
+  /** Wartet auf das "Ja" in der Windows-Rueckfrage. */
+  | 'rueckfrage'
+  | 'gestartet'
+  | 'simuliert'
+  | 'fehler';
 
 export interface UpdateStand {
   phase: UpdatePhase;
@@ -124,6 +133,8 @@ export interface UpdateStand {
   geladen: number;
   gesamt: number;
   meldung: string | null;
+  /** Die geladene und gepruefte Setup-Datei - zum Starten von Hand, falls die Rueckfrage nicht kommt. */
+  datei: string | null;
 }
 
 /**
@@ -131,7 +142,7 @@ export interface UpdateStand {
  * Anzeige in der Verwaltung abrufbar; es laeuft immer nur ein Update.
  */
 export class Aktualisierer {
-  stand: UpdateStand = { phase: 'bereit', version: null, geladen: 0, gesamt: 0, meldung: null };
+  stand: UpdateStand = { phase: 'bereit', version: null, geladen: 0, gesamt: 0, meldung: null, datei: null };
 
   constructor(
     private readonly optionen: {
@@ -140,13 +151,17 @@ export class Aktualisierer {
       /** false: alles ausser dem Start des Installers (Entwicklung, Tests). */
       starten: boolean;
       abruf?: Abruf;
-      /** Startet den Installer; Vorgabe: mit Rueckfrage der Benutzerkontensteuerung. */
-      starteInstaller?: (pfad: string, protokoll: string) => void;
+      /**
+       * Startet den Installer; Vorgabe: mit Rueckfrage der Benutzerkontensteuerung.
+       * Erfuellt, sobald das Setup laeuft; abgelehnt, wenn Windows es nicht
+       * startet (Rueckfrage mit "Nein" beantwortet, keine Antwort, Fehler).
+       */
+      starteInstaller?: (pfad: string, protokoll: string) => Promise<void> | void;
     },
   ) {}
 
   laeuft(): boolean {
-    return ['laedt', 'prueft', 'startet'].includes(this.stand.phase);
+    return ['laedt', 'prueft', 'startet', 'rueckfrage'].includes(this.stand.phase);
   }
 
   async installiere(info: UpdateInfo): Promise<void> {
@@ -156,7 +171,7 @@ export class Aktualisierer {
 
     const abruf = this.optionen.abruf ?? fetch;
     const setup = info.setup;
-    this.stand = { phase: 'laedt', version: info.neueste, geladen: 0, gesamt: setup.groesse, meldung: null };
+    this.stand = { phase: 'laedt', version: info.neueste, geladen: 0, gesamt: setup.groesse, meldung: null, datei: null };
     await mkdir(this.optionen.ordner, { recursive: true });
     const ziel = join(this.optionen.ordner, setup.name);
 
@@ -189,12 +204,24 @@ export class Aktualisierer {
         this.stand.meldung = `Geladen und geprüft: ${ziel}. Im Entwicklungsbetrieb wird nicht installiert.`;
         return;
       }
-      this.stand.phase = 'startet';
+      this.stand.datei = ziel;
+      this.stand.phase = 'rueckfrage';
+      this.stand.meldung =
+        'Windows fragt jetzt nach Administratorrechten – bitte mit „Ja“ bestätigen. Erscheint kein Fenster, ' +
+        'blinkt unten in der Taskleiste ein Symbol mit Schild („Benutzerkontensteuerung“): darauf tippen.';
       const protokoll = join(this.optionen.ordner, `update-${info.neueste}.log`);
-      (this.optionen.starteInstaller ?? starteMitRueckfrage)(ziel, protokoll);
+      try {
+        await (this.optionen.starteInstaller ?? starteMitRueckfrage)(ziel, protokoll);
+      } catch (fehler) {
+        const grund = fehler instanceof Error ? fehler.message : String(fehler);
+        throw new Error(
+          `Das Setup wurde nicht gestartet (${grund}). Es ist schon geladen und geprüft – ` +
+            'mit „Setup von Hand starten“ lässt es sich direkt öffnen.',
+        );
+      }
       this.stand.phase = 'gestartet';
       this.stand.meldung =
-        'Bitte die Windows-Rückfrage mit „Ja“ bestätigen. Die Fotobox wird danach beendet, aktualisiert und startet von selbst neu.';
+        'Das Setup läuft. Die Fotobox wird gleich beendet, aktualisiert und startet von selbst neu.';
     } catch (fehler) {
       this.stand.phase = 'fehler';
       this.stand.meldung = fehler instanceof Error ? fehler.message : String(fehler);
@@ -217,12 +244,43 @@ export class Aktualisierer {
  * /SILENT: Nur ein Fortschrittsfenster, keine Fragen - die Einstellungen der
  * bisherigen Installation gelten weiter.
  */
-function starteMitRueckfrage(pfad: string, protokoll: string): void {
+export function starteMitRueckfrage(pfad: string, protokoll: string): Promise<void> {
   const text = (s: string) => `'${s.replace(/'/g, "''")}'`;
   const argumente = `/SILENT /SUPPRESSMSGBOXES /NORESTART /LOG="${protokoll}"`;
-  spawn(
-    'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-Command', `Start-Process -FilePath ${text(pfad)} -ArgumentList ${text(argumente)}`],
-    { detached: true, stdio: 'ignore', windowsHide: true },
-  ).unref();
+  // Start-Process kehrt erst zurueck, wenn das Setup laeuft - also nach dem
+  // "Ja". Lehnt Windows ab oder scheitert der Start, kommt die Meldung ueber
+  // stderr zurueck. Vorher wurde sie verschluckt, und die Verwaltung sagte
+  // "bitte mit Ja bestaetigen", waehrend nie etwas geschah.
+  const befehl =
+    '[Console]::OutputEncoding = [Text.Encoding]::UTF8; ' +
+    `try { Start-Process -FilePath ${text(pfad)} -ArgumentList ${text(argumente)} -ErrorAction Stop; exit 0 } ` +
+    'catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }';
+  return new Promise((fertig, fehler) => {
+    // Als -EncodedCommand (UTF-16LE, Base64): Die Anfuehrungszeichen um den
+    // Protokollpfad ueberstehen so den Weg ueber die Windows-Kommandozeile
+    // sicher. Mit -Command kamen sie je nach Maskierung nicht an, und der
+    // Start scheiterte, ohne dass es jemand sah.
+    const kodiert = Buffer.from(befehl, 'utf16le').toString('base64');
+    const kind = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', kodiert], {
+      detached: true,
+      stdio: ['ignore', 'ignore', 'pipe'],
+      windowsHide: true,
+    });
+    let meldung = '';
+    kind.stderr?.on('data', (d: Buffer) => (meldung += d.toString('utf8')));
+    // Wer die Rueckfrage nicht sieht, beantwortet sie nie.
+    const uhr = setTimeout(() => {
+      kind.kill();
+      fehler(new Error('keine Antwort auf die Windows-Rückfrage innerhalb von 5 Minuten'));
+    }, 5 * 60_000);
+    kind.on('error', (f) => {
+      clearTimeout(uhr);
+      fehler(f);
+    });
+    kind.on('exit', (code) => {
+      clearTimeout(uhr);
+      if (code === 0) fertig();
+      else fehler(new Error(meldung.trim() || `PowerShell endete mit Code ${code}`));
+    });
+  });
 }
