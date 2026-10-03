@@ -6,6 +6,11 @@ ihn auf der Box verstehst.
 
 ## 1.0.3
 
+> **Von Version 1.0.2 aus bitte einmal von Hand installieren:** Dort startet
+> „Jetzt installieren“ das Setup nicht. Die Datei `Fotobox-Setup-1.0.3.exe`
+> von der Releases-Seite laden und doppelklicken. Ab 1.0.3 geht das Update
+> wieder aus der Verwaltung.
+
 - **Druckwarteschlange sichtbar:** Unter Gerät steht jetzt, was mit den
   Druckaufträgen los ist – wie viele bei der Fotobox und wie viele bei Windows
   warten, die letzten Aufträge mit ihrem Status und, falls die Schleife nach
