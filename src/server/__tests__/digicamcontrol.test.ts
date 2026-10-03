@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { createServer as netzServer, type AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DigiCamControlKamera } from '../treiber/kamera-digicamcontrol.js';
 import { cameraControlExe, DigiCamControlWaechter, type ProzessSteuerung } from '../treiber/digicamcontrol-waechter.js';
@@ -151,6 +151,24 @@ describe('digiCamControl-Kamera', () => {
 
     const gesperrt = new DigiCamControlKamera(await webserver(() => ({ text: '' })));
     expect(await gesperrt.pruefe()).toMatchObject({ verbunden: false, antwortet: true, grund: 'befehle-gesperrt' });
+  });
+
+  // So antwortet das echte digiCamControl auf ?slc=...: Content-Length doppelt.
+  // fetch lehnt das ab (HPE_UNEXPECTED_CONTENT_LENGTH) - an der Box stand
+  // deshalb "Kamera meldet sich nicht", obwohl Ausloesen ging.
+  it('versteht die Antwort mit doppeltem Content-Length-Kopf', async () => {
+    const roh = netzServer((sock) =>
+      sock.once('data', () =>
+        sock.end('HTTP/1.1 200 OK\r\nContent-Length: 13\r\nContent-Type: text/html\r\nContent-Length: 13\r\n\r\n083063072851\n'),
+      ),
+    );
+    await new Promise<void>((bereit) => roh.listen(0, '127.0.0.1', bereit));
+    try {
+      const kamera = new DigiCamControlKamera(`http://127.0.0.1:${(roh.address() as AddressInfo).port}`);
+      expect(await kamera.pruefe()).toMatchObject({ verbunden: true, antwortet: true });
+    } finally {
+      await new Promise<void>((fertig) => roh.close(() => fertig()));
+    }
   });
 
   it('meldet "antwortet nicht", wenn niemand zuhoert', async () => {

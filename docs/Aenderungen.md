@@ -6,6 +6,12 @@ ihn auf der Box verstehst.
 
 ## 1.0.4
 
+- **„Die Kamera meldet sich gerade nicht“, obwohl sie auslöst – behoben:**
+  digiCamControl schickt auf die Zustandsabfrage eine Antwort mit einer
+  doppelten Längenangabe. Der Browser sieht darüber hinweg, die Fotobox brach
+  ab und hielt digiCamControl für stumm. Jetzt liest sie solche Antworten
+  nachsichtig. Damit klappt auch das Setzen des Zielordners für die Fotos
+  wieder zuverlässig.
 - **„Was zuletzt gehakt hat“ leeren:** In der Übersicht löscht der Knopf
   „Liste leeren“ alle angezeigten Warnungen und Fehler – etwa nach dem
   Einrichten oder vor dem Verleih, damit danach nur steht, was beim Kunden
