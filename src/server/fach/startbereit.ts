@@ -182,7 +182,7 @@ export async function startbereitPruefung(
       const z = holePortal()?.zustand() ?? null;
       const eingerichtet = portalNetzEingerichtet();
       const problem = !eingerichtet
-        ? 'Das Netz für das Portal ist nicht eingerichtet – unter Gerät → Selbstdiagnose.'
+        ? 'Das Netz für das Portal ist nicht eingerichtet – unter „WLAN & Portal“ → Selbstdiagnose.'
         : z?.fremderDhcp
           ? `Unter ${z.fremderDhcp} verteilt noch ein anderes Gerät Adressen (vermutlich der Vonets) – dort den DHCP-Server ausschalten.`
           : z && !z.dhcp
