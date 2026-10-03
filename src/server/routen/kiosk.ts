@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -23,6 +23,7 @@ import {
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
 import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
+import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
 import {
   adresseZuOft,
   drosselGreift,
@@ -196,7 +197,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     // Zielordner der Kamera auf 01_originale des aktiven Events setzen: Die
     // Datei entsteht dort, wo sie ohnehin hingehoert.
     const pfade = eventpfade(event.ordner, sitzung.istTest);
-    await betrieb.kamera.setzeZielordner(pfade.originale).catch(() => undefined);
+    await setzeZielordner(pfade.originale);
     await betrieb.starteLiveView();
 
     return {
@@ -234,7 +235,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Sitzung: Startet digiCamControl zwischendurch neu, vergisst es ihn
         // und legt das naechste Foto in seinen Standardordner - wir warteten
         // dann vergeblich.
-        await betrieb.kamera.setzeZielordner(pfade.originale).catch(() => undefined);
+        await setzeZielordner(pfade.originale);
 
         // Erst den Waechter aufsetzen, dann ausloesen - sonst geht eine sehr
         // schnelle Kamera durch die Lappen.
@@ -554,7 +555,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       stoerungstext: status.stoerung ? STOERUNGSTEXTE[status.stoerung] : null,
       betreuerHinweis: status.stoerung ? BETREUER_HINWEISE[status.stoerung] : null,
       warteschlangeOffen: status.warteschlangeOffen,
-      materialRest: auslagen?.materialRest ?? 0,
+      materialRest: status.druckerVorrat ? status.materialRest : (auslagen?.materialRest ?? 0),
       speicherFreiGb: status.speicherFreiGb,
       drucke: auslagen?.druckeGesamt ?? 0,
       sitzungen: auslagen?.sitzungen ?? 0,
@@ -610,7 +611,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
     verbucheMaterial(event.id, -event.materialVerbraucht);
     protokolliere('info', 'material', `Neue Rolle fuer "${event.name}" eingelegt.`);
-    return { ok: true };
+    // Kann der Drucker seinen Vorrat melden, gleich nachfragen - dann steht die
+    // echte Zahl da, nicht nur "wieder voll".
+    const rest = await betrieb.leseDruckerVorrat();
+    return { ok: true, rest };
   });
 
   /**
@@ -639,16 +643,26 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
    * Laeuft ohne Adminrechte: Das Herunterfahren des eigenen Rechners darf unter
    * Windows jeder angemeldete Benutzer.
    */
-  app.post('/api/kiosk/service/herunterfahren', async () => {
+  app.post('/api/kiosk/service/herunterfahren', async (_anfrage, antwort) => {
     if (process.platform !== 'win32' || !konfig.echteHardware) {
       protokolliere('info', 'system', 'Herunterfahren angefordert (Entwicklungsbetrieb - nur protokolliert).');
       return { ok: true, simuliert: true };
     }
+    // shutdown kehrt sofort zurueck und plant nur - also darauf warten und
+    // einen Fehler auch melden. Vorher hiess es "faehrt in 15 Sekunden
+    // herunter", egal ob Windows den Befehl angenommen hatte.
+    try {
+      await new Promise<void>((fertig, fehler) =>
+        execFile('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], { windowsHide: true, timeout: 15_000 }, (f) =>
+          f ? fehler(f) : fertig(),
+        ),
+      );
+    } catch (fehler) {
+      const text = fehler instanceof Error ? fehler.message : String(fehler);
+      protokolliere('warnung', 'system', `Herunterfahren gescheitert: ${text}`);
+      return antwort.code(500).send({ fehler: 'Windows hat das Herunterfahren abgelehnt. Bitte über das Startmenü ausschalten.' });
+    }
     protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenue).');
-    spawn('shutdown', ['/s', '/t', '15', '/c', 'Die Fotobox wird heruntergefahren.'], {
-      detached: true,
-      stdio: 'ignore',
-    }).unref();
     return { ok: true, simuliert: false };
   });
 
@@ -685,21 +699,35 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       protokolliere('info', 'system', 'Kiosk schliessen angefordert (Entwicklungsbetrieb - nur protokolliert).');
       return { ok: true, simuliert: true };
     }
-    protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).');
-    // Nur die Browser-Instanz mit dem Kiosk-Profil - ein anderes offenes
-    // Chrome-Fenster bleibt unberuehrt.
-    spawn(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        "Start-Sleep -Milliseconds 800; Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*Fotobox-Kiosk*' -and ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
-      ],
-      { detached: true, stdio: 'ignore', windowsHide: true },
-    ).unref();
+    // Nicht abwarten: Die Antwort soll den Browser noch erreichen, bevor er zugeht.
+    void schliesseKioskBrowser().then(
+      (anzahl) =>
+        anzahl > 0
+          ? protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).')
+          : protokolliere('warnung', 'system', 'Kiosk schliessen: Kein Kiosk-Browser gefunden.'),
+      (fehler: Error) => protokolliere('warnung', 'system', `Kiosk schliessen gescheitert: ${fehler.message}`),
+    );
     return { ok: true, simuliert: false };
   });
+
+  /**
+   * Zielordner der Kamera setzen. Scheitert es, geht die Aufnahme trotzdem
+   * weiter (digiCamControl hat den Ordner vielleicht noch von vorher) - aber
+   * es steht im Protokoll, statt still verschluckt zu werden. Derselbe Fehler
+   * nur einmal, nicht bei jedem Foto.
+   */
+  let letzterZielordnerFehler = '';
+  async function setzeZielordner(ordner: string): Promise<void> {
+    try {
+      await betrieb.kamera.setzeZielordner(ordner);
+      letzterZielordnerFehler = '';
+    } catch (fehler) {
+      const text = fehler instanceof Error ? fehler.message : String(fehler);
+      if (text === letzterZielordnerFehler) return;
+      letzterZielordnerFehler = text;
+      protokolliere('warnung', 'kamera', `Fotoordner nicht gesetzt, Fotos landen womöglich woanders: ${text}`);
+    }
+  }
 
   /** Blatt bis zum Druck-Limit der Feier; null, wenn kein Limit gesetzt ist. */
   function druckRest(eventId: string): number | null {

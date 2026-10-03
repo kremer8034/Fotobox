@@ -16,6 +16,7 @@ interface Status {
   stoerung: string | null;
   warteschlangeOffen: number;
   materialRest: number;
+  druckerVorrat?: { rest: number } | null;
   speicherFreiGb: number;
   aktivesEvent: { id: string; name: string; probelauf: boolean } | null;
 }
@@ -27,6 +28,12 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
   useEffect(() => {
     api.hole<Eintrag[]>('/api/admin/protokoll').then(setzeVorfaelle).catch(() => undefined);
   }, []);
+
+  async function leeren() {
+    if (!window.confirm('Alle angezeigten Meldungen löschen? Danach ist die Liste leer.')) return;
+    await api.loesche('/api/admin/protokoll');
+    setzeVorfaelle(await api.hole<Eintrag[]>('/api/admin/protokoll'));
+  }
 
   useEffect(() => {
     const laden = () => api.hole<Status>('/api/admin/status').then(setzeStatus).catch(() => undefined);
@@ -65,7 +72,7 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
             ton={status.warteschlangeOffen > 5 ? 'warnung' : undefined}
           />
           <Kennzahl
-            name="Material (Blatt)"
+            name={status.druckerVorrat ? 'Papier laut Drucker' : 'Material (Blatt, gezählt)'}
             wert={String(status.materialRest)}
             ton={status.materialRest < 50 ? 'warnung' : 'gut'}
           />
@@ -112,7 +119,14 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
       </div>
 
       <div className="karte">
-        <h2>Was zuletzt gehakt hat</h2>
+        <div className="zeile" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Was zuletzt gehakt hat</h2>
+          {vorfaelle.length > 0 && (
+            <button className="knopf knopf--neben" onClick={() => void leeren()}>
+              Liste leeren
+            </button>
+          )}
+        </div>
         {vorfaelle.length === 0 ? (
           <p style={{ color: 'var(--schrift-leise)', marginBottom: 0 }}>
             Keine Warnungen und Fehler. Alles ist rund gelaufen.

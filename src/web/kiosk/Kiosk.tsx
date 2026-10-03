@@ -282,6 +282,12 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
               setzeSchirm({ art: 'start' });
               void ladeStart();
             }}
+            beiAbbrechen={() => {
+              void api.sende(`/api/kiosk/sitzung/${schirm.sitzung.sitzungId}/abbrechen`, {}).catch(() => undefined);
+              setzeFehler(null);
+              setzeSchirm({ art: 'start' });
+              void ladeStart();
+            }}
           />
         </>
       );

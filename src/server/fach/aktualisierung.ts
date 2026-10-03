@@ -5,6 +5,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { lesbarerFehler, OHNE_FORTSCHRITT } from '../treiber/powershell.js';
 
 /**
  * Software-Update aus der Verwaltung.
@@ -252,6 +253,7 @@ export function starteMitRueckfrage(pfad: string, protokoll: string): Promise<vo
   // stderr zurueck. Vorher wurde sie verschluckt, und die Verwaltung sagte
   // "bitte mit Ja bestaetigen", waehrend nie etwas geschah.
   const befehl =
+    OHNE_FORTSCHRITT +
     '[Console]::OutputEncoding = [Text.Encoding]::UTF8; ' +
     `try { Start-Process -FilePath ${text(pfad)} -ArgumentList ${text(argumente)} -ErrorAction Stop; exit 0 } ` +
     'catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }';
@@ -285,7 +287,7 @@ export function starteMitRueckfrage(pfad: string, protokoll: string): Promise<vo
     kind.on('exit', (code) => {
       clearTimeout(uhr);
       if (code === 0) fertig();
-      else fehler(new Error(meldung.trim() || `PowerShell endete mit Code ${code}`));
+      else fehler(new Error(lesbarerFehler(meldung) || `PowerShell endete mit Code ${code}`));
     });
   });
 }

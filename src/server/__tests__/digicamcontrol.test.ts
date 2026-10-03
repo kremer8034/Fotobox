@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { createServer as netzServer, type AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DigiCamControlKamera } from '../treiber/kamera-digicamcontrol.js';
 import { cameraControlExe, DigiCamControlWaechter, type ProzessSteuerung } from '../treiber/digicamcontrol-waechter.js';
@@ -151,6 +151,53 @@ describe('digiCamControl-Kamera', () => {
 
     const gesperrt = new DigiCamControlKamera(await webserver(() => ({ text: '' })));
     expect(await gesperrt.pruefe()).toMatchObject({ verbunden: false, antwortet: true, grund: 'befehle-gesperrt' });
+  });
+
+  // So antwortet das echte digiCamControl auf ?slc=...: Content-Length doppelt.
+  // fetch lehnt das ab (HPE_UNEXPECTED_CONTENT_LENGTH) - an der Box stand
+  // deshalb "Kamera meldet sich nicht", obwohl Ausloesen ging.
+  it('versteht die Antwort mit doppeltem Content-Length-Kopf', async () => {
+    const roh = netzServer((sock) =>
+      sock.once('data', () =>
+        sock.end('HTTP/1.1 200 OK\r\nContent-Length: 13\r\nContent-Type: text/html\r\nContent-Length: 13\r\n\r\n083063072851\n'),
+      ),
+    );
+    await new Promise<void>((bereit) => roh.listen(0, '127.0.0.1', bereit));
+    try {
+      const kamera = new DigiCamControlKamera(`http://127.0.0.1:${(roh.address() as AddressInfo).port}`);
+      expect(await kamera.pruefe()).toMatchObject({ verbunden: true, antwortet: true });
+    } finally {
+      await new Promise<void>((fertig) => roh.close(() => fertig()));
+    }
+  });
+
+  // digiCamControl antwortet auf "?slc=set" immer mit HTTP 200 - ob es
+  // geklappt hat, steht nur im Text. Vorher galt jede 200 als Erfolg.
+  it('nimmt einen gesetzten Zielordner nur mit "OK" als gesetzt', async () => {
+    const ok = new DigiCamControlKamera(await webserver(() => ({ text: 'OK' })));
+    await expect(ok.setzeZielordner('C:\\Fotos')).resolves.toBeUndefined();
+    await new Promise<void>((fertig) => server!.close(() => fertig()));
+
+    const fehler = new DigiCamControlKamera(await webserver(() => ({ text: 'No camera connected' })));
+    await expect(fehler.setzeZielordner('C:\\Fotos')).rejects.toThrow(/No camera connected/);
+    await new Promise<void>((fertig) => server!.close(() => fertig()));
+
+    const gesperrt = new DigiCamControlKamera(await webserver(() => ({ text: '' })));
+    await expect(gesperrt.setzeZielordner('C:\\Fotos')).rejects.toThrow(/Interaktion über Webserver/);
+  });
+
+  it('versucht alle Belichtungswerte und nennt die abgelehnten', async () => {
+    const gesehen: string[] = [];
+    const kamera = new DigiCamControlKamera(
+      await webserver((url) => {
+        gesehen.push(url);
+        return { text: url.includes('param1=iso') ? 'Wrong value' : 'OK' };
+      }),
+    );
+    await expect(kamera.setzeBelichtung({ iso: '6400', blende: '5.6', verschlusszeit: '1/125' })).rejects.toThrow(
+      /iso nicht gesetzt/,
+    );
+    expect(gesehen).toHaveLength(3);
   });
 
   it('meldet "antwortet nicht", wenn niemand zuhoert', async () => {

@@ -65,13 +65,19 @@ export async function startbereitPruefung(
         : 'Drucker meldet einen Fehlerzustand.',
   });
 
-  const materialRest = Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht);
+  // Meldet der Drucker seinen Vorrat selbst, gilt seine Zahl - sonst der Zaehler.
+  const vomDrucker = status.druckerVorrat ?? null;
+  const materialRest = vomDrucker
+    ? vomDrucker.rest
+    : Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht);
   punkte.push({
     schluessel: 'material',
     titel: 'Restbestand erfasst',
     bestanden: materialRest > 20,
     nurWarnung: true,
-    hinweis: `Noch ${materialRest} Blatt. Bei Bedarf im Servicemenue "Neue Rolle eingelegt" waehlen.`,
+    hinweis: vomDrucker
+      ? `Noch ${materialRest} Blatt laut Drucker.`
+      : `Noch ${materialRest} Blatt (gezaehlt). Bei Bedarf im Servicemenue "Neue Rolle eingelegt" waehlen.`,
   });
 
   punkte.push({

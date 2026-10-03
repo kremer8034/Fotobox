@@ -9,7 +9,7 @@ import { useEffect, useRef } from 'react';
  * Neuzeichnen eine neue und startete von vorn - er lief nie ab. So blieben
  * nachweislich die Ergebnisseite (eingestellt 20 s), das PIN-Feld (10 s) und
  * die E-Mail-Maske (60 s) für immer stehen, und das Schloss brauchte manchmal
- * länger als die 2 Sekunden Gedrückthalten.
+ * länger als die Sekunde Gedrückthalten.
  *
  * Hier steckt die Aktion in einem Ref: Sie ist immer die aktuelle, aber ihr
  * Wechsel startet die Uhr nicht neu. Neu gestartet wird nur, wenn sich einer

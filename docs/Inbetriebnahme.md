@@ -21,7 +21,7 @@ laden (oder per USB-Stick mitbringen), doppelklicken, SmartScreen mit
 „Installieren“.
 
 Das Setup legt das Programm nach `C:\Program Files\Fotobox` (mit eigenem
-Node.js und SumatraPDF), den Datenordner nach `C:\Users\Public\Fotobox-Daten`,
+Node.js), den Datenordner nach `C:\Users\Public\Fotobox-Daten`,
 richtet den Autostart für den angemeldeten Benutzer ein, legt die
 Firewall-Freigabe für Port 8787 (nur privates Netz) an, schaltet
 Energiesparen am Netzteil ab und unterdrückt Update-Neustarts bei angemeldeten
@@ -127,10 +127,11 @@ Den Streifenmodus brauchst du nicht — die Software druckt volle Blätter.
 
 ### 3.2 Trocken testen
 
-In der Verwaltung unter **Gerät → Drucker** den Windows-Druckernamen und den
-SumatraPDF-Pfad eintragen. Dann zuerst auf **„Microsoft Print to PDF"**
-drucken lassen: So siehst du, ob der Weg funktioniert, ohne Papier zu
-verbrauchen.
+In der Verwaltung unter **Gerät → Drucker** den Drucker aus der Liste wählen.
+Dann zuerst auf **„Microsoft Print to PDF"** drucken lassen: So siehst du, ob
+der Weg funktioniert, ohne Papier zu verbrauchen. Jeder Auftrag muss danach
+kurz in der Windows-Druckerwarteschlange auftauchen; scheitert er, steht der
+Grund unter **Gerät → Druckwarteschlange**.
 
 ### 3.3 Kalibrieren
 
@@ -206,7 +207,7 @@ weiter drucken"** wählen. Die wartenden Aufträge laufen dann durch.
 | Oberfläche winzig oder riesig | Windows-Anzeigeskalierung steht nicht auf 100 % |
 | Kamera „meldet sich nicht" | digiCamControl läuft nicht, oder EOS Utility hat die Kamera belegt |
 | Live-View schwarz | Live-View in digiCamControl nicht gestartet, oder Objektivdeckel drauf |
-| Druck kommt nicht | SumatraPDF-Pfad fehlt, oder der Druckername stimmt nicht |
+| Druck kommt nicht | Grund unter Gerät → Druckwarteschlange ansehen; meist ist der falsche Drucker gewählt |
 | Ausdruck beschnitten | Kalibrierung fehlt, oder der Treiber skaliert trotz `noscale` |
 | Galerie am Handy nicht erreichbar | Galerie im Event nicht eingeschaltet, oder Handy hängt in einem anderen WLAN |
 | Weiße Seite im Browser | Oberfläche nicht gebaut — `npm run build` nachholen |

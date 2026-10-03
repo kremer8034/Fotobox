@@ -9,7 +9,7 @@
  *     dist/                  fertig gebauter Server und Oberflaeche
  *     node_modules/          nur die Laufzeit-Bibliotheken, fuer Windows
  *     package.json           traegt die Versionsnummer
- *     windows/               Start- und Einrichtungsskripte, SumatraPDF
+ *     windows/               Start- und Einrichtungsskripte
  *     docs/                  Anleitungen
  *
  * Laeuft auf dem Windows-Rechner der GitHub-Action (siehe
@@ -30,10 +30,6 @@ const WURZEL = resolve(import.meta.dirname, '..');
 const ZIEL = join(WURZEL, 'paket', 'Fotobox');
 const PROBE = process.argv.includes('--probe');
 const WINDOWS = process.platform === 'win32';
-
-/** SumatraPDF druckt ohne Dialog; die portable Fassung genuegt. */
-const SUMATRA_VERSION = '3.6.1';
-const SUMATRA_URL = `https://www.sumatrapdfreader.org/dl/rel/${SUMATRA_VERSION}/SumatraPDF-${SUMATRA_VERSION}-64.zip`;
 
 /** Nur diese Startskripte gehoeren ins Paket - Installieren.* baut aus dem Quelltext und ist fuer Entwickler. */
 const SKRIPTE = [
@@ -110,7 +106,7 @@ async function main() {
   await cp(join(WURZEL, 'README.md'), join(ZIEL, 'docs', 'README.md'));
 
   if (PROBE) {
-    console.log('\nProbelauf: Node und SumatraPDF fuer Windows werden nicht geladen.');
+    console.log('\nProbelauf: Node fuer Windows wird nicht geladen.');
     return;
   }
 
@@ -133,28 +129,8 @@ async function main() {
   await cp(join(nodeOrdner, 'node.exe'), join(ZIEL, 'node', 'node.exe'));
   await cp(join(nodeOrdner, 'LICENSE'), join(ZIEL, 'node', 'LICENSE'));
 
-  schritt(`SumatraPDF ${SUMATRA_VERSION}`);
-  try {
-    const sumatraZip = join(arbeit, 'sumatra.zip');
-    await writeFile(sumatraZip, await lade(SUMATRA_URL));
-    const sumatraOrdner = join(arbeit, 'sumatra');
-    entpacke(sumatraZip, sumatraOrdner);
-    const exe = (await readdir(sumatraOrdner)).find((d) => /^SumatraPDF.*\.exe$/i.test(d));
-    if (!exe) throw new Error('Keine SumatraPDF-Datei im Archiv.');
-    await cp(join(sumatraOrdner, exe), join(ZIEL, 'windows', 'SumatraPDF.exe'));
-    await writeFile(
-      join(ZIEL, 'windows', 'SumatraPDF-Lizenz.txt'),
-      `SumatraPDF ${SUMATRA_VERSION} - (c) Krzysztof Kowalczyk und Mitwirkende.\r\n` +
-        'Freie Software unter der GNU General Public License v3.\r\n' +
-        'Quelltext und Lizenz: https://github.com/sumatrapdfreader/sumatrapdf\r\n',
-    );
-    console.log('  mitgeliefert: windows\\SumatraPDF.exe');
-  } catch (fehler) {
-    // Kein Grund, das ganze Paket scheitern zu lassen: Die Fotobox findet
-    // eine selbst installierte Fassung ebenso, und die Verwaltung sagt, wenn
-    // sie fehlt.
-    console.warn(`  WARNUNG: SumatraPDF nicht mitgeliefert (${fehler.message}).`);
-  }
+  // SumatraPDF gehoert seit 1.0.4 nicht mehr dazu: Es meldete Druckfehler als
+  // Erfolg. Gedruckt wird ueber Windows selbst (treiber/drucker-windows.ts).
   await rm(arbeit, { recursive: true, force: true });
 
   console.log(`\nFertig: ${ZIEL}`);

@@ -97,29 +97,13 @@ if ($dcc) {
   Write-Host "  Download: https://digicamcontrol.com/download"
 }
 
-$sumatra = @(
-  "$env:ProgramFiles\SumatraPDF\SumatraPDF.exe",
-  "${env:ProgramFiles(x86)}\SumatraPDF\SumatraPDF.exe",
-  "$env:LOCALAPPDATA\SumatraPDF\SumatraPDF.exe",
-  (Join-Path $Projekt 'windows\SumatraPDF.exe')
-) | Where-Object { Test-Path $_ } | Select-Object -First 1
-
-if ($sumatra) {
-  Gut "SumatraPDF gefunden: $sumatra"
-  Write-Host "  Diesen Pfad spaeter unter Geraet > Drucker eintragen."
-} else {
-  Hinweis "SumatraPDF fehlt. Ohne das Programm kann Windows nicht dialogfrei drucken."
-  Write-Host "  Download: https://www.sumatrapdfreader.org/download-free-pdf-viewer"
-  Write-Host "  Die portable Fassung reicht - einfach nach windows\SumatraPDF.exe legen."
-}
-
 # ------------------------------------------------------------- Drucker
 Schritt "Drucker"
 $drucker = Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue |
            Where-Object { $_.Name -match 'DNP|DS-RX|RX1' }
 if ($drucker) {
   foreach ($d in $drucker) { Gut "Gefunden: $($d.Name)" }
-  Write-Host "  Diesen Namen unter Geraet > Drucker eintragen."
+  Write-Host "  Diesen Drucker unter Geraet > Drucker auswaehlen."
   Write-Host "  Im Treiber pruefen: randlos, Papierformat 10x15, ICC-Farbprofil."
 } else {
   Hinweis "Kein DNP-Drucker gefunden. Ist er eingeschaltet und der Treiber installiert?"
@@ -138,7 +122,7 @@ Write-Host "============================================" -ForegroundColor White
 Write-Host ""
 Write-Host " 1. Server starten:   windows\Fotobox starten.bat"
 Write-Host " 2. Verwaltung oeffnen: http://127.0.0.1:$Port/admin"
-Write-Host " 3. Unter Geraet eintragen: Besitzer-PIN, Druckername, SumatraPDF-Pfad"
+Write-Host " 3. Unter Geraet eintragen: Besitzer-PIN, Drucker auswaehlen"
 Write-Host " 4. Kalibrier-Testbild drucken und die Werte eintragen"
 Write-Host " 5. Erste Veranstaltung anlegen und den Startbereit-Check laufen lassen"
 Write-Host ""

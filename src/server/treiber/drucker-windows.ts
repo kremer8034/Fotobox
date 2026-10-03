@@ -1,27 +1,97 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
+import { seitenbildPfad } from '../bild/pdf.js';
+import { lesbarerFehler, OHNE_FORTSCHRITT } from './powershell.js';
 import type { DruckerStatus, DruckerTreiber, DruckerZustand } from './drucker.js';
 
 const fuehreAus = promisify(execFile);
 
 /**
+ * Der Druckhelfer: Windows druckt das fertige Seitenbild selbst, ueber
+ * System.Drawing.Printing aus der Windows-PowerShell - ohne fremdes Programm.
+ *
+ * - Papier: das, was im Treiber 6 x 4 Zoll am naechsten kommt. Gibt es
+ *   keins (etwa "Microsoft Print to PDF"), bleibt das voreingestellte.
+ * - Lage: quer, egal wie der Treiber das Papier fuehrt.
+ * - Bild: auf das ganze Blatt, bis an die Kante. Der Ursprung der
+ *   Zeichenflaeche liegt am bedruckbaren Bereich, deshalb um die harten
+ *   Raender zurueckgeschoben. Skaliert wird nichts darueber hinaus - die
+ *   Kalibrierung steckt schon im Bild.
+ * - Kopien: als Seiten eines Auftrags. Die Kopienzahl im Treiber ueberhoeren
+ *   manche Fotodrucker.
+ *
+ * Kehrt Print() zurueck, liegt der Auftrag in der Windows-Warteschlange.
+ * Jeder Fehler (Drucker unbekannt, Zugriff verweigert, Treiber verweigert
+ * das Papier) kommt als Ausnahme - und damit als Text bis in die Verwaltung.
+ */
+const DRUCKHELFER = `
+${OHNE_FORTSCHRITT}
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+try {
+  Add-Type -AssemblyName System.Drawing
+  $name = $env:FOTOBOX_DRUCKER
+  $script:kopien = [Math]::Max(1, [int]$env:FOTOBOX_KOPIEN)
+  $script:bild = [System.Drawing.Image]::FromFile($env:FOTOBOX_SEITE)
+  $doc = New-Object System.Drawing.Printing.PrintDocument
+  $doc.PrinterSettings.PrinterName = $name
+  if (-not $doc.PrinterSettings.IsValid) { throw "Windows kennt keinen Drucker mit dem Namen '$name'." }
+  $doc.DocumentName = 'Fotobox ' + [IO.Path]::GetFileNameWithoutExtension($env:FOTOBOX_SEITE)
+  $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
+  $papier = $null; $abstand = [double]::MaxValue
+  foreach ($p in $doc.PrinterSettings.PaperSizes) {
+    $d = [Math]::Abs([Math]::Max($p.Width, $p.Height) - 600) + [Math]::Abs([Math]::Min($p.Width, $p.Height) - 400)
+    if ($d -lt $abstand) { $abstand = $d; $papier = $p }
+  }
+  if ($null -ne $papier -and $abstand -le 40) { $doc.DefaultPageSettings.PaperSize = $papier }
+  else { $papier = $doc.DefaultPageSettings.PaperSize }
+  $doc.DefaultPageSettings.Landscape = ($papier.Width -lt $papier.Height)
+  $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
+  $doc.OriginAtMargins = $false
+  $script:seiten = 0
+  $doc.add_PrintPage({
+    param($absender, $e)
+    $g = $e.Graphics
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $b = $e.PageBounds
+    $ziel = New-Object System.Drawing.RectangleF((-$e.PageSettings.HardMarginX), (-$e.PageSettings.HardMarginY), $b.Width, $b.Height)
+    $g.DrawImage($script:bild, $ziel)
+    $script:seiten++
+    $e.HasMorePages = ($script:seiten -lt $script:kopien)
+  })
+  $doc.Print()
+  "Papier: $($papier.PaperName) ($($papier.Width) x $($papier.Height)), Blatt: $script:seiten"
+  exit 0
+} catch {
+  [Console]::Error.WriteLine($_.Exception.GetBaseException().Message)
+  exit 1
+}
+`;
+
+/** PowerShell nimmt Skripte am sichersten als UTF-16LE in Base64. */
+function verpackt(skript: string): string {
+  return Buffer.from(skript, 'utf16le').toString('base64');
+}
+
+/**
  * Dialogfreier Druck unter Windows.
  *
- * Der Weg ist bewusst deterministisch: Wir schicken ein PDF, dessen Seite exakt
- * dem Papier entspricht (152,4 x 101,6 mm), und drucken mit "noscale". Jede
- * Skalierung durch den Treiber wuerde die Druckkalibrierung wirkungslos machen.
+ * Gedruckt wird das Seitenbild neben dem PDF: dieselbe Seite, 152,4 x 101,6 mm,
+ * Kalibrierung eingerechnet (siehe schreibeSeitenbild). Bis 1.0.3 ging das PDF
+ * an SumatraPDF - das meldete mit "-silent" aber jeden Fehlschlag als Erfolg.
+ * Die Box zeigte "an Windows uebergeben", in der Windows-Warteschlange kam
+ * nie etwas an. Deshalb gibt es keinen SumatraPDF-Ersatzweg mehr: Ein
+ * Druckweg, der Fehler verschluckt, ist schlimmer als gar keiner.
  *
- * Randlos, Papierformat und ICC-Farbprofil werden einmalig im DNP-Windows-
- * Treiber eingestellt; die Software schickt nur eine exakt bemasste Seite.
+ * Randlos und ICC-Farbprofil werden einmalig im DNP-Windows-Treiber
+ * eingestellt.
  */
 export class WindowsDrucker implements DruckerTreiber {
   readonly name = 'Windows-Silent-Print';
 
-  constructor(
-    private readonly druckerName: string,
-    private readonly sumatraPfad: string,
-  ) {}
+  constructor(private readonly druckerName: string) {}
 
   async pruefe(): Promise<DruckerStatus> {
     // Ohne Drucker gilt er als nicht erreichbar: Die Auftraege warten dann,
@@ -43,7 +113,8 @@ export class WindowsDrucker implements DruckerTreiber {
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          `$p = Get-CimInstance Win32_Printer -Filter "Name='${name}'";` +
+          OHNE_FORTSCHRITT +
+            `$p = Get-CimInstance Win32_Printer -Filter "Name='${name}'";` +
             'if ($null -eq $p) { "fehlt" } else {' +
             ` $muster = [WildcardPattern]::Escape('${name}') + ', *';` +
             ' $j = @(Get-CimInstance Win32_PrintJob | Where-Object { $_.Name -like $muster });' +
@@ -61,26 +132,40 @@ export class WindowsDrucker implements DruckerTreiber {
     }
   }
 
-  async drucke(pdfPfad: string, kopien: number): Promise<void> {
+  async drucke(pdfPfad: string, kopien: number): Promise<string> {
     if (!this.druckerName) throw new Error('Kein Drucker ausgewaehlt.');
-    if (!this.sumatraPfad || !existsSync(this.sumatraPfad)) {
-      throw new Error(
-        'SumatraPDF wurde nicht gefunden. Pfad unter Geraet > Drucker eintragen.',
-      );
+    const seite = seitenbildPfad(pdfPfad);
+    if (!existsSync(seite)) {
+      throw new Error('Zu diesem Auftrag fehlt das Druckbild. Bitte das Foto aus der Galerie neu drucken.');
     }
-    // SumatraPDF druckt ohne Dialog. "noscale" ist entscheidend: Jede Skalierung
-    // durch den Treiber wuerde die Druckkalibrierung wirkungslos machen.
-    const argumente = [
-      '-print-to',
-      this.druckerName,
-      '-print-settings',
-      `noscale,${kopien}x`,
-      '-silent',
-      '-exit-when-done',
-      pdfPfad,
-    ];
-    await fuehreAus(this.sumatraPfad, argumente, { timeout: 120_000, windowsHide: true });
+    try {
+      const { stdout } = await fuehreAus(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', verpackt(DRUCKHELFER)],
+        {
+          timeout: 120_000,
+          windowsHide: true,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            FOTOBOX_DRUCKER: this.druckerName,
+            FOTOBOX_SEITE: seite,
+            FOTOBOX_KOPIEN: String(kopien),
+          },
+        },
+      );
+      return stdout.trim();
+    } catch (fehler) {
+      throw new Error(`Windows hat den Druck nicht angenommen: ${druckfehlerText(fehler)}`);
+    }
   }
+}
+
+/** Aus einem gescheiterten Aufruf den Satz machen, den ein Mensch lesen kann. */
+export function druckfehlerText(fehler: unknown): string {
+  const f = fehler as { stderr?: string; killed?: boolean; message?: string };
+  if (f?.killed) return 'Keine Antwort von Windows innerhalb von zwei Minuten.';
+  return lesbarerFehler(f?.stderr ?? '') || (f?.message ?? String(fehler));
 }
 
 /**
@@ -149,7 +234,8 @@ export async function listeWindowsDrucker(): Promise<GefundenerDrucker[]> {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      '[Console]::OutputEncoding = [Text.Encoding]::UTF8;' +
+      OHNE_FORTSCHRITT +
+        '[Console]::OutputEncoding = [Text.Encoding]::UTF8;' +
         ' @(Get-CimInstance Win32_Printer | Select-Object Name, DriverName, PortName, WorkOffline)' +
         ' | ConvertTo-Json -Compress',
     ],

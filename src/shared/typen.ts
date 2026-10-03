@@ -495,7 +495,6 @@ export interface Geraeteeinstellungen {
   /** Warnschwelle in Gigabyte, ab der der Speicherplatz gemeldet wird. */
   speicherWarnungGb: number;
   digicamcontrolPfad: string;
-  sumatraPfad: string;
   /** Postausgangsserver fuer "Foto per E-Mail". Das Passwort steht bewusst
    *  nicht hier, sondern getrennt - es verlaesst den Server nie. */
   mail: MailEinstellungen | null;
@@ -536,9 +535,25 @@ export interface Betriebsstatus {
   liveViewLaeuft: boolean;
   stoerung: Stoerung | null;
   warteschlangeOffen: number;
+  /** Restblaetter: laut Drucker, wenn er sie meldet, sonst selbst gezaehlt. */
   materialRest: number;
+  /** Was der DNP-Drucker selbst ueber seinen Vorrat sagt; null, wenn er nicht gefragt werden kann. */
+  druckerVorrat?: DruckerVorrat | null;
   speicherFreiGb: number;
   aktivesEvent: { id: string; name: string; probelauf: boolean } | null;
+}
+
+export interface DruckerVorrat {
+  /** Restblaetter - der zuletzt gelesene Wert, abzueglich seither gedruckter Blatt. */
+  rest: number;
+  /** Blatt einer vollen Rolle laut Drucker. */
+  gesamt: number | null;
+  /** Zustand laut Drucker in Worten ("bereit", "Papier zu Ende" ...). */
+  zustand: string | null;
+  /** Wann zuletzt gelesen (ISO). */
+  gelesen: string;
+  /** Seit dem Lesen wurde gedruckt - der Wert ist nachgerechnet, bis der Drucker wieder ruht. */
+  nachgerechnet: boolean;
 }
 
 export const STOERUNGSTEXTE: Record<Stoerung, { titel: string; folge: string; tun: string }> = {

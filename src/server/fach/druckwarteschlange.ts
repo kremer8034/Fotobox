@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { schreibeSeitenbild, seitenbildPfad } from '../bild/pdf.js';
 import { holeDb, jetzt } from '../db/index.js';
+import { leseGeraet } from '../db/geraet.js';
 import { verbucheMaterial } from './events.js';
 import type { DruckQuelle, Druckauftrag, DruckStatus } from '../../shared/typen.js';
 import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../treiber/drucker.js';
@@ -15,7 +19,7 @@ import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../tr
  * Faellt der Drucker aus, bleiben die Auftraege stehen, statt still verloren zu
  * gehen. Nach dem Papierwechsel laeuft die Schlange weiter.
  *
- * Wichtig dabei: Vor jedem Auftrag wird der Drucker gefragt. SumatraPDF meldet
+ * Wichtig dabei: Vor jedem Auftrag wird der Drucker gefragt. Der Druckbefehl meldet
  * "fertig", sobald der Auftrag in der Windows-Warteschlange liegt - auch bei
  * leerem Papier. Vorher wanderte deshalb bei einer leeren Rolle alles sofort
  * zu Windows, galt als gedruckt und war fuer unsere Schlange verloren: kein
@@ -182,6 +186,21 @@ export function listeAuftraege(eventId: string): (Druckauftrag & { pfadPdf: stri
   return zeilen.map(zuAuftrag);
 }
 
+/**
+ * Druckdateien aus der Zeit vor 1.0.4 haben kein Seitenbild. Fuer Fotos
+ * (Nachdruck aus der Galerie) laesst es sich aus dem Layout nachholen - mit
+ * der Kalibrierung von heute, wie ein neuer Druck auch.
+ */
+export async function sorgeFuerSeitenbild(pfadPdf: string): Promise<void> {
+  const ziel = seitenbildPfad(pfadPdf);
+  if (existsSync(ziel)) return;
+  const zeile = holeDb().prepare('SELECT pfad_layout FROM ausgaben WHERE pfad_druck_pdf = ?').get(pfadPdf) as
+    | { pfad_layout: string }
+    | undefined;
+  if (!zeile || !existsSync(zeile.pfad_layout)) return;
+  await schreibeSeitenbild(await readFile(zeile.pfad_layout), ziel, leseGeraet().kalibrierung);
+}
+
 /** Fehldruck nachtraeglich von der Abrechnung ausnehmen. */
 export function setzeBerechnen(id: string, berechnen: boolean): void {
   holeDb().prepare('UPDATE druckauftraege SET berechnen = ? WHERE id = ?').run(berechnen ? 1 : 0, id);
@@ -208,6 +227,10 @@ export class Druckschleife {
     private readonly protokoll: (text: string) => void,
     /** Jeder hier gelesene Druckerzustand geht auch an die Anzeige. */
     private readonly beiStatus: (status: DruckerStatus) => void = () => undefined,
+    /** Nach jedem gelungenen Druck: was der Treiber meldet (etwa das Papier) und wie viele Blatt. */
+    private readonly beiErfolg: (meldung: string | null, kopien: number) => void = () => undefined,
+    /** Vor jedem Druck abwarten - etwa eine laufende Abfrage des Papiervorrats. */
+    private readonly vorDemDruck: () => Promise<void> = async () => undefined,
   ) {}
 
   /** Klemmt ein Auftrag bei Windows schon so lange, dass jemand nachsehen muss? */
@@ -307,7 +330,10 @@ export class Druckschleife {
       holeDb().prepare("UPDATE druckauftraege SET status = 'laeuft' WHERE id = ?").run(auftrag.id);
 
       try {
-        await this.drucker().drucke(auftrag.pfadPdf, auftrag.kopien);
+        await sorgeFuerSeitenbild(auftrag.pfadPdf).catch(() => undefined);
+        await this.vorDemDruck().catch(() => undefined);
+        const meldung = await this.drucker().drucke(auftrag.pfadPdf, auftrag.kopien);
+        this.beiErfolg(meldung || null, auftrag.kopien);
         holeDb()
           .prepare("UPDATE druckauftraege SET status = 'gedruckt', gedruckt = ?, fehlertext = NULL WHERE id = ?")
           .run(jetzt(), auftrag.id);

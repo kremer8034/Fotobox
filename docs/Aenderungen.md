@@ -4,6 +4,75 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.4
+
+- **Papiervorrat direkt vom Drucker:** Die Fotobox liest jetzt die echte Zahl
+  der Restblätter aus dem DNP-Drucker – dieselbe wie „Media Remaining“ in
+  DNPs PrinterInfo. Dafür nutzt sie die Bibliothek von PrinterInfo; das
+  Programm muss also installiert sein (bei dir ist es das schon). Die Zahl
+  steht unter Gerät → „Papiervorrat laut Drucker“, in der Übersicht, im
+  Servicemenü und im Startbereit-Check. „Neue Rolle eingelegt“ musst du nicht
+  mehr drücken: Nach einem Rollenwechsel steht die neue Zahl spätestens nach
+  zehn Minuten da (oder sofort mit „Jetzt vom Drucker lesen“). Gefragt wird
+  der Drucker nur, wenn er gerade nicht druckt – das verlangt DNP so.
+- **„Kiosk schließen“ schließt jetzt wirklich:** Der Knopf im Servicemenü
+  meldete „Kiosk wird geschlossen“, der Browser blieb aber offen. Der Befehl,
+  der ihn beenden sollte, lief unter Windows gar nicht erst an. Jetzt geht der
+  Kiosk-Browser zu, und du landest auf dem Windows-Desktop. Zurück geht es mit
+  „Fotobox starten“ auf dem Desktop. Klappt es doch einmal nicht, steht der
+  Grund unter „Was zuletzt gehakt hat“. Auf demselben Weg wurde auch
+  „PC herunterfahren“ abgesichert.
+- **Drucken geht jetzt wirklich bis zum Drucker:** Bisher übergab die Fotobox
+  jedes Bild an SumatraPDF – und das meldete im stillen Druckmodus „erledigt“,
+  auch wenn es den Drucker gar nicht erreicht hatte. Die Box zeigte „an
+  Windows übergeben“, in der Windows-Druckerwarteschlange kam aber nie ein
+  Auftrag an. Jetzt druckt Windows selbst: Die Fotobox wählt im Treiber das
+  Papier 6 × 4 Zoll (10 × 15), legt das Bild quer bis an die Kante und schickt
+  den Auftrag direkt in die Windows-Warteschlange. Klappt das nicht, steht der
+  Grund in Windows' eigenen Worten unter Gerät → Druckwarteschlange, statt
+  dass ein Druck still verschwindet. Nach dem ersten Druck steht im Protokoll,
+  welches Papier der Treiber genommen hat. Die Druckkalibrierung gilt
+  unverändert weiter. SumatraPDF wird nicht mehr gebraucht und beim Update
+  entfernt; das Feld dafür unter Gerät → Drucker ist weg.
+- **Keine stillen Fehlschläge mehr:** Der Code wurde gezielt nach Stellen
+  durchsucht, die „erledigt“ melden, ohne es zu prüfen. Gefunden und behoben:
+  - Den **Fotoordner der Kamera** hat digiCamControl manchmal nicht
+    übernommen. Die Fotobox hielt das für gelungen, weil digiCamControl auch
+    bei einem Fehler „alles in Ordnung“ (HTTP 200) antwortet und den Fehler
+    nur in den Text schreibt. Jetzt zählt nur ein echtes „OK“, sonst steht
+    der Grund unter „Was zuletzt gehakt hat“.
+  - Dasselbe bei **ISO, Blende und Verschlusszeit**: Lehnt die Kamera einen
+    Wert ab, sagt die Verwaltung das jetzt, statt „Gespeichert.“ zu zeigen.
+  - **„PC herunterfahren“** meldete „fährt in 15 Sekunden herunter“, ohne zu
+    wissen, ob Windows zugestimmt hatte. Jetzt kommt eine Fehlermeldung, wenn
+    nicht.
+  - **Fehlermeldungen aus Windows** (Drucken, Update) waren manchmal nur
+    unlesbarer PowerShell-Text („Preparing modules for first use“). Jetzt
+    kommt der eigentliche Grund an.
+  - Ließ sich digiCamControl oder der Explorer nicht starten, konnte das den
+    ganzen Fotobox-Server mitreißen. Jetzt wird es abgefangen.
+- **Schloss öffnet schneller:** Eine Sekunde Gedrückthalten reicht jetzt statt
+  zwei. Ein kurzes Antippen öffnet weiterhin nichts.
+- **Ansagen bei der Aufnahme groß und mittig:** „Gleich geht es los“, „Neue
+  Pose!“, „Bitte lächeln!“ stehen jetzt groß in der Bildmitte, halbtransparent
+  hinterlegt, sodass man sich dahinter noch sieht.
+- **Pfeil zur Kamera:** Unten in der Mitte zeigt ein wippender Pfeil mit „In
+  die Kamera schauen“ auf die Linse unter dem Bildschirm – damit die Gäste in
+  die Kamera schauen statt auf den Bildschirm.
+- **„Abbrechen“ während der Aufnahme:** Oben links führt ein Knopf zurück zum
+  Startbildschirm, etwa um doch eine andere Vorlage zu wählen. Während gerade
+  ausgelöst wird, ist er kurz ausgeblendet.
+- **„Die Kamera meldet sich gerade nicht“, obwohl sie auslöst – behoben:**
+  digiCamControl schickt auf die Zustandsabfrage eine Antwort mit einer
+  doppelten Längenangabe. Der Browser sieht darüber hinweg, die Fotobox brach
+  ab und hielt digiCamControl für stumm. Jetzt liest sie solche Antworten
+  nachsichtig. Damit klappt auch das Setzen des Zielordners für die Fotos
+  wieder zuverlässig.
+- **„Was zuletzt gehakt hat“ leeren:** In der Übersicht löscht der Knopf
+  „Liste leeren“ alle angezeigten Warnungen und Fehler – etwa nach dem
+  Einrichten oder vor dem Verleih, damit danach nur steht, was beim Kunden
+  passiert ist.
+
 ## 1.0.3
 
 > **Von Version 1.0.2 aus bitte einmal von Hand installieren:** Dort startet
