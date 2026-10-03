@@ -2127,3 +2127,43 @@ html.handy-ansicht body {
   border: 1px solid rgba(0, 0, 0, 0.4);
   pointer-events: none;
 }
+
+/* Verwaltung: Pruefliste der Portal-Selbstdiagnose. */
+.pruefliste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pruefliste__zeile {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.7rem;
+  border-left: 4px solid var(--kante);
+  border-radius: var(--radius-klein);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.88rem;
+}
+
+.pruefliste__zeile--gut { border-left-color: var(--gut, #5aa469); }
+.pruefliste__zeile--offen { border-left-color: var(--warnung); }
+
+.pruefliste__zeichen {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  background: var(--kante);
+}
+
+.pruefliste__zeile--gut .pruefliste__zeichen { background: var(--gut, #5aa469); color: #0d2412; }
+.pruefliste__zeile--offen .pruefliste__zeichen { background: var(--warnung); color: #2a1405; }

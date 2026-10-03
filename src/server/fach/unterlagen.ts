@@ -25,6 +25,8 @@ export interface Unterlagenangaben {
   galerieUrl?: string;
   wlanName?: string;
   wlanPasswort?: string;
+  /** Captive Portal an: Der WLAN-Code allein genuegt - die Galerie oeffnet sich von selbst. */
+  portal?: boolean;
 }
 
 export async function schreibeKurzanleitung(
@@ -210,17 +212,34 @@ function zeichneAushang(
     .text(`${event.name} · ${datum(event)}`, rand, 132, { width: innen, align: 'center', height: 16, ellipsis: true });
 
   const codes: { titel: string; text: string; zusatz?: string; qr: Buffer }[] = [];
-  if (wlanQr) {
+  const wlanZeile = angaben.wlanName
+    ? `WLAN: ${angaben.wlanName}${angaben.wlanPasswort ? `\nPasswort: ${angaben.wlanPasswort}` : ''}`
+    : undefined;
+  if (angaben.portal && wlanQr) {
+    // Ein Scan genuegt: Das Handy tritt dem WLAN bei, und die Galerie oeffnet
+    // sich von selbst. Der Galerie-Code bleibt als Rueckfall darunter.
+    codes.push({
+      titel: 'Scannen – fertig',
+      text: 'Handy mit dem WLAN verbinden. Die Galerie mit allen Fotos öffnet sich von selbst.',
+      zusatz: wlanZeile,
+      qr: wlanQr,
+    });
+    if (galerieQr) {
+      codes.push({
+        titel: 'Falls sich nichts öffnet',
+        text: 'Diesen Code scannen, während das Handy im WLAN der Fotobox ist.',
+        qr: galerieQr,
+      });
+    }
+  } else if (wlanQr) {
     codes.push({
       titel: 'Ins WLAN',
       text: 'Verbindet das Handy mit dem WLAN der Fotobox.',
-      zusatz: angaben.wlanName
-        ? `WLAN: ${angaben.wlanName}${angaben.wlanPasswort ? `\nPasswort: ${angaben.wlanPasswort}` : ''}`
-        : undefined,
+      zusatz: wlanZeile,
       qr: wlanQr,
     });
   }
-  if (galerieQr) {
+  if (galerieQr && !(angaben.portal && wlanQr)) {
     codes.push({
       titel: 'Galerie öffnen',
       text: 'Zeigt alle Fotos des Abends. Antippen, speichern, teilen.',
@@ -230,13 +249,17 @@ function zeichneAushang(
   }
 
   // Je Code eine Karte, uebereinander - bei einem einzigen Code groesser.
-  const qrGroesse = codes.length === 1 ? 230 : 180;
-  const kartenHoehe = qrGroesse + 44;
+  // Mit Captive Portal ist der WLAN-Code der eine Code; der Rueckfall darunter
+  // bleibt bewusst klein, damit niemand ihn fuer den Hauptweg haelt.
+  const mitPortal = Boolean(angaben.portal && wlanQr);
+  const groesseVon = (i: number) => (mitPortal ? (i === 0 ? 240 : 120) : codes.length === 1 ? 230 : 180);
   const lueckeY = 22;
-  const gesamt = codes.length * kartenHoehe + (codes.length - 1) * lueckeY;
+  const gesamt = codes.reduce((summe, _c, i) => summe + groesseVon(i) + 44, 0) + (codes.length - 1) * lueckeY;
   let y = 172 + Math.max(36, (hoehe - 172 - 90 - gesamt) / 2);
 
   codes.forEach((c, i) => {
+    const qrGroesse = groesseVon(i);
+    const kartenHoehe = qrGroesse + 44;
     d.roundedRect(rand, y, innen, kartenHoehe, 12).lineWidth(1).fillAndStroke('#ffffff', '#e1e4e9');
     d.rect(rand, y + 18, 4, kartenHoehe - 36).fill(FARBE.akzent);
     // QR links
@@ -246,13 +269,14 @@ function zeichneAushang(
     const tx = qrX + qrGroesse + 28;
     const tb = innen - (tx - rand) - 22;
     const ty = y + kartenHoehe / 2 - 58;
-    if (codes.length > 1) {
+    const schritte = codes.length > 1 && !mitPortal;
+    if (schritte) {
       d.circle(tx + 15, ty + 15, 15).fill(FARBE.akzent);
       d.font('Helvetica-Bold').fontSize(15).fillColor('#ffffff')
         .text(String(i + 1), tx, ty + 7, { width: 30, align: 'center', lineBreak: false });
     }
-    d.font('Helvetica-Bold').fontSize(22).fillColor(FARBE.text)
-      .text(c.titel, tx, ty + (codes.length > 1 ? 42 : 20), { width: tb });
+    d.font('Helvetica-Bold').fontSize(mitPortal && i > 0 ? 15 : 22).fillColor(FARBE.text)
+      .text(c.titel, tx, ty + (schritte ? 42 : mitPortal && i > 0 ? 34 : 20), { width: tb });
     d.font('Helvetica').fontSize(12).fillColor(FARBE.text).text(c.text, tx, d.y + 6, { width: tb });
     if (c.zusatz) {
       d.font('Helvetica-Bold').fontSize(11).fillColor(FARBE.leise).text(c.zusatz, tx, d.y + 8, { width: tb });

@@ -506,6 +506,19 @@ export interface Geraeteeinstellungen {
   /** Postausgangsserver fuer "Foto per E-Mail". Das Passwort steht bewusst
    *  nicht hier, sondern getrennt - es verlaesst den Server nie. */
   mail: MailEinstellungen | null;
+  /**
+   * Captive Portal (Test): Galerie oeffnet sich von selbst, sobald ein Handy
+   * dem Fotobox-WLAN beitritt. Standardmaessig aus - dann laeuft die Box
+   * genau wie vorher.
+   */
+  portalAktiv: boolean;
+  /** WLAN des Reise-Routers - fuer den WLAN-QR-Code auf Aushang und Startbildschirm. */
+  wlan: WlanZugang | null;
+}
+
+export interface WlanZugang {
+  name: string;
+  passwort: string;
 }
 
 export interface MailEinstellungen {

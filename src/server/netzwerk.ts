@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 import { promisify } from 'node:util';
 import { lesbarerFehler, OHNE_FORTSCHRITT } from './treiber/powershell.js';
+import { PORTAL_ADRESSE } from './portal/adresse.js';
 
 const fuehreAus = promisify(execFile);
 
@@ -51,6 +52,10 @@ export async function aktualisiereRoutenAdresse(): Promise<string | null> {
  */
 export function lanAdresse(): string | null {
   const kandidaten = alleLanAdressen();
+  // Ist das Netz fuer das Captive Portal eingerichtet, gehoert die Galerie
+  // dorthin - in das WLAN des Vonets, nicht in ein anderes, in dem die Box
+  // vielleicht gerade auch haengt.
+  if (kandidaten.includes(PORTAL_ADRESSE)) return PORTAL_ADRESSE;
   if (routenAdresse && kandidaten.includes(routenAdresse)) return routenAdresse;
   // Private Netze bevorzugen: Der Reise-Router spannt ein Insel-Netz auf.
   const privat = kandidaten.find(

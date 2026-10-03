@@ -5,6 +5,7 @@ import {
   type Geraeteeinstellungen,
   type Kameraeinstellungen,
   type MailEinstellungen,
+  type WlanZugang,
 } from '../../shared/typen.js';
 
 /**
@@ -43,6 +44,8 @@ export function leseGeraet(): Geraeteeinstellungen {
     speicherWarnungGb: lies('speicherWarnungGb', 5),
     digicamcontrolPfad: lies('digicamcontrolPfad', 'C:\\Program Files (x86)\\digiCamControl'),
     mail: lies<MailEinstellungen | null>('mail', null),
+    portalAktiv: lies('portalAktiv', false),
+    wlan: lies<WlanZugang | null>('wlan', null),
   };
 }
 

@@ -473,10 +473,11 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
           {start.darstellung?.qrAufStartseite && start.darstellung.galerieUrl && (
             <div className="qr-ecke">
               <img
-                src={`/api/qr?text=${encodeURIComponent(start.darstellung.galerieUrl)}`}
+                src={`/api/qr?text=${encodeURIComponent(start.darstellung.wlanQrText ?? start.darstellung.galerieUrl)}`}
                 alt=""
               />
-              <div>Alle Fotos aufs Handy</div>
+              {/* Mit Captive Portal ist es der WLAN-Code: beitreten, und die Galerie oeffnet sich. */}
+              <div>{start.darstellung.wlanQrText ? 'Scannen – Fotos öffnen sich' : 'Alle Fotos aufs Handy'}</div>
             </div>
           )}
         </div>

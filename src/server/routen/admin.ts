@@ -13,6 +13,9 @@ import {
   PIN_EINGABE,
 } from '../fach/einstellungen-pruefung.js';
 import sharp from 'sharp';
+import { portalNetzEingerichtet } from '../portal/adresse.js';
+import { holePortal } from '../portal/steuerung.js';
+import { leseRohdiagnose, portalDiagnose, richteNetzEin, setzeNetzZurueck, waehleAdapter } from '../portal/diagnose.js';
 import { leseGeraet, leseMailPasswort, schreibeGeraet, schreibeMailPasswort, begrenzeKalibrierung } from '../db/geraet.js';
 import {
   aktualisiereEvent,
@@ -176,7 +179,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { vorrat: betrieb.druckerVorrat(), hinweis: betrieb.vorratHinweis };
   });
 
-  app.put<{ Body: unknown }>('/api/admin/geraet', async (anfrage) => {
+  app.put<{ Body: unknown }>('/api/admin/geraet', async (anfrage, antwort) => {
     const koerper = z
       .object({
         druckerName: z.string().optional(),
@@ -210,6 +213,11 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Leer oder weggelassen: bleibt, wie es ist. Das Feld in der
         // Verwaltung ist immer leer - das gespeicherte Passwort kommt nie zurueck.
         mailPasswort: z.string().max(200).optional(),
+        portalAktiv: z.boolean().optional(),
+        wlan: z
+          .object({ name: z.string().trim().min(1).max(32), passwort: z.string().max(63) })
+          .nullable()
+          .optional(),
       })
       .parse(anfrage.body);
 
@@ -223,6 +231,17 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (koerper.kalibrierung) aenderung.kalibrierung = begrenzeKalibrierung(koerper.kalibrierung);
     if (koerper.besitzerPin) aenderung.besitzerPinHash = await hashePin(koerper.besitzerPin);
     if (koerper.mail !== undefined) aenderung.mail = koerper.mail;
+    if (koerper.wlan !== undefined) aenderung.wlan = koerper.wlan;
+    if (koerper.portalAktiv !== undefined) {
+      // Einschalten nur, wenn das Netz dafuer eingerichtet ist - sonst liefe
+      // nichts, und der Schalter taeuschte ein Portal vor.
+      if (koerper.portalAktiv && !portalNetzEingerichtet()) {
+        return antwort.code(409).send({
+          fehler: 'Erst unter „Selbstdiagnose“ das Netzwerk für das Portal einrichten – dann lässt es sich einschalten.',
+        });
+      }
+      aenderung.portalAktiv = koerper.portalAktiv;
+    }
 
     schreibeGeraet(aenderung);
     if (koerper.mail === null) schreibeMailPasswort(null);
@@ -241,6 +260,48 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       }
     }
     return geraetFuerBrowser();
+  });
+
+  // ------------------------------------------------------- Captive Portal
+
+  /** Selbstdiagnose: Was ist eingestellt, was fehlt, was laeuft? */
+  app.get('/api/admin/portal', async (_anfrage, antwort) => {
+    try {
+      return { diagnose: await portalDiagnose(holePortal()?.zustand() ?? null, leseGeraet().portalAktiv) };
+    } catch (fehler) {
+      return antwort.code(500).send({ fehler: `Die Selbstdiagnose ging nicht: ${(fehler as Error).message}` });
+    }
+  });
+
+  /** Feste Adresse und Firewall-Freigaben fuer das Portal - mit Windows-Rueckfrage. */
+  app.post('/api/admin/portal/einrichten', async (_anfrage, antwort) => {
+    try {
+      const adapter = waehleAdapter((await leseRohdiagnose()).adapter);
+      if (!adapter) return antwort.code(409).send({ fehler: 'Kein Kabel-Netzwerkanschluss gefunden.' });
+      await richteNetzEin(adapter);
+      protokolliere('info', 'portal', `Netz für das Portal eingerichtet (Anschluss „${adapter.name}“).`);
+      // Windows braucht einen Moment, bis die neue Adresse benutzbar ist.
+      await new Promise((r) => setTimeout(r, 3000));
+      return { diagnose: await portalDiagnose(holePortal()?.zustand() ?? null, leseGeraet().portalAktiv) };
+    } catch (fehler) {
+      return antwort.code(500).send({ fehler: (fehler as Error).message });
+    }
+  });
+
+  /** Zurueck auf den Zustand vor dem Portal: automatische Adresse, keine Freigaben, Schalter aus. */
+  app.post('/api/admin/portal/zuruecksetzen', async (_anfrage, antwort) => {
+    try {
+      schreibeGeraet({ portalAktiv: false });
+      const adapter = waehleAdapter((await leseRohdiagnose()).adapter);
+      if (!adapter) return antwort.code(409).send({ fehler: 'Kein Kabel-Netzwerkanschluss gefunden.' });
+      await holePortal()?.stoppeAlles();
+      await setzeNetzZurueck(adapter);
+      protokolliere('info', 'portal', `Netz zurückgesetzt (Anschluss „${adapter.name}“).`);
+      await new Promise((r) => setTimeout(r, 3000));
+      return { diagnose: await portalDiagnose(holePortal()?.zustand() ?? null, false) };
+    } catch (fehler) {
+      return antwort.code(500).send({ fehler: (fehler as Error).message });
+    }
   });
 
   /**
@@ -909,7 +970,15 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
         ? (galerieAdresse(event.galerieToken, konfig.portOeffentlich) ?? undefined)
         : undefined;
 
-      const angaben = { ...koerper, galerieUrl };
+      // Leere WLAN-Felder: die unter Geraet gespeicherten Daten des Vonets.
+      const geraet = leseGeraet();
+      const angaben = {
+        ...koerper,
+        wlanName: koerper.wlanName?.trim() || geraet.wlan?.name || undefined,
+        wlanPasswort: koerper.wlanPasswort?.trim() || geraet.wlan?.passwort || undefined,
+        galerieUrl,
+        portal: geraet.portalAktiv,
+      };
       const kurzanleitung = await schreibeKurzanleitung(event, angaben);
       const aushang = event.einstellungen.galerieAktiv
         ? await schreibeAushang(event, angaben)

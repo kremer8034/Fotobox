@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import QRCode from 'qrcode';
+import { holePortal } from '../portal/steuerung.js';
 import { z } from 'zod';
 import { holeAktivesEvent, holeEvent, setzeStatus } from '../fach/events.js';
 import { holeVorlage, listeVorlagen } from '../fach/vorlagen.js';
@@ -42,7 +43,7 @@ import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
 import { filterVorschau, vorlagenVorschau } from '../bild/vorschau.js';
 import { anzahlFotos, BETREUER_HINWEISE, fotoEbenen, STOERUNGSTEXTE, type Vorlage } from '../../shared/typen.js';
-import { galerieUrl } from '../netzwerk.js';
+import { galerieUrl, wlanQrText } from '../netzwerk.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
 
@@ -107,6 +108,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         galerieUrl: event.einstellungen.galerieAktiv
           ? galerieUrl(event.galerieToken, konfig.portOeffentlich)
           : null,
+        // Laeuft das Captive Portal, genuegt der WLAN-Code: Die Galerie
+        // oeffnet sich beim Beitritt von selbst.
+        wlanQrText: portalWlanQr(),
       },
       zeiten: event.einstellungen.zeiten,
       toene: event.einstellungen.toene,
@@ -815,4 +819,11 @@ function seitenverhaeltnisse(vorlage: Vorlage): Record<number, number> {
     ergebnis[i + 1] = hoehe > 0 ? breite / hoehe : 1.5;
   });
   return ergebnis;
+}
+
+/** Der WLAN-QR-Code fuer den Startbildschirm - nur, solange das Captive Portal laeuft. */
+function portalWlanQr(): string | null {
+  const wlan = leseGeraet().wlan;
+  if (!wlan || !holePortal()?.zustand().portal) return null;
+  return wlanQrText(wlan.name, wlan.passwort);
 }

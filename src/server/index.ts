@@ -25,7 +25,9 @@ import { registriereOeffentlich } from './routen/oeffentlich.js';
 import { registriereMedien } from './routen/medien.js';
 import { registriereStream } from './routen/stream.js';
 import { registriereEntwicklung } from './routen/entwicklung.js';
-import { aktualisiereRoutenAdresse, lanAdresse } from './netzwerk.js';
+import { aktualisiereRoutenAdresse, galerieUrl, lanAdresse } from './netzwerk.js';
+import { portalNetzEingerichtet } from './portal/adresse.js';
+import { Portalsteuerung, portalSoll, setzePortal } from './portal/steuerung.js';
 import { beantworteFehler, haerteOeffentlich, schuetzeLokal } from './sicherheit.js';
 
 /**
@@ -159,6 +161,26 @@ async function pruefeGalerie(): Promise<void> {
   }
   if (soll) await galerieAn();
   else await galerieAus();
+  await pruefePortal(soll);
+}
+
+/**
+ * Captive Portal (Test). Bei ausgeschaltetem Schalter und nicht
+ * eingerichtetem Netz startet hier nichts - die Box laeuft wie vorher.
+ */
+const portal = new Portalsteuerung(
+  () => {
+    const event = holeAktivesEvent();
+    return event?.einstellungen.galerieAktiv ? galerieUrl(event.galerieToken, konfig.portOeffentlich) : null;
+  },
+  (text) => protokolliere('info', 'portal', text),
+);
+setzePortal(portal);
+
+async function pruefePortal(galerieAktiv: boolean): Promise<void> {
+  await portal.abgleichen(
+    portalSoll({ schalter: leseGeraet().portalAktiv, eingerichtet: portalNetzEingerichtet(), galerieAktiv }),
+  );
 }
 
 await pruefeGalerie();
@@ -212,6 +234,7 @@ async function beende(): Promise<void> {
   clearInterval(abbruchUhr);
   clearInterval(loeschUhr);
   await betrieb.beende();
+  await portal.stoppeAlles();
   await oeffentlich?.close();
   await lokal.close();
   schliesseDb();
