@@ -111,6 +111,22 @@ export function miniatur(quelle: Buffer | string): Promise<Buffer> {
     .toBuffer();
 }
 
+/** Lange Kante der Filterkacheln mit dem eigenen Foto. */
+const GANZ_KANTE = 480;
+
+/**
+ * Das eigene Foto fuer die Filterauswahl am Kiosk - ganz, nicht beschnitten:
+ * Der Gast soll sehen, was der Filter mit dem ganzen Bild macht, nicht nur
+ * mit der Mitte.
+ */
+export function miniaturGanz(quelle: Buffer | string): Promise<Buffer> {
+  return sharp(quelle)
+    .rotate()
+    .resize(GANZ_KANTE, GANZ_KANTE, { fit: 'inside' })
+    .jpeg({ quality: 82 })
+    .toBuffer();
+}
+
 /** Ruhige, nummerierte Flaeche fuer die Foto-Ebenen der Vorlagenvorschau. */
 async function platzhalterFlaeche(nummer: number): Promise<Buffer> {
   const farben = ['#8fa6bd', '#bd8f8f', '#95bd8f', '#bdb08f', '#a98fbd', '#8fbdb6'];

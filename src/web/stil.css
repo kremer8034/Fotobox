@@ -740,11 +740,42 @@ button {
   gap: var(--abstand);
 }
 
+/*
+ * Filterauswahl: jede Kachel zeigt das ganze Foto, nichts abgeschnitten.
+ * Passen nicht alle auf den Schirm, wird mit dem Finger geblaettert - wie in
+ * der Galerie.
+ */
+.filter-raster {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  /* Jede Zeile so hoch wie ihr Inhalt - sonst stauchte das Raster die
+     Kacheln auf die Bildschirmhoehe, statt zu blaettern. */
+  grid-auto-rows: max-content;
+  touch-action: pan-y;
+}
+
+.kachel__bild--ganz {
+  flex: none;
+  height: auto;
+  object-fit: contain;
+}
+
 /* Filterauswahl: "Abbrechen" unten rechts, wie "Zurück" auf den anderen Seiten. */
 .filter__leiste {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--abstand);
   padding-top: calc(3 * var(--mm));
+}
+
+.filter__mehr {
+  margin: 0 auto 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--akzent);
 }
 
 .menge {

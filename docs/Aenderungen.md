@@ -11,6 +11,11 @@ ihn auf der Box verstehst.
   Verwaltung. Läuft der Probelauf, steht das oben neben dem Namen der
   Veranstaltung. Der Schalter fehlt bewusst im Betreuer-Menü: Probelauf-Drucke
   zählen nicht in den Auslagenersatz.
+- **Filterauswahl zeigt das ganze Foto:** Jede Kachel zeigt das komplette
+  Bild mit dem Filter, oben und unten wird nichts mehr abgeschnitten. Bis
+  acht Filter passen auf den Schirm; sind es mehr, wird mit dem Finger
+  geblättert, und unten steht „Weitere Filter: nach oben wischen“, solange
+  noch etwas kommt. Das ersetzt die Verteilung auf mehr Spalten aus 1.0.6.
 
 ## 1.0.6
 

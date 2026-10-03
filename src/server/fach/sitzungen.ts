@@ -6,7 +6,7 @@ import { holeDb, jetzt } from '../db/index.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { wendeFilterAn } from '../bild/filter.js';
 import { schreibeDruckPdf } from '../bild/pdf.js';
-import { miniatur } from '../bild/vorschau.js';
+import { miniaturGanz } from '../bild/vorschau.js';
 import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
 import { holeVorlage } from './vorlagen.js';
@@ -103,7 +103,7 @@ export function vorschauBasis(sitzungId: string): Promise<Buffer | null> {
   if (!zeile) return Promise.resolve(null);
 
   const basis = arbeitsbild(sitzungId, zeile.ebene_index, zeile.pfad_original)
-    .then((bild) => miniatur(bild))
+    .then((bild) => miniaturGanz(bild))
     .catch(() => {
       // Nicht als endgueltig merken: Die naechste Kachel versucht es erneut.
       vorschauBasen.delete(sitzungId);
