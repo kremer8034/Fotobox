@@ -51,9 +51,9 @@ describe('Foto am Ergebnis loeschen', () => {
     setzeVerborgen('neu', true);
     expect(verwirfAuftraegeVon('neu')).toBe(1);
     const status = () => holeDb().prepare('SELECT status, berechnen FROM druckauftraege WHERE id = ?').get(id);
-    expect(status()).toEqual({ status: 'fehlgeschlagen', berechnen: 0 });
+    expect(status()).toEqual({ status: 'verworfen', berechnen: 0 });
     new Druckschleife(() => ({}) as never, () => undefined).fortsetzen('ev');
-    expect(status()).toEqual({ status: 'fehlgeschlagen', berechnen: 0 });
+    expect(status()).toEqual({ status: 'verworfen', berechnen: 0 });
   });
 });
 
@@ -106,5 +106,23 @@ describe('Abbrechen vor dem Filter', () => {
     db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('v2a', 'v2', '/l.jpg', '/l.pdf', '2026-10-03T18:00:00.000Z')").run();
     expect(await verwirfSitzung('v2')).toBe(0);
     expect(existsSync(zweites)).toBe(true);
+  });
+});
+
+describe('Endgueltig geloescht', () => {
+  it('macht das Foto des Vorgaengers nicht loeschbar', async () => {
+    const { darfKioskLoeschen, loescheAusgabeEndgueltig } = await import('../fach/sitzungen.js');
+    const db = holeDb();
+    db.prepare("INSERT INTO sitzungen (id, event_id, vorlage_id, gestartet, ist_test) VALUES ('lx1', 'lx', 'v', '2026-10-03T18:00:00.000Z', 0)").run();
+    db.prepare("INSERT INTO sitzungen (id, event_id, vorlage_id, gestartet, ist_test) VALUES ('lx2', 'lx', 'v', '2026-10-03T18:02:00.000Z', 0)").run();
+    db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('vorgaenger', 'lx1', '/gibtsnicht/a.jpg', NULL, '2026-10-03T18:01:00.000Z')").run();
+    db.prepare("INSERT INTO ausgaben (id, sitzung_id, pfad_layout, pfad_druck_pdf, erstellt) VALUES ('meins', 'lx2', '/gibtsnicht/b.jpg', NULL, '2026-10-03T18:03:00.000Z')").run();
+    const gleich = Date.parse('2026-10-03T18:04:00.000Z');
+
+    expect(darfKioskLoeschen('lx', 'meins', gleich)).toBe(true);
+    await loescheAusgabeEndgueltig('meins', mkdtempSync(join(tmpdir(), 'fotobox-lx-')));
+    expect(db.prepare("SELECT COUNT(*) AS n FROM ausgaben WHERE id = 'meins'").get()).toEqual({ n: 0 });
+    // Das Foto davor gehoert jemand anderem - es bleibt geschuetzt.
+    expect(darfKioskLoeschen('lx', 'vorgaenger', gleich)).toBe(false);
   });
 });

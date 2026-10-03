@@ -372,6 +372,7 @@ const AUFTRAG_STATUS: Record<string, string> = {
   laeuft: 'wird gesendet',
   gedruckt: 'an Windows übergeben',
   fehlgeschlagen: 'fehlgeschlagen',
+  verworfen: 'verworfen (Foto gelöscht)',
 };
 
 const QUELLE: Record<string, string> = {

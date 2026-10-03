@@ -41,12 +41,18 @@ Durchsicht der ganzen Software – behoben:
   wenn es erst nach dem Ausschalten gedruckt wurde.
 - **Probelauf vergessen?** Der Startbereit-Check warnt, wenn der Probelauf
   noch an ist.
-- **Übergabe an den Gastgeber:** Testfotos aus dem Probelauf und gelöschte
-  oder aus der Galerie genommene Fotos werden nicht mehr mitkopiert – auch
-  nicht als Originale oder Druckdateien. Bisher landeten sie im Ordner beim
-  Gastgeber, nur in der Offline-Galerie fehlten sie.
-- **Gelöschte Fotos drucken** nur noch über das Servicemenü, nicht mehr über
-  den Gästeweg.
+- **Löschen am Ergebnis ist endgültig:** Löscht ein Gast sein Foto, ist es
+  danach für niemanden mehr da – nicht in der Galerie, nicht im Servicemenü,
+  nicht bei der Übergabe. Original, bearbeitete Fassung, Layout, Druckdatei
+  und Zwischenbilder werden von der Festplatte gelöscht. (Bisher wurde es nur
+  versteckt und ließ sich im Servicemenü zurückholen.) Ein noch wartender
+  Ausdruck wird abgebrochen und auch von „Papier gewechselt“ nicht wieder
+  angestoßen. Was der Betreuer im Servicemenü nur „aus der Galerie nimmt“,
+  bleibt umkehrbar und geht weiterhin an den Gastgeber.
+- **Übergabe an den Gastgeber:** Testfotos aus dem Probelauf werden nicht
+  mehr mitkopiert. Bisher landeten sie im Ordner beim Gastgeber.
+- **Aus der Galerie genommene Fotos drucken** nur noch über das
+  Servicemenü, nicht mehr über den Gästeweg.
 - **Filterauswahl:** Wer lange blättert und vergleicht, wird nicht mehr nach
   drei Minuten seit dem letzten Foto auf den Start zurückgeworfen – jede
   Berührung zählt jetzt als Lebenszeichen.

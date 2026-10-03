@@ -387,7 +387,9 @@ export function letzteAuftraege(anzahl = 15): {
 export function verwirfAuftraegeVon(ausgabeId: string): number {
   return holeDb()
     .prepare(
-      `UPDATE druckauftraege SET status = 'fehlgeschlagen', berechnen = 0,
+      // Eigener Status: "fehlgeschlagen" holt "Papier gewechselt" zurueck - und
+      // nach dem endgueltigen Loeschen kennt der Auftrag sein Foto nicht mehr.
+      `UPDATE druckauftraege SET status = 'verworfen', berechnen = 0,
               fehlertext = 'Nicht gedruckt: Das Foto wurde am Ergebnis gelöscht.'
         WHERE ausgabe_id = ? AND status = 'wartend'`,
     )

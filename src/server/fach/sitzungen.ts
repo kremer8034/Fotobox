@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, rename, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import sharp from 'sharp';
 import { holeDb, jetzt } from '../db/index.js';
 import { baueLayout, layoutMasse } from '../bild/layout.js';
 import { wendeFilterAn } from '../bild/filter.js';
-import { schreibeDruckPdf } from '../bild/pdf.js';
+import { schreibeDruckPdf, seitenbildPfad } from '../bild/pdf.js';
 import { miniaturGanz } from '../bild/vorschau.js';
 import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
@@ -395,14 +395,57 @@ export function galerieEintraege(
  * lassen - fuer aeltere Bilder gibt es das Servicemenue mit PIN.
  */
 export function darfKioskLoeschen(eventId: string, ausgabeId: string, jetztMs = Date.now()): boolean {
+  // Massgeblich ist die juengste Sitzung, nicht das juengste vorhandene Foto:
+  // Ist ein Foto endgueltig geloescht, wuerde sonst das des Vorgaengers zum
+  // "juengsten" - und liesse sich gleich mitloeschen.
   const zeile = holeDb()
     .prepare(
-      `SELECT a.id, a.erstellt FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id
-        WHERE s.event_id = ? ORDER BY a.erstellt DESC LIMIT 1`,
+      `SELECT a.id, a.erstellt FROM sitzungen s LEFT JOIN ausgaben a ON a.sitzung_id = s.id
+        WHERE s.event_id = ? ORDER BY s.gestartet DESC, s.rowid DESC, a.erstellt DESC LIMIT 1`,
     )
-    .get(eventId) as { id: string; erstellt: string } | undefined;
-  if (!zeile || zeile.id !== ausgabeId) return false;
+    .get(eventId) as { id: string | null; erstellt: string | null } | undefined;
+  if (!zeile || zeile.id !== ausgabeId || !zeile.erstellt) return false;
   return jetztMs - new Date(zeile.erstellt).getTime() <= 15 * 60_000;
+}
+
+/**
+ * Der Gast hat sein Foto am Ergebnis geloescht: Es ist danach fuer niemanden
+ * mehr da - nicht in der Galerie, nicht im Servicemenue, nicht bei der
+ * Uebergabe. Original, bearbeitete Fassung, Layout, Druckdatei und alle
+ * Zwischenbilder werden von der Platte geloescht, die Eintraege aus der
+ * Datenbank. Die Sitzung selbst bleibt als Durchgang stehen.
+ * (Eine Kopie auf der SD-Karte der Kamera liegt ausserhalb der Software.)
+ */
+export async function loescheAusgabeEndgueltig(ausgabeId: string, eventOrdner: string): Promise<void> {
+  const db = holeDb();
+  const ausgabe = db
+    .prepare('SELECT sitzung_id, pfad_layout, pfad_druck_pdf FROM ausgaben WHERE id = ?')
+    .get(ausgabeId) as { sitzung_id: string; pfad_layout: string; pfad_druck_pdf: string | null } | undefined;
+  if (!ausgabe) return;
+  const fotos = db
+    .prepare('SELECT pfad_original, pfad_bearbeitet FROM fotos WHERE sitzung_id = ?')
+    .all(ausgabe.sitzung_id) as { pfad_original: string; pfad_bearbeitet: string | null }[];
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM ausgaben WHERE id = ?').run(ausgabeId);
+    db.prepare('DELETE FROM fotos WHERE sitzung_id = ?').run(ausgabe.sitzung_id);
+  })();
+  vergiss(ausgabe.sitzung_id);
+
+  const dateien: string[] = [ausgabe.pfad_layout, ...fotos.flatMap((f) => [f.pfad_original, f.pfad_bearbeitet ?? ''])];
+  if (ausgabe.pfad_druck_pdf) dateien.push(ausgabe.pfad_druck_pdf, seitenbildPfad(ausgabe.pfad_druck_pdf));
+  // Abgeleitete Galerie- und Kioskfassungen: .cache/bilder/<ausgabe>_<fassung>.jpg
+  const bilder = join(eventpfade(eventOrdner).cache, 'bilder');
+  try {
+    for (const name of await readdir(bilder)) {
+      if (name.startsWith(`${ausgabeId}_`)) dateien.push(join(bilder, name));
+    }
+  } catch {
+    // Noch nie abgeleitet - dann gibt es auch nichts zu loeschen.
+  }
+  for (const pfad of dateien) {
+    if (pfad) await unlink(pfad).catch(() => undefined);
+  }
 }
 
 /**

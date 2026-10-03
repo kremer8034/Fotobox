@@ -7,7 +7,7 @@ import { schreibeGeraet } from '../db/geraet.js';
 import { legeEingebauteFilterAn } from '../fach/filter.js';
 import { legeStandardvorlagenAn } from '../fach/vorlagen.js';
 import { aktualisiereEvent, erstelleEvent, setzeStatus } from '../fach/events.js';
-import { setzeVerborgen, starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
+import { loescheAusgabeEndgueltig, starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
 import { warteAufNeueDatei } from '../fach/aufnahme.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
@@ -97,7 +97,12 @@ describe('Uebergabe an den Gastgeber', () => {
       vorlagenOrdner: wurzel.vorlagen,
       kalibrierung: KALIBRIERUNG_VORGABE,
     });
-    setzeVerborgen(weg.id, true);
+    await loescheAusgabeEndgueltig(weg.id, event.ordner);
+    // Endgueltig: Auf der Box liegt keine Datei dieses Durchgangs mehr.
+    for (const ordner of ['01_originale', '02_bearbeitet', '03_layouts', '04_druck']) {
+      const pfad = join(event.ordner, ordner);
+      if (existsSync(pfad)) expect(readdirSync(pfad).some((n) => n.startsWith(sitzung.id)), ordner).toBe(false);
+    }
     // Und ein Testfoto vom Aufbau.
     mkdirSync(join(event.ordner, '_probelauf', '01_originale'), { recursive: true });
     writeFileSync(join(event.ordner, '_probelauf', '01_originale', 'test.jpg'), 'jpeg');

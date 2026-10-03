@@ -17,6 +17,7 @@ import {
   darfKioskLoeschen,
   darfKioskVerschicken,
   verwirfSitzung,
+  loescheAusgabeEndgueltig,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -559,8 +560,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!event || !ausgabe || ausgabe.eventId !== event.id || !darfKioskLoeschen(event.id, ausgabe.id)) {
       return antwort.code(403).send({ fehler: 'Dieses Foto lässt sich hier nicht mehr löschen.' });
     }
-    setzeVerborgen(ausgabe.id, true);
+    // Erst die wartenden Drucke verwerfen (sie kennen das Foto noch), dann
+    // das Foto endgueltig loeschen.
     const verworfen = verwirfAuftraegeVon(ausgabe.id);
+    await loescheAusgabeEndgueltig(ausgabe.id, event.ordner);
     protokolliere(
       'info',
       'galerie',
@@ -572,7 +575,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   /**
    * Servicemenue: ein Bild aus der Galerie nehmen oder zurueckholen. Es
    * verschwindet sofort von allen Handys und vom Touchscreen; die Dateien
-   * bleiben und gehen mit der Uebergabe an den Gastgeber.
+   * bleiben und gehen mit der Uebergabe an den Gastgeber. (Anders als ein
+   * vom Gast am Ergebnis geloeschtes Foto - das ist endgueltig weg.)
    */
   app.post<{ Params: { id: string }; Body: unknown }>(
     '/api/kiosk/service/galerie/:id',
