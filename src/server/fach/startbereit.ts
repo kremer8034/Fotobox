@@ -4,7 +4,7 @@ import { leseGeraet } from '../db/geraet.js';
 import { holeVorlage } from './vorlagen.js';
 import { wurzelpfade } from './pfade.js';
 import { schriftenOrdner } from './schriften.js';
-import { alleLanAdressen, lanAdresse } from '../netzwerk.js';
+import { aktualisiereRoutenAdresse, alleLanAdressen, galerieBlockiert, lanAdresse, netzDiagnose } from '../netzwerk.js';
 import { fotoEbenen, type Veranstaltung } from '../../shared/typen.js';
 import type { Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
@@ -129,14 +129,19 @@ export async function startbereitPruefung(
   });
 
   if (event.einstellungen.galerieAktiv) {
+    await aktualisiereRoutenAdresse();
     const adresse = lanAdresse();
+    const diagnose = adresse ? await netzDiagnose(adresse) : null;
+    const blockiert = diagnose ? galerieBlockiert(diagnose) : null;
     punkte.push({
       schluessel: 'galerie',
       titel: 'Galerie im Netz erreichbar',
-      bestanden: adresse !== null,
-      hinweis: adresse
-        ? `Galerie laeuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}`
-        : 'Keine Netzwerkadresse gefunden. Haengt die Box am Reise-Router?',
+      bestanden: adresse !== null && blockiert === null,
+      hinweis: !adresse
+        ? 'Keine Netzwerkadresse gefunden. Haengt die Box am Reise-Router?'
+        : blockiert ??
+          `Galerie laeuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}` +
+            (diagnose?.netz ? ` - die Handys muessen im WLAN „${diagnose.netz}“ sein.` : ' - die Handys muessen im selben WLAN sein wie die Box.'),
     });
 
     // Haengt die Box zusaetzlich in einem fremden Netz (Kabel der Location,

@@ -1102,19 +1102,19 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(4.2 * var(--mm));
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  opacity: 0.45;
+  /* Nur ein Ring - innen durchsichtig. */
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  opacity: 0.5;
   transition: opacity 0.15s;
 }
 
 .schloss--gedrueckt .schloss__knopf {
   opacity: 1;
   border-color: transparent;
-  background:
-    radial-gradient(closest-side, rgba(16, 18, 22, 0.85) 82%, transparent 84%),
-    conic-gradient(var(--akzent) var(--schloss-fortschritt), rgba(255, 255, 255, 0.2) 0);
+  background: conic-gradient(var(--akzent) var(--schloss-fortschritt), rgba(255, 255, 255, 0.25) 0);
+  /* Die Mitte ausstanzen, damit es ein Ring bleibt, der sich fuellt. */
+  -webkit-mask: radial-gradient(closest-side, transparent 72%, #000 74%);
+  mask: radial-gradient(closest-side, transparent 72%, #000 74%);
   animation: schloss-fuellen 1s linear forwards;
 }
 
@@ -1183,7 +1183,8 @@ button {
 .qr-ecke {
   position: fixed;
   bottom: var(--rand-sicher);
-  right: var(--rand-sicher);
+  /* Links unten - so gewuenscht; rechts oben sitzt das Schloss. */
+  left: var(--rand-sicher);
   text-align: center;
   /* 0,6 rem waren 2,5 mm Schrifthoehe - aus einem halben Meter Abstand kaum
      zu lesen, und ohne die Zeile weiss niemand, wozu der Code gut ist. */
@@ -1891,3 +1892,4 @@ html.handy-ansicht body {
 .knopf-text:hover {
   opacity: 1;
 }
+

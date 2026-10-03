@@ -155,7 +155,10 @@ export function GeraetSeite() {
         <h2>Kamera</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
           Mit LED-Dauerlicht lohnt der M-Modus mit festen Werten: Die Bilder bleiben über den ganzen
-          Abend gleich hell, und die Vorschau entspricht dem Ergebnis.
+          Abend gleich hell, und die Vorschau entspricht dem Ergebnis. Beim Speichern schickt die Fotobox
+          die Werte über digiCamControl an die Kamera – dafür muss das Moduswahlrad der 600D auf „M“
+          stehen. Die Kamera behält sie danach selbst, auch nach dem Ausschalten. Steht das Rad auf
+          Automatik, P, Av oder Tv, entscheidet die Kamera selbst, und diese Werte bleiben wirkungslos.
         </p>
         <div className="zeile">
           {(['iso', 'blende', 'verschlusszeit'] as const).map((feld) => (

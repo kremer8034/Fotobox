@@ -57,6 +57,7 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
 import {
   leseMailzugang,
@@ -68,7 +69,13 @@ import {
   schwaerze,
   sendeTestmail,
 } from '../fach/email.js';
-import { galerieUrl as galerieAdresse, lanAdresse } from '../netzwerk.js';
+import {
+  aktualisiereRoutenAdresse,
+  galerieBlockiert,
+  galerieUrl as galerieAdresse,
+  lanAdresse,
+  netzDiagnose,
+} from '../netzwerk.js';
 import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene, type FilterOperation, type Veranstaltung } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import { holeDb } from '../db/index.js';
@@ -116,6 +123,43 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       return { drucker: await betrieb.druckerListe(), fehler: null };
     } catch (fehler) {
       return { drucker: [], fehler: fehler instanceof Error ? fehler.message : String(fehler) };
+    }
+  });
+
+  /**
+   * Wo die Handy-Galerie im Netz steht und ob Windows die Handys durchlaesst:
+   * volle Adresse, WLAN-Name, Netzwerkprofil. Damit laesst sich "auf dem
+   * Handy laedt nichts" in einem Blick klaeren.
+   */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/galerie-netz', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    await aktualisiereRoutenAdresse();
+    const adresse = lanAdresse();
+    const diagnose = adresse ? await netzDiagnose(adresse) : null;
+    return {
+      url: galerieAdresse(event.galerieToken, konfig.portOeffentlich),
+      netz: diagnose?.netz ?? null,
+      kategorie: diagnose?.kategorie ?? null,
+      hinweis: !adresse
+        ? 'Die Box hat keine Netzwerkverbindung. Ist das WLAN verbunden?'
+        : diagnose
+          ? galerieBlockiert(diagnose)
+          : null,
+    };
+  });
+
+  /**
+   * Windows-Ordnerdialog fuer die Uebergabe - etwa ein Ordner in OneDrive
+   * oder ein USB-Stick. Er erscheint auf dem Bildschirm der Box; die Antwort
+   * kommt, sobald dort gewaehlt oder abgebrochen wurde.
+   */
+  app.post<{ Body: unknown }>('/api/admin/ordner/waehlen', async (anfrage, antwort) => {
+    const { start } = z.object({ start: z.string().max(500).default('') }).parse(anfrage.body ?? {});
+    try {
+      return { pfad: await waehleOrdner('Ziel für die Übergabe wählen', start) };
+    } catch (fehler) {
+      return antwort.code(409).send({ fehler: (fehler as Error).message });
     }
   });
 
@@ -183,9 +227,9 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       try {
         await betrieb.kamera.setzeBelichtung(koerper.kamera);
       } catch (fehler) {
-        // Gespeichert ist der Wert trotzdem - er wird beim naechsten Start
-        // erneut gesetzt. Aber die Kamera hat ihn gerade nicht uebernommen,
-        // und das soll man sehen, statt "Gespeichert." zu lesen.
+        // Gespeichert ist der Wert trotzdem, aber die Kamera hat ihn nicht
+        // uebernommen - das soll man sehen, statt "Gespeichert." zu lesen.
+        // (Meist steht das Moduswahlrad nicht auf M.)
         const text = fehler instanceof Error ? fehler.message : String(fehler);
         protokolliere('warnung', 'kamera', `Belichtung nicht übernommen: ${text}`);
         return { ...geraetFuerBrowser(), kameraHinweis: `Gespeichert, aber die Kamera hat es nicht übernommen: ${text}` };

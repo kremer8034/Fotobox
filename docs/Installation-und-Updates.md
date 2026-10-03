@@ -51,7 +51,7 @@ Kalibrierung) steht in der
 | Programm | `C:\Program Files\Fotobox` – mit eigenem Node.js |
 | Daten | `C:\Users\Public\Fotobox-Daten` – Veranstaltungen, Fotos, Vorlagen, Einstellungen |
 | Autostart | Server und Kiosk starten beim Anmelden des Benutzers, der das Setup gestartet hat |
-| Firewall | eine Freigabe für Port 8787, nur im privaten Netzwerk (für die Handy-Galerie) |
+| Firewall | eine Freigabe für Port 8787 (für die Handy-Galerie; gilt in jedem Netzwerkprofil, offen nur bei eingeschalteter Galerie) |
 | Windows | Bildschirm, Standby und Ruhezustand am Netzteil aus; keine Update-Neustarts, solange jemand angemeldet ist |
 | Desktop | **„Fotobox starten“** (startet Server und Kiosk, soweit sie nicht laufen) und **„Fotobox Verwaltung“** |
 | Startmenü | dieselben beiden, dazu „Fotobox beenden“, „Nur den Server starten“, Datenordner, Anleitungen |

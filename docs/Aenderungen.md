@@ -4,6 +4,37 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.5
+
+- **Papiervorrat vom Drucker – jetzt auch mit PrinterInfo unter C:\DNPPIA:**
+  Die Fotobox suchte DNPs Programm nur unter `C:\DNPIA`. Jetzt sieht sie
+  jeden Ordner mit „DNP“ im Namen auf Laufwerk C: durch. Findet sie es nicht,
+  steht auf der Karte, wo sie gesucht hat.
+- **Handy-Galerie lädt wieder:** Die Windows-Firewall ließ die Handys nur in
+  „privaten“ Netzen durch – Windows 11 stuft ein neues WLAN aber als
+  „öffentlich“ ein. Die Freigabe gilt jetzt für alle Netze (beim Update
+  automatisch). Offen ist der Zugang trotzdem nur, solange die Galerie in der
+  Veranstaltung eingeschaltet ist. Außerdem nimmt die Fotobox für den QR-Code
+  die Adresse des WLAN-Adapters, mit dem sie wirklich verbunden ist, und zieht
+  nach, wenn sich die Adresse ändert. Unter „Ausgabe“ steht, in welchem WLAN
+  die Handys sein müssen.
+- **QR-Code am Startbildschirm links unten** statt rechts.
+- **Schloss nur noch als Kreis:** Das Schloss-Symbol ist weg, es bleibt der
+  dezente Kreis oben rechts, der sich beim Gedrückthalten füllt.
+- **Kurzanleitung neu gestaltet:** A4 hoch, die Betreuer-PIN groß in einer
+  eigenen Karte, die drei Schritte zum Servicemenü, Papierwechsel, Störungen
+  und die Notfallnummer übersichtlich auf einer Seite. Vorher stand die PIN
+  mitten im Fließtext, und eine fast leere zweite Seite kam dazu.
+- **QR-Aushang neu gestaltet:** A4 hoch im selben Stil wie die
+  Kurzanleitung – große QR-Codes für WLAN und Galerie, darunter WLAN-Name und
+  Passwort in Klarschrift. Ohne WLAN-Code steht der Galerie-Code allein und
+  größer in der Mitte.
+- **Ordner für die Übergabe auswählen statt tippen:** „Ordner wählen …“
+  öffnet den gewohnten Ordnerdialog von Windows – mit Schnellzugriff,
+  OneDrive und USB-Sticks. Der Pfad lässt sich weiterhin auch eintragen.
+- **Kamera unter Gerät:** Der Hinweis erklärt jetzt, dass ISO, Blende und
+  Verschlusszeit nur ankommen, wenn das Moduswahlrad der 600D auf „M“ steht.
+
 ## 1.0.4
 
 - **Papiervorrat direkt vom Drucker:** Die Fotobox liest jetzt die echte Zahl

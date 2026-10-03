@@ -53,6 +53,8 @@ Pruefe ($null -ne (Get-ScheduledTask -TaskName 'Fotobox Server' -ErrorAction Sil
 Pruefe ($null -ne (Get-ScheduledTask -TaskName 'Fotobox Kiosk' -ErrorAction SilentlyContinue)) 'Autostart Kiosk eingerichtet'
 $regeln = @(Get-NetFirewallRule -DisplayName 'Fotobox Galerie' -ErrorAction SilentlyContinue)
 Pruefe ($regeln.Count -eq 1) "genau eine Firewall-Regel (gefunden: $($regeln.Count))"
+# Bis 1.0.4 nur "Privat" - Windows 11 stuft neue WLANs aber als "Oeffentlich" ein.
+Pruefe ($regeln.Count -eq 1 -and "$($regeln[0].Profile)" -eq 'Any') "Firewall-Regel gilt fuer alle Netzwerkprofile (ist: $($regeln[0].Profile))"
 
 Write-Host "`n=== 2. Server wie auf der Box (mit Mock-Hardware)"
 # Die Autostart-Aufgabe braucht eine Anmeldung am Bildschirm, die es hier nicht
@@ -183,6 +185,30 @@ process.exit(fehler);
 $env:PROBE_PROGRAMM = $programm
 & "$programm\node\node.exe" --input-type=module -e $vorratSkript
 Pruefe ($LASTEXITCODE -eq 0) "Vorrat-Abfrage laedt DLLs in 32 und 64 Bit und meldet Fehler lesbar (Code $LASTEXITCODE)"
+
+Write-Host "`n=== 2e. Netzdiagnose der Galerie und Ordnerdialog fuer die Uebergabe"
+$netzSkript = @'
+const { join } = await import('node:path');
+const { pathToFileURL } = await import('node:url');
+const lade = (...t) => import(pathToFileURL(join(process.env.PROBE_PROGRAMM, 'dist', 'server', ...t)).href);
+const netz = await lade('netzwerk.js');
+const dialog = await lade('fach', 'ordnerdialog.js');
+await netz.aktualisiereRoutenAdresse();
+const adresse = netz.lanAdresse();
+const d = adresse ? await netz.netzDiagnose(adresse) : null;
+console.log('Adresse: ' + adresse + ' / Diagnose: ' + JSON.stringify(d) + ' / blockiert: ' + (d && netz.galerieBlockiert(d)));
+// Den Dialog nur uebersetzen, nicht zeigen - auf dem Testrechner klickt niemand.
+let dialogOk = false;
+try { dialogOk = (await dialog.waehleOrdner('Probe', '', true)) === null; } catch (f) { console.error('Ordnerdialog: ' + f.message); }
+console.log('Ordnerdialog uebersetzt: ' + dialogOk);
+let fehler = 0;
+if (!adresse || !d || !d.regel || d.regelProfile !== 'Any') fehler++;
+if (!dialogOk) fehler++;
+process.exit(fehler);
+'@
+$env:PROBE_PROGRAMM = $programm
+& "$programm\node\node.exe" --input-type=module -e $netzSkript
+Pruefe ($LASTEXITCODE -eq 0) "Netzdiagnose findet die Firewall-Freigabe, Ordnerdialog laesst sich uebersetzen (Code $LASTEXITCODE)"
 
 Write-Host "`n=== 3. Update ueber die laufende Installation - so, wie es die Verwaltung startet"
 # Genau der Weg aus der Verwaltung ("Jetzt installieren"): starteMitRueckfrage

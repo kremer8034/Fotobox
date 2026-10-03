@@ -117,6 +117,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [zettelPin, setzeZettelPin] = useState('');
   const [zettel, setzeZettel] = useState<{ kurzanleitung: string; aushang: string | null } | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
+  const [dialogOffen, setzeDialogOffen] = useState(false);
   const [telefon, setzeTelefon] = useState('');
   const [wlanName, setzeWlanName] = useState('');
   const [wlanPasswort, setzeWlanPasswort] = useState('');
@@ -431,6 +432,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           )}
           <Adressen eventId={id} />
+          {e.galerieAktiv && <GalerieNetz eventId={id} />}
           {e.galerieAktiv && (
             <div className="zeile" style={{ fontSize: '0.8rem', color: 'var(--schrift-leise)' }}>
               <span>
@@ -643,9 +645,12 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
                 <input
                   value={zielPfad}
                   onChange={(ev) => setzeZielPfad(ev.target.value)}
-                  placeholder="E:\ oder D:\Fotobox-Uebergabe"
+                  placeholder="„Ordner wählen …“ antippen – oder den Pfad eintragen"
                 />
               </div>
+              <button className="knopf knopf--neben" disabled={dialogOffen} onClick={() => void ordnerWaehlen()}>
+                {dialogOffen ? 'Dialog ist offen …' : 'Ordner wählen …'}
+              </button>
               <button
                 className="knopf knopf--neben"
                 disabled={zielPfad.length < 2}
@@ -803,6 +808,19 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
       setzeZettel(antwort.links);
       zeige('Zettel erzeugt - zum Öffnen und Drucken die Links unten nutzen.');
     });
+  }
+
+  /** Der Ordnerdialog von Windows - etwa fuer einen Ordner in OneDrive oder einen USB-Stick. */
+  async function ordnerWaehlen() {
+    setzeDialogOffen(true);
+    try {
+      const { pfad } = await api.sende<{ pfad: string | null }>('/api/admin/ordner/waehlen', { start: zielPfad });
+      if (pfad) setzeZielPfad(pfad);
+    } catch (u) {
+      zeige(u instanceof Error ? u.message : 'Der Ordnerdialog ließ sich nicht öffnen.');
+    } finally {
+      setzeDialogOffen(false);
+    }
   }
 
   async function uebergeben() {
@@ -1297,6 +1315,50 @@ function HintergrundKarte({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Wo die Handys die Galerie finden - und ob Windows sie durchlaesst. Auf der
+ * Box hiess es vorher nur "auf dem Handy laedt nichts", ohne Anhaltspunkt.
+ */
+function GalerieNetz({ eventId }: { eventId: string }) {
+  const [stand, setzeStand] = useState<{
+    url: string | null;
+    netz: string | null;
+    kategorie: string | null;
+    hinweis: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let aktiv = true;
+    api
+      .hole<NonNullable<typeof stand>>(`/api/admin/events/${eventId}/galerie-netz`)
+      .then((s) => aktiv && setzeStand(s))
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, [eventId]);
+
+  if (!stand) return null;
+  return (
+    <div style={{ fontSize: '0.82rem', margin: '0.6rem 0' }}>
+      {stand.url && (
+        <p style={{ margin: '0 0 0.3rem' }}>
+          Die Handys öffnen <code>{stand.url}</code>
+          {stand.netz ? (
+            <>
+              {' '}– sie müssen dafür im WLAN <strong>„{stand.netz}“</strong> sein, im selben Netz wie die Box.
+            </>
+          ) : (
+            ' – sie müssen dafür im selben WLAN sein wie die Box.'
+          )}{' '}
+          Mit mobilen Daten klappt es nicht.
+        </p>
+      )}
+      {stand.hinweis && <p style={{ margin: 0, color: 'var(--warnung)' }}>{stand.hinweis}</p>}
     </div>
   );
 }
