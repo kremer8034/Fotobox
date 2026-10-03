@@ -11,6 +11,10 @@ ihn auf der Box verstehst.
   Minuten neu – es sprang dabei jedes Mal vor den Kiosk. Jetzt spricht sie
   digiCamControl richtig an, startet es nicht mehr endlos neu und minimiert
   sein Fenster, sobald es antwortet.
+- **Drucker aus einer Liste wählen:** Unter Gerät → Drucker stehen jetzt alle
+  Drucker, die Windows kennt, der DNP-Drucker oben mit ★. Kein Abtippen des
+  Namens mehr. Stimmt der eingetragene Name nicht und gibt es genau einen
+  DNP-Drucker, trägt die Box ihn beim Start selbst ein.
 - Fehlt in digiCamControl eine Einstellung, sagen Übersicht und
   Startbereit-Check jetzt genau, welcher Haken unter File → Settings →
   Webserver fehlt.

@@ -72,15 +72,10 @@ export function GeraetSeite() {
       <div className="karte">
         <h2>Drucker</h2>
         <div className="zeile">
-          <div className="feld" style={{ flex: 1 }}>
-            <label>Windows-Druckername</label>
-            <input
-              value={geraet.druckerName}
-              onChange={(e) => setzeGeraet({ ...geraet, druckerName: e.target.value })}
-              onBlur={() => void speichere({ druckerName: geraet.druckerName })}
-              placeholder="DS-RX1"
-            />
-          </div>
+          <DruckerWahl
+            gewaehlt={geraet.druckerName}
+            beiWahl={(name) => void speichere({ druckerName: name })}
+          />
           <div className="feld" style={{ flex: 1 }}>
             <label>Pfad zu SumatraPDF.exe</label>
             <input
@@ -250,6 +245,108 @@ export function GeraetSeite() {
     await api.sende('/api/admin/geraet/kalibrierdruck', { preset: '10x15-quer' });
     setzeMeldung('Testbild in der Warteschlange. Es zählt nicht in den Auslagenersatz.');
   }
+}
+
+interface GefundenerDrucker {
+  name: string;
+  treiber: string;
+  anschluss: string;
+  offline: boolean;
+  dnp: boolean;
+}
+
+/**
+ * Drucker aus einer Liste waehlen statt den Windows-Namen abzutippen. Ein
+ * Zeichen daneben hiess vorher "Der Drucker meldet sich gerade nicht", obwohl
+ * er bereitstand. Der DNP-Drucker steht oben und ist markiert.
+ */
+function DruckerWahl({ gewaehlt, beiWahl }: { gewaehlt: string; beiWahl: (name: string) => void }) {
+  const [liste, setzeListe] = useState<GefundenerDrucker[] | null>(null);
+  const [fehler, setzeFehler] = useState<string | null>(null);
+  const [zustand, setzeZustand] = useState<string | null>(null);
+
+  async function suche() {
+    setzeListe(null);
+    setzeFehler(null);
+    try {
+      const antwort = await api.hole<{ drucker: GefundenerDrucker[]; fehler: string | null }>('/api/admin/drucker/liste');
+      setzeListe(antwort.drucker);
+      setzeFehler(antwort.fehler);
+    } catch (f) {
+      setzeListe([]);
+      setzeFehler(f instanceof Error ? f.message : String(f));
+    }
+  }
+
+  async function holeZustand() {
+    try {
+      const s = await api.hole<{ drucker: string }>('/api/admin/status');
+      setzeZustand(s.drucker);
+    } catch {
+      setzeZustand(null);
+    }
+  }
+
+  useEffect(() => {
+    void suche();
+  }, []);
+  // Nach einem Wechsel dauert es einen Moment, bis der neue Drucker gefragt ist.
+  useEffect(() => {
+    setzeZustand(null);
+    const zeitgeber = setTimeout(() => void holeZustand(), 2500);
+    return () => clearTimeout(zeitgeber);
+  }, [gewaehlt]);
+
+  const vorhanden = liste?.some((d) => d.name === gewaehlt) ?? true;
+
+  return (
+    <div className="feld" style={{ flex: 1 }}>
+      <label htmlFor="drucker-wahl">Drucker</label>
+      <div className="zeile" style={{ flexWrap: 'nowrap' }}>
+        <select
+          id="drucker-wahl"
+          style={{ flex: 1 }}
+          value={gewaehlt}
+          disabled={liste === null}
+          onChange={(e) => beiWahl(e.target.value)}
+        >
+          {liste === null && <option value={gewaehlt}>Drucker werden gesucht …</option>}
+          {liste !== null && !gewaehlt && <option value="">– bitte auswählen –</option>}
+          {liste !== null && gewaehlt && !vorhanden && (
+            <option value={gewaehlt}>{gewaehlt} (in Windows nicht gefunden)</option>
+          )}
+          {liste?.map((d) => (
+            <option key={d.name} value={d.name}>
+              {d.dnp ? '★ ' : ''}
+              {d.name}
+              {d.treiber && d.treiber !== d.name ? ` – ${d.treiber}` : ''}
+              {d.offline ? ' (offline)' : ''}
+            </option>
+          ))}
+        </select>
+        <button className="knopf knopf--neben" type="button" onClick={() => void suche()}>
+          Neu suchen
+        </button>
+      </div>
+      <p style={{ fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
+        {fehler ? (
+          <span style={{ color: 'var(--warnung)' }}>Die Druckerliste ließ sich nicht abfragen: {fehler}</span>
+        ) : liste !== null && gewaehlt && !vorhanden ? (
+          <span style={{ color: 'var(--warnung)' }}>
+            „{gewaehlt}“ gibt es in Windows nicht. Bitte den Drucker aus der Liste wählen.
+          </span>
+        ) : liste !== null && !gewaehlt ? (
+          <span style={{ color: 'var(--warnung)' }}>Noch kein Drucker gewählt.</span>
+        ) : zustand ? (
+          <span style={{ color: zustand === 'bereit' ? 'var(--gut)' : 'var(--warnung)' }}>
+            {zustand === 'bereit' ? 'Drucker meldet sich bereit.' : 'Drucker meldet sich nicht bereit – eingeschaltet, Papier drin, USB-Kabel?'}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--schrift-leise)' }}>★ = DNP-Fotodrucker</span>
+        )}
+      </p>
+    </div>
+  );
 }
 
 /**

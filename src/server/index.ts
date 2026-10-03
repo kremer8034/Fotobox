@@ -18,6 +18,7 @@ import { raeumeAlleAdressenAuf } from './fach/email.js';
 import { stelleUnterbrocheneWiederAn } from './fach/druckwarteschlange.js';
 import { brichSitzungAb } from './fach/sitzungen.js';
 import { Betrieb, protokolliere } from './betrieb.js';
+import { druckerVorschlag } from './treiber/drucker-windows.js';
 import { registriereKiosk } from './routen/kiosk.js';
 import { registriereAdmin } from './routen/admin.js';
 import { registriereOeffentlich } from './routen/oeffentlich.js';
@@ -76,6 +77,22 @@ const betrieb = new Betrieb({
   mockDruckOrdner: resolve(konfig.datenpfad, 'mock-drucke'),
 });
 betrieb.starte();
+
+// Den DNP-Drucker selbst eintragen, wenn der eingetragene Name in Windows
+// nicht existiert (oder noch keiner eingetragen ist). Im Hintergrund - die
+// Abfrage ueber PowerShell dauert ein, zwei Sekunden.
+if (konfig.echteHardware && process.platform === 'win32') {
+  void betrieb
+    .druckerListe()
+    .then((gefunden) => {
+      const vorschlag = druckerVorschlag(leseGeraet().druckerName, gefunden);
+      if (!vorschlag) return;
+      schreibeGeraet({ druckerName: vorschlag });
+      betrieb.ladeTreiberNeu();
+      protokolliere('info', 'geraet', `Drucker gefunden und eingetragen: ${vorschlag}`);
+    })
+    .catch(() => undefined);
+}
 
 // --------------------------------------------------------------------------
 // Lokale Instanz: alles, aber nur auf 127.0.0.1

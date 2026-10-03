@@ -6,7 +6,7 @@ import { Druckschleife, offeneAuftraege } from './fach/druckwarteschlange.js';
 import { MockKamera } from './treiber/kamera-mock.js';
 import { DigiCamControlKamera } from './treiber/kamera-digicamcontrol.js';
 import { MockDrucker } from './treiber/drucker-mock.js';
-import { WindowsDrucker } from './treiber/drucker-windows.js';
+import { listeWindowsDrucker, WindowsDrucker, type GefundenerDrucker } from './treiber/drucker-windows.js';
 import type { KameraGrund, KameraTreiber } from './treiber/kamera.js';
 import {
   cameraControlExe,
@@ -103,6 +103,12 @@ export class Betrieb {
     this.beendet = true;
     this.druckschleife.stoppe();
     await this.kamera.stoppeLiveView().catch(() => undefined);
+  }
+
+  /** Die Drucker, die Windows kennt. Ohne echte Hardware der Mock-Drucker. */
+  async druckerListe(): Promise<GefundenerDrucker[]> {
+    if (this.optionen.echteHardware && process.platform === 'win32') return listeWindowsDrucker();
+    return [{ name: 'Mock-Drucker', treiber: 'Mock', anschluss: 'Datei', offline: false, dnp: false }];
   }
 
   /** Treiber neu aufbauen, etwa nachdem der Druckername geaendert wurde. */

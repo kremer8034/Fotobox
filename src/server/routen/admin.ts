@@ -101,6 +101,15 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
 
   app.get('/api/admin/geraet', async () => geraetFuerBrowser());
 
+  // Alle Drucker, die Windows kennt, DNP zuerst - zum Auswaehlen statt Abtippen.
+  app.get('/api/admin/drucker/liste', async () => {
+    try {
+      return { drucker: await betrieb.druckerListe(), fehler: null };
+    } catch (fehler) {
+      return { drucker: [], fehler: fehler instanceof Error ? fehler.message : String(fehler) };
+    }
+  });
+
   app.put<{ Body: unknown }>('/api/admin/geraet', async (anfrage) => {
     const koerper = z
       .object({
