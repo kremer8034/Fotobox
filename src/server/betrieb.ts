@@ -114,7 +114,7 @@ export class Betrieb {
   private static readonly VORRAT_ALLE_MS = 10 * 60_000;
 
   /** Kann die Box den Vorrat ueberhaupt beim Drucker erfragen? Nur echte Hardware unter Windows mit DNP. */
-  private vorratLesbar(): boolean {
+  vorratLesbar(): boolean {
     if (!this.optionen.echteHardware || process.platform !== 'win32') return false;
     const name = leseGeraet().druckerName;
     return Boolean(name) && istDnp(name, '');

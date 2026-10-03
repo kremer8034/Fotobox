@@ -122,7 +122,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   /** Papiervorrat laut DNP-Drucker - der zuletzt gelesene Stand. */
   app.get('/api/admin/drucker/vorrat', async () => ({
     vorrat: betrieb.druckerVorrat(),
-    hinweis: betrieb.vorratHinweis,
+    hinweis: betrieb.vorratHinweis ?? (betrieb.vorratLesbar() ? null : 'Nur mit einem DNP-Drucker unter Windows.'),
   }));
 
   /** Papiervorrat jetzt beim Drucker lesen - nur, wenn er gerade nicht druckt. */
