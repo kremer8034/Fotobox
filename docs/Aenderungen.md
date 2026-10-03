@@ -51,6 +51,13 @@ ihn auf der Box verstehst.
 - **Viele Filter:** Sind mehr als zwölf Filter freigegeben, verteilt die
   Auswahl sie auf mehr Spalten statt auf mehr Zeilen – die Vorschaubilder
   bleiben groß genug zum Erkennen.
+- **Filtervorschau mit echtem Foto:** Unter „Filter“ in der Verwaltung (und
+  am Kiosk, solange es noch kein eigenes Foto gibt) zeigt jede Kachel den
+  Filter an einem Fotobox-Bild zweier Gäste statt an bunten Kreisen – so
+  sieht man, was er mit Gesichtern und Farben macht.
+- **Kalibrierung zurücksetzen nur nach Rückfrage:** „Zurücksetzen …“ fragt
+  erst nach und nennt die Werte, die verloren gingen. Ein versehentlicher
+  Klick löscht keine mühsam justierten Werte mehr.
 
 ## 1.0.5
 

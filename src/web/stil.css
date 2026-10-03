@@ -1973,3 +1973,17 @@ html.handy-ansicht body {
   padding: 0.7rem 0.8rem;
   text-align: left;
 }
+
+/* Verwaltung: Rueckfrage im Fluss der Seite, etwa vor dem Zuruecksetzen der Kalibrierung. */
+.warnkasten {
+  margin-top: 0.8rem;
+  padding: 0.9rem 1rem;
+  border: 2px solid var(--fehler);
+  border-radius: var(--radius);
+  background: rgba(207, 85, 85, 0.12);
+}
+
+.knopf--gefahr {
+  border-color: var(--fehler);
+  color: #f2b0b0;
+}

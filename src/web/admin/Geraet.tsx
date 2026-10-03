@@ -44,6 +44,9 @@ export function GeraetSeite() {
   const [geraet, setzeGeraet] = useState<Geraet | null>(null);
   const [pin, setzePin] = useState('');
   const [meldung, setzeMeldung] = useState<string | null>(null);
+  // Zuruecksetzen erst nach Rueckfrage: Ein versehentlicher Tipper loeschte
+  // sonst Werte, an denen man eine Viertelstunde justiert hat.
+  const [rueckfrage, setzeRueckfrage] = useState(false);
 
   useEffect(() => {
     void lade();
@@ -133,22 +136,42 @@ export function GeraetSeite() {
           <button className="knopf knopf--neben" onClick={() => void kalibrierdruck()}>
             Kalibrier-Testbild drucken
           </button>
-          <button
-            className="knopf knopf--neben"
-            onClick={() =>
-              void speichere({
-                kalibrierung: {
-                  versatzXMm: 0,
-                  versatzYMm: 0,
-                  skalierungXProzent: 100,
-                  skalierungYProzent: 100,
-                },
-              })
-            }
-          >
-            Zurücksetzen
-          </button>
+          {!rueckfrage && (
+            <button className="knopf knopf--neben" onClick={() => setzeRueckfrage(true)}>
+              Zurücksetzen …
+            </button>
+          )}
         </div>
+        {rueckfrage && (
+          <div className="warnkasten" role="alertdialog">
+            <p style={{ margin: 0 }}>
+              <strong>Wirklich zurücksetzen?</strong> Die eingestellten Werte (Versatz {zahl(k.versatzXMm)} /{' '}
+              {zahl(k.versatzYMm)} mm, Skalierung {zahl(k.skalierungXProzent)} / {zahl(k.skalierungYProzent)} %)
+              gehen verloren und stehen danach wieder auf 0 mm und 100 %.
+            </p>
+            <div className="zeile" style={{ marginTop: '0.8rem' }}>
+              <button className="knopf" onClick={() => setzeRueckfrage(false)}>
+                Nein, Werte behalten
+              </button>
+              <button
+                className="knopf knopf--neben knopf--gefahr"
+                onClick={() => {
+                  setzeRueckfrage(false);
+                  void speichere({
+                    kalibrierung: {
+                      versatzXMm: 0,
+                      versatzYMm: 0,
+                      skalierungXProzent: 100,
+                      skalierungYProzent: 100,
+                    },
+                  });
+                }}
+              >
+                Ja, zurücksetzen
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="karte">
@@ -888,4 +911,9 @@ function SoftwareKarte() {
       setzeMeldung(fehler instanceof Error ? fehler.message : 'Das Update ließ sich nicht starten.');
     }
   }
+}
+
+/** Zahl mit deutschem Komma, etwa 1,2 statt 1.2. */
+function zahl(wert: number): string {
+  return wert.toLocaleString('de-DE', { maximumFractionDigits: 1 });
 }
