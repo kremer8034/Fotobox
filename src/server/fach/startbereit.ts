@@ -46,6 +46,19 @@ export async function startbereitPruefung(
   const geraet = leseGeraet();
   const wurzel = wurzelpfade(konfig.datenpfad);
 
+  // Den Probelauf schaltet man vor Ort schnell im Servicemenue ein - und
+  // vergisst leicht, ihn wieder auszuschalten. Dann waere die ganze Feier
+  // gratis und die Galerie leer.
+  punkte.push({
+    schluessel: 'probelauf',
+    titel: 'Probelauf ausgeschaltet',
+    bestanden: !event.probelauf,
+    nurWarnung: true,
+    hinweis: event.probelauf
+      ? 'Der Probelauf ist noch an: Drucke werden nicht berechnet, Fotos erscheinen in keiner Galerie.'
+      : 'Fotos und Drucke zählen ganz normal.',
+  });
+
   punkte.push({
     schluessel: 'kamera',
     titel: 'Kamera verbunden, Live-View liefert ein Bild',
@@ -66,19 +79,16 @@ export async function startbereitPruefung(
         : 'Drucker meldet einen Fehlerzustand.',
   });
 
-  // Meldet der Drucker seinen Vorrat selbst, gilt seine Zahl - sonst der Zaehler.
+  // Der Vorrat kommt allein vom Drucker (DNP PrinterInfo).
   const vomDrucker = status.druckerVorrat ?? null;
-  const materialRest = vomDrucker
-    ? vomDrucker.rest
-    : Math.max(0, event.einstellungen.materialStart - event.materialVerbraucht);
   punkte.push({
     schluessel: 'material',
-    titel: 'Restbestand erfasst',
-    bestanden: materialRest > 20,
+    titel: 'Papiervorrat laut Drucker',
+    bestanden: vomDrucker !== null && vomDrucker.rest > 20,
     nurWarnung: true,
     hinweis: vomDrucker
-      ? `Noch ${materialRest} Blatt laut Drucker.`
-      : `Noch ${materialRest} Blatt (gezaehlt). Bei Bedarf im Servicemenue "Neue Rolle eingelegt" waehlen.`,
+      ? `Noch ${vomDrucker.rest} Blatt laut Drucker.`
+      : 'Der Drucker meldet gerade keinen Vorrat - unter Gerät → Papiervorrat nachsehen.',
   });
 
   punkte.push({

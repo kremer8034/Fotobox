@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import { schreibeSeitenbild, seitenbildPfad } from '../bild/pdf.js';
 import { holeDb, jetzt } from '../db/index.js';
 import { leseGeraet } from '../db/geraet.js';
-import { verbucheMaterial } from './events.js';
 import type { DruckQuelle, Druckauftrag, DruckStatus } from '../../shared/typen.js';
 import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../treiber/drucker.js';
 
@@ -340,9 +339,6 @@ export class Druckschleife {
         holeDb()
           .prepare("UPDATE druckauftraege SET status = 'gedruckt', gedruckt = ?, fehlertext = NULL WHERE id = ?")
           .run(jetzt(), auftrag.id);
-        // Ein Blatt je Kopie. Testdrucke zaehlen nicht in den Auslagenersatz,
-        // verbrauchen aber sehr wohl Papier.
-        verbucheMaterial(auftrag.eventId, auftrag.kopien);
         this.letzterFehler = null;
       } catch (fehler) {
         const text = fehler instanceof Error ? fehler.message : String(fehler);
@@ -391,7 +387,9 @@ export function letzteAuftraege(anzahl = 15): {
 export function verwirfAuftraegeVon(ausgabeId: string): number {
   return holeDb()
     .prepare(
-      `UPDATE druckauftraege SET status = 'fehlgeschlagen', berechnen = 0,
+      // Eigener Status: "fehlgeschlagen" holt "Papier gewechselt" zurueck - und
+      // nach dem endgueltigen Loeschen kennt der Auftrag sein Foto nicht mehr.
+      `UPDATE druckauftraege SET status = 'verworfen', berechnen = 0,
               fehlertext = 'Nicht gedruckt: Das Foto wurde am Ergebnis gelöscht.'
         WHERE ausgabe_id = ? AND status = 'wartend'`,
     )

@@ -8,7 +8,8 @@
  * steht oben.
  */
 
-export type Ampel = 'gut' | 'warnung' | 'fehler';
+/** "offen": weder gut noch schlecht, nur nicht bekannt - etwa der Papierstand, solange der Drucker nichts meldet. */
+export type Ampel = 'gut' | 'warnung' | 'fehler' | 'offen';
 
 export interface Boxzustand {
   kamera: string;
@@ -17,7 +18,8 @@ export interface Boxzustand {
   /** Welche Stoerung, als Schluessel - etwa "papier-leer". */
   stoerungArt?: string | null;
   warteschlangeOffen: number;
-  materialRest: number;
+  /** Laut Drucker; null, wenn er gerade nichts meldet. */
+  materialRest: number | null;
   speicherFreiGb: number;
   sitzungen: number;
   drucke: number;
@@ -45,8 +47,12 @@ export function statusEintraege(z: Boxzustand): Eintrag[] {
     // eine Schaetzung. Beide Zeilen nebeneinander ergaben vorher "Papier ist
     // leer" in Rot und "Noch 700 Blatt" in Gruen, und niemand wusste, was
     // stimmt.
+    // Der Papierstand bleibt immer sichtbar - vor der Feier entscheidet er,
+    // ob man die Rolle vorsorglich wechselt.
     z.stoerungArt === 'papier-leer'
       ? null
+      : z.materialRest === null
+      ? { ampel: 'offen', text: 'Papierstand: Drucker meldet gerade nichts' }
       : z.materialRest <= 0
       ? { ampel: 'fehler', text: 'Kein Papier mehr' }
       : z.materialRest < 50
@@ -69,7 +75,7 @@ export function statusEintraege(z: Boxzustand): Eintrag[] {
         : { ampel: 'gut', text: `${z.speicherFreiGb} GB Speicher frei` },
   ];
   // Was nicht stimmt, zuerst.
-  const rang: Record<Ampel, number> = { fehler: 0, warnung: 1, gut: 2 };
+  const rang: Record<Ampel, number> = { fehler: 0, warnung: 1, gut: 2, offen: 3 };
   return liste
     .filter((e): e is Eintrag => e !== null)
     .sort((a, b) => rang[a.ampel] - rang[b.ampel]);
@@ -77,7 +83,9 @@ export function statusEintraege(z: Boxzustand): Eintrag[] {
 
 export function Statusliste({ zustand, stand }: { zustand: Boxzustand; stand?: string }) {
   const eintraege = statusEintraege(zustand);
-  const schlimmste = eintraege[0]?.ampel ?? 'gut';
+  // Ein unbekannter Wert ist kein Befund: Steht nur er da, ist alles in Ordnung.
+  const erste = eintraege[0]?.ampel ?? 'gut';
+  const schlimmste = erste === 'offen' ? 'gut' : erste;
 
   return (
     <div className="statusliste">
@@ -92,7 +100,7 @@ export function Statusliste({ zustand, stand }: { zustand: Boxzustand; stand?: s
         {eintraege.map((e) => (
           <li key={e.text} className={`statusliste__eintrag statusliste__eintrag--${e.ampel}`}>
             <span className="statusliste__punkt" aria-hidden="true">
-              {e.ampel === 'gut' ? '✓' : e.ampel === 'warnung' ? '!' : '✕'}
+              {e.ampel === 'gut' ? '✓' : e.ampel === 'warnung' ? '!' : e.ampel === 'offen' ? '?' : '✕'}
             </span>
             {e.text}
           </li>

@@ -68,6 +68,19 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
   const beschaeftigt = useRef(false);
   // Was gerade angetippt wurde - fuer die sofortige Rueckmeldung am Bildschirm.
   const [wartetAuf, setzeWartetAuf] = useState<string | null>(null);
+  // Liegen in der Filterauswahl noch Kacheln unterhalb des Schirms? Dann
+  // steht unten ein Hinweis - sonst ahnt niemand, dass man blaettern kann.
+  const [mehrUnten, setzeMehrUnten] = useState(false);
+  // Lebenszeichen der Filterauswahl an den Server, hoechstens alle 20 s.
+  const letztesLebenszeichen = useRef(0);
+  const meldeLebenszeichen = (sitzungId: string) => {
+    if (Date.now() - letztesLebenszeichen.current < 20_000) return;
+    letztesLebenszeichen.current = Date.now();
+    void api.sende(`/api/kiosk/sitzung/${sitzungId}/lebt`, {}).catch(() => undefined);
+  };
+  const pruefeMehrUnten = (raster: Element | null) => {
+    if (raster) setzeMehrUnten(raster.scrollTop + raster.clientHeight < raster.scrollHeight - 8);
+  };
   // Der aktuelle Bildschirm fuer die Statusabfrage, die als stabile Funktion
   // sonst immer nur den Anfangswert saehe.
   const schirmJetzt = useRef(schirm);
@@ -282,7 +295,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
               setzeSchirm({ art: 'start' });
               void ladeStart();
             }}
-            beiAbbrechen={() => verwirf(schirm.sitzung.sitzungId)}
+            beiAbbrechen={() => void verwirf(schirm.sitzung.sitzungId)}
           />
         </>
       );
@@ -298,8 +311,13 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
               <p className="untertitel">Nimm dir Zeit — hier läuft keine Uhr.</p>
             </div>
             <div
-              className={`raster${wartetAuf ? ' raster--wartet' : ''}`}
-              style={spalten(start.filter?.length ?? 1)}
+              className={`raster filter-raster${wartetAuf ? ' raster--wartet' : ''}`}
+              style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(start.filter?.length ?? 1, 1), 4)}, 1fr)` }}
+              onScroll={(e) => {
+                pruefeMehrUnten(e.currentTarget);
+                meldeLebenszeichen(schirm.sitzungId);
+              }}
+              onPointerDown={() => meldeLebenszeichen(schirm.sitzungId)}
             >
               {start.filter?.map((f) => (
                 <button
@@ -310,9 +328,10 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
                   {/* Am Muster sieht der Gast, was der Filter tut - bei blossen
                       Namen sehen Sepia und Schwarzweiss gleich aus. */}
                   <img
-                    className="kachel__bild kachel__bild--fuellend"
+                    className="kachel__bild kachel__bild--ganz"
                     src={`/api/kiosk/filter/${f.id}/vorschau.jpg?sitzung=${schirm.sitzungId}`}
                     alt=""
+                    onLoad={(e) => pruefeMehrUnten(e.currentTarget.closest('.filter-raster'))}
                   />
                   <span className="kachel__name">{f.name}</span>
                 </button>
@@ -326,7 +345,8 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
                 mehr - dann entscheidet die Ergebnisseite. */}
             {!wartetAuf && (
               <div className="filter__leiste">
-                <button className="knopf knopf--neben" onClick={() => verwirf(schirm.sitzungId)}>
+                {mehrUnten && <p className="filter__mehr">Weitere Filter: nach oben wischen ↓</p>}
+                <button className="knopf knopf--neben" onClick={() => void verwirf(schirm.sitzungId)}>
                   Abbrechen
                 </button>
               </div>
@@ -510,11 +530,13 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
   }
 
   /** "Abbrechen": Sitzung samt Fotos verwerfen und zurueck zum Start. */
-  function verwirf(sitzungId: string) {
+  async function verwirf(sitzungId: string) {
     if (beschaeftigt.current) return;
-    void api.sende(`/api/kiosk/sitzung/${sitzungId}/abbrechen`, { verwerfen: true }).catch(() => undefined);
     setzeFehler(null);
     setzeSchirm({ art: 'start' });
+    // Erst verwerfen, dann den Start neu laden: Sonst sah die Startabfrage die
+    // Sitzung womoeglich noch als verwaist und brach sie ohne Loeschen ab.
+    await api.sende(`/api/kiosk/sitzung/${sitzungId}/abbrechen`, { verwerfen: true }).catch(() => undefined);
     void ladeStart();
   }
 }
@@ -552,13 +574,8 @@ function Verbindungshinweis() {
  * vorher standen die Kacheln als schmaler Streifen in der Bildschirmmitte.
  */
 function spalten(anzahl: number): React.CSSProperties {
-  // Bis 12 Kacheln vier Spalten. Darueber mehr Spalten statt mehr Zeilen:
-  // Bei sechs Zeilen (22 Filter) blieben von den Vorschaubildern nur
-  // Streifen. So bleiben es hoechstens drei Zeilen, bis acht Spalten.
-  const n = Math.max(anzahl, 1);
-  const breite = Math.min(8, Math.max(Math.min(n, 4), Math.ceil(n / 3)));
   return {
-    gridTemplateColumns: `repeat(${breite}, 1fr)`,
+    gridTemplateColumns: `repeat(${Math.min(Math.max(anzahl, 1), 4)}, 1fr)`,
     // Gleich hohe Zeilen: Sonst wird die letzte, halb gefuellte Zeile hoeher
     // als die darueber, weil sie sich den uebrigen Platz nimmt.
     gridAutoRows: '1fr',

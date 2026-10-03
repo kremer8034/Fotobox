@@ -10,14 +10,14 @@ export const VOM_KIOSK = 'fotobox-verwaltung-vom-kiosk';
 
 interface WasIstLos {
   stand: string;
-  veranstaltung: { id: string; name: string; status: string } | null;
+  veranstaltung: { id: string; name: string; status: string; probelauf?: boolean } | null;
   kamera: string;
   drucker: string;
   stoerung: string | null;
   stoerungstext: { titel: string; folge: string; tun: string } | null;
   betreuerHinweis: string | null;
   warteschlangeOffen: number;
-  materialRest: number;
+  materialRest: number | null;
   speicherFreiGb: number;
   drucke: number;
   sitzungen: number;
@@ -231,6 +231,7 @@ export function Servicemenue({
   }, [meldung]);
 
   const pausiert = zustand?.veranstaltung?.status === 'pausiert';
+  const probelauf = zustand?.veranstaltung?.probelauf === true;
 
   return (
     <div
@@ -243,6 +244,7 @@ export function Servicemenue({
         <p className="untertitel">
           {ebene === 'besitzer' ? 'Besitzer — voller Zugriff' : 'Betreuer — die Handgriffe des Alltags'}
           {zustand?.veranstaltung && ` · ${zustand.veranstaltung.name}`}
+          {probelauf && ' · Probelauf'}
         </p>
       </div>
 
@@ -279,19 +281,13 @@ export function Servicemenue({
           <Handgriff titel="Galerie" zeile="Nachdrucken oder ein Foto herausnehmen" beiTipp={beiGalerie} />
           <Handgriff
             titel="Neue Rolle eingelegt"
-            zeile="Papierzähler auf voll zurücksetzen"
+            zeile="Papiervorrat beim Drucker abfragen"
             beiTipp={() =>
-              setzeRueckfrage({
-                titel: 'Neue Rolle eingelegt?',
-                text:
-                  'Der Papierzähler springt auf eine volle Rolle zurück. Wenn noch die alte ' +
-                  'Rolle drin ist, zeigt die Box danach zu viel Papier an und warnt nicht rechtzeitig.',
-                ja: 'Ja, neue Rolle ist drin',
-                aktion: () =>
-                  void handgriff<{ rest?: number | null }>('/api/kiosk/service/neue-rolle', {}, ({ rest }) =>
-                    typeof rest === 'number' ? `Laut Drucker sind ${rest} Blatt auf der Rolle.` : 'Papierzähler steht wieder auf voll.',
-                  ),
-              })
+              void handgriff<{ rest?: number | null }>('/api/kiosk/service/neue-rolle', {}, ({ rest }) =>
+                typeof rest === 'number'
+                  ? `Laut Drucker sind ${rest} Blatt auf der Rolle.`
+                  : 'Der Drucker meldet gerade keinen Vorrat – gleich noch einmal versuchen.',
+              )
             }
           />
 
@@ -310,6 +306,29 @@ export function Servicemenue({
                     // Ohne Speicher bleibt nur die Rueckkehr von Hand.
                   }
                   beiAdmin();
+                }}
+              />
+              {/* Nur fuer den Besitzer: Probelauf-Drucke zaehlen nicht in den
+                  Auslagenersatz - in der Hand des Betreuers waere das ein
+                  Schalter fuer kostenlose Drucke. */}
+              <Handgriff
+                titel={probelauf ? 'Probelauf beenden' : 'Probelauf starten'}
+                zeile={
+                  probelauf
+                    ? 'Ab jetzt zählt wieder jedes Foto'
+                    : 'Testfotos: zählen nicht, nicht in der Galerie'
+                }
+                beiTipp={() => {
+                  const ev = zustand?.veranstaltung;
+                  if (!ev) {
+                    setzeMeldung(zustand ? 'Es läuft gerade keine Veranstaltung.' : 'Einen Moment, der Zustand wird noch geladen.');
+                    return;
+                  }
+                  void tue(
+                    `/api/admin/events/${ev.id}/probelauf`,
+                    { an: !probelauf },
+                    probelauf ? 'Probelauf beendet – ab jetzt zählt jedes Foto.' : 'Probelauf läuft – Testfotos zählen nicht.',
+                  );
                 }}
               />
               <Handgriff

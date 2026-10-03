@@ -53,7 +53,6 @@ export const EINSTELLUNGEN_EINGABE = z
       .number({ error: 'Ersatz je Druck: bitte eine Zahl eintragen.' })
       .min(0, 'Ersatz je Druck: nicht negativ.')
       .max(100, 'Ersatz je Druck: höchstens 100 €.'),
-    materialStart: ganz('Material Start', 0, 100_000),
     startTitel: text('Titel', 80),
     startUntertitel: text('Untertitel', 160),
     logoDatei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/).optional(),

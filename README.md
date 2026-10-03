@@ -28,7 +28,7 @@ Version in [docs/Aenderungen.md](docs/Aenderungen.md).
 - **Druckkalibrierung** mit Millimeter-Testbild gegen den Beschnitt des
   randlosen Drucks.
 - **Veranstaltungen** mit Lebenszyklus, Probelauf-Modus, Startbereit-Check,
-  Auslagenersatz und Materialzähler – jede mit eigenem Ordner. Eine
+  Auslagenersatz – jede mit eigenem Ordner. Eine
   Veranstaltung lässt sich **duplizieren**, und ihre Einstellungen lassen sich
   als **Voreinstellung** speichern und beim Anlegen der nächsten übernehmen.
 - **Galerie** am Touchscreen mit Nachdruck, dazu optional im WLAN fürs Handy

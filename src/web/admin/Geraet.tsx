@@ -331,8 +331,8 @@ function Papiervorrat() {
         </>
       ) : (
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-          {stand.hinweis ?? 'Noch nicht gelesen.'} Solange zählt die Fotobox selbst mit (Servicemenü „Neue Rolle
-          eingelegt“).
+          {stand.hinweis ?? 'Noch nicht gelesen.'} Solange zeigen Übersicht und Servicemenü den Papierstand als
+          „unbekannt“.
         </p>
       )}
       {v && stand.hinweis && (
@@ -372,6 +372,7 @@ const AUFTRAG_STATUS: Record<string, string> = {
   laeuft: 'wird gesendet',
   gedruckt: 'an Windows übergeben',
   fehlgeschlagen: 'fehlgeschlagen',
+  verworfen: 'verworfen (Foto gelöscht)',
 };
 
 const QUELLE: Record<string, string> = {

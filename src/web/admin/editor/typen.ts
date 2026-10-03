@@ -21,6 +21,8 @@ export interface Ebene {
   ausrichtung?: string;
   schrift?: string;
   schriftDatei?: string;
+  fett?: boolean;
+  kursiv?: boolean;
 }
 
 export interface Vorlage {

@@ -249,17 +249,6 @@ export function findeEventNachStatusToken(token: string): Veranstaltung | null {
   return zeile ? zuVeranstaltung(zeile) : null;
 }
 
-/** Material verbrauchen. Ein Blatt = ein Bild, 700 pro Rolle. */
-export function verbucheMaterial(id: string, blaetter: number): void {
-  holeDb()
-    .prepare('UPDATE events SET material_verbraucht = material_verbraucht + ? WHERE id = ?')
-    .run(blaetter, id);
-}
-
-export function setzeMaterialZurueck(id: string): void {
-  holeDb().prepare('UPDATE events SET material_verbraucht = 0 WHERE id = ?').run(id);
-}
-
 /**
  * Kopie der Konfiguration in den Event-Ordner. Damit bleibt der Ordner auch
  * dann verstaendlich, wenn er nur noch als Datenhaufen beim Gastgeber liegt.

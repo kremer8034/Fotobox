@@ -241,9 +241,8 @@ Rot spürbar daneben.
 **Papiervorrat direkt vom Drucker:** Ist DNPs Programm **PrinterInfo**
 installiert (kostenlos bei DNP), liest die Fotobox den Vorrat selbst aus dem
 Drucker – dieselbe Zahl wie dort unter „Media Remaining“. Sie steht unter
-**Gerät → Papiervorrat laut Drucker** und in der Übersicht. Das Zurücksetzen
-mit „Neue Rolle eingelegt“ braucht es dann nicht mehr. Ohne PrinterInfo
-zählt die Fotobox wie bisher selbst mit.
+**Gerät → Papiervorrat laut Drucker**, in der Übersicht und im Servicemenü.
+Selbst gezählt wird nicht mehr: Ohne PrinterInfo steht dort „unbekannt“.
 
 ## Schritt 15: Trocken testen (ohne Papier zu verbrauchen)
 
@@ -515,7 +514,8 @@ Anmeldung in Windows einschalten.
 **Der Drucker hat mitten in der Feier kein Papier mehr.**
 Neue Rolle einlegen. Dann oben rechts lange drücken, PIN eingeben und
 **„Papier gewechselt — weiter drucken"** wählen. Bei einer ganz neuen Rolle
-zusätzlich **„Neue Rolle eingelegt"**. Kein einziges Foto geht dabei verloren —
+fragt **„Neue Rolle eingelegt"** den Vorrat gleich beim Drucker ab. Kein
+einziges Foto geht dabei verloren —
 die wartenden Ausdrucke laufen danach durch.
 
 **Kann ich die Fotobox ohne mich verleihen?**

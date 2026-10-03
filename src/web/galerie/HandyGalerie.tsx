@@ -18,7 +18,7 @@ interface StatusDaten {
     warteschlangeOffen: number;
     speicherFreiGb: number;
   };
-  zahlen: { sitzungen: number; drucke: number; materialRest: number };
+  zahlen: { sitzungen: number; drucke: number; materialRest: number | null };
 }
 
 /** Wie oft die Galerie nach neuen Fotos schaut - der Abend geht weiter. */

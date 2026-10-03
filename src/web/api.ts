@@ -114,7 +114,7 @@ export interface KioskStart {
     drucker: string;
     stoerung: string | null;
     warteschlangeOffen: number;
-    materialRest: number;
+    materialRest: number | null;
     speicherFreiGb: number;
   };
   veranstaltung?: { id: string; name: string; probelauf: boolean };

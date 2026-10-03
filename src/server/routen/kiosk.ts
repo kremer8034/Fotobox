@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import QRCode from 'qrcode';
 import { z } from 'zod';
-import { holeAktivesEvent, holeEvent, setzeStatus, verbucheMaterial } from '../fach/events.js';
+import { holeAktivesEvent, holeEvent, setzeStatus } from '../fach/events.js';
 import { holeVorlage, listeVorlagen } from '../fach/vorlagen.js';
 import { listeFilter } from '../fach/filter.js';
 import { leseGeraet } from '../db/geraet.js';
@@ -17,6 +17,7 @@ import {
   darfKioskLoeschen,
   darfKioskVerschicken,
   verwirfSitzung,
+  loescheAusgabeEndgueltig,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -296,6 +297,19 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { bereit: await betrieb.liveBildDa() };
   });
 
+  /**
+   * Lebenszeichen aus der Filterauswahl: Der Gast blaettert und vergleicht.
+   * Die Rettungsleine (Abbruch nach Untaetigkeit) soll nur greifen, wenn
+   * wirklich niemand mehr da ist - nicht mitten im Aussuchen.
+   */
+  app.post<{ Params: { id: string } }>('/api/kiosk/sitzung/:id/lebt', async (anfrage, antwort) => {
+    if (betrieb.aktiveSitzung?.id !== anfrage.params.id) {
+      return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
+    }
+    betrieb.letzteBeruehrung = Date.now();
+    return { ok: true };
+  });
+
   /** Filter anwenden, Layout bauen, Druck-PDF erzeugen. */
   app.post<{ Params: { id: string }; Body: unknown }>(
     '/api/kiosk/sitzung/:id/fertig',
@@ -379,6 +393,11 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!ausgabe || ausgabe.eventId !== event.id || !ausgabe.pfadDruckPdf) {
       return antwort.code(404).send({ fehler: 'Ausgabe nicht gefunden.' });
     }
+    // Ein geloeschtes oder aus der Galerie genommenes Bild druckt nur noch der
+    // Betreuer im Servicemenue (dort laesst es sich auch zurueckholen).
+    if (ausgabe.verborgen && koerper.quelle !== 'servicemenue') {
+      return antwort.code(404).send({ fehler: 'Dieses Foto wurde gelöscht.' });
+    }
 
     // "Maximale Kopien" gilt je Foto, nicht je Tipper. Vorher liess sich
     // dasselbe Foto ueber die Galerie immer wieder drucken - im Test zwoelf
@@ -406,8 +425,11 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       pfadPdf: ausgabe.pfadDruckPdf,
       kopien: koerper.kopien,
       quelle: koerper.quelle,
-      // Probelauf-Sitzungen zaehlen nicht in den Auslagenersatz.
-      berechnen: !event.probelauf,
+      // Probelauf-Fotos zaehlen nicht in den Auslagenersatz. Entscheidend ist,
+      // wann das Foto entstand - nicht, ob der Probelauf beim Drucken gerade
+      // an ist: Sonst druckte ein Nachdruck waehrend des Probelaufs gratis,
+      // und ein Testfoto nach dem Ausschalten kostete.
+      berechnen: !ausgabe.istTest,
     });
 
     betrieb.letzteBeruehrung = Date.now();
@@ -538,8 +560,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!event || !ausgabe || ausgabe.eventId !== event.id || !darfKioskLoeschen(event.id, ausgabe.id)) {
       return antwort.code(403).send({ fehler: 'Dieses Foto lässt sich hier nicht mehr löschen.' });
     }
-    setzeVerborgen(ausgabe.id, true);
+    // Erst die wartenden Drucke verwerfen (sie kennen das Foto noch), dann
+    // das Foto endgueltig loeschen.
     const verworfen = verwirfAuftraegeVon(ausgabe.id);
+    await loescheAusgabeEndgueltig(ausgabe.id, event.ordner);
     protokolliere(
       'info',
       'galerie',
@@ -551,7 +575,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   /**
    * Servicemenue: ein Bild aus der Galerie nehmen oder zurueckholen. Es
    * verschwindet sofort von allen Handys und vom Touchscreen; die Dateien
-   * bleiben und gehen mit der Uebergabe an den Gastgeber.
+   * bleiben und gehen mit der Uebergabe an den Gastgeber. (Anders als ein
+   * vom Gast am Ergebnis geloeschtes Foto - das ist endgueltig weg.)
    */
   app.post<{ Params: { id: string }; Body: unknown }>(
     '/api/kiosk/service/galerie/:id',
@@ -584,14 +609,16 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       // Der Stand gehoert dazu: Wer ein Foto dieser Seite verschickt, soll
       // sehen koennen, wann es entstanden ist.
       stand: new Date().toISOString(),
-      veranstaltung: event ? { id: event.id, name: event.name, status: event.status } : null,
+      veranstaltung: event
+        ? { id: event.id, name: event.name, status: event.status, probelauf: event.probelauf }
+        : null,
       kamera: status.kamera,
       drucker: status.drucker,
       stoerung: status.stoerung,
       stoerungstext: status.stoerung ? STOERUNGSTEXTE[status.stoerung] : null,
       betreuerHinweis: status.stoerung ? BETREUER_HINWEISE[status.stoerung] : null,
       warteschlangeOffen: status.warteschlangeOffen,
-      materialRest: status.druckerVorrat ? status.materialRest : (auslagen?.materialRest ?? 0),
+      materialRest: status.materialRest,
       speicherFreiGb: status.speicherFreiGb,
       drucke: auslagen?.druckeGesamt ?? 0,
       sitzungen: auslagen?.sitzungen ?? 0,
@@ -641,14 +668,13 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { ok: true, wartend };
   });
 
-  /** Servicemenue: neue Rolle eingelegt, Materialzaehler zuruecksetzen. */
-  app.post('/api/kiosk/service/neue-rolle', async (_anfrage, antwort) => {
-    const event = holeAktivesEvent();
-    if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
-    verbucheMaterial(event.id, -event.materialVerbraucht);
-    protokolliere('info', 'material', `Neue Rolle fuer "${event.name}" eingelegt.`);
-    // Kann der Drucker seinen Vorrat melden, gleich nachfragen - dann steht die
-    // echte Zahl da, nicht nur "wieder voll".
+  /**
+   * Servicemenue: neue Rolle eingelegt. Gezaehlt wird nichts mehr - der
+   * Drucker wird gleich nach seinem Vorrat gefragt, damit die neue Zahl
+   * sofort dasteht und nicht erst nach der naechsten Ruhepause.
+   */
+  app.post('/api/kiosk/service/neue-rolle', async () => {
+    protokolliere('info', 'material', 'Neue Rolle eingelegt.');
     const rest = await betrieb.leseDruckerVorrat();
     return { ok: true, rest };
   });

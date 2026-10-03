@@ -147,3 +147,28 @@ describe('Kalibrier-Testbild', () => {
     expect(channels[0]!.mean).toBeGreaterThan(200);
   });
 });
+
+describe('Fett und kursiv im Ausdruck', () => {
+  /** Die Textebene allein auf Weiss rendern; Ergebnis: Anteil dunkler Pixel und das Bild selbst. */
+  async function nurText(format: { fett?: boolean; kursiv?: boolean }) {
+    const vorlage = vorlageMitEinemFoto();
+    vorlage.ebenen = [{ ...(vorlage.ebenen[1] as Extract<Vorlage['ebenen'][number], { typ: 'text' }>), text: 'Anna & Ben', ...format }];
+    const bild = await baueLayout(vorlage, { fotos: new Map(), assetsOrdner: tmpdir(), platzhalter: {} });
+    const { data } = await sharp(bild).greyscale().raw().toBuffer({ resolveWithObject: true });
+    let dunkel = 0;
+    for (const wert of data) if (wert < 128) dunkel += 1;
+    return { dunkel, data };
+  }
+
+  it('fett schreibt kraeftiger als normal', async () => {
+    const normal = await nurText({});
+    const fett = await nurText({ fett: true });
+    expect(fett.dunkel).toBeGreaterThan(normal.dunkel * 1.15);
+  });
+
+  it('kursiv sieht anders aus als gerade', async () => {
+    const gerade = await nurText({});
+    const kursiv = await nurText({ kursiv: true });
+    expect(Buffer.compare(gerade.data, kursiv.data)).not.toBe(0);
+  });
+});

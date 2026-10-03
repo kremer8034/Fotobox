@@ -127,7 +127,7 @@ function zeichneKurzanleitung(
     karte('Papier wechseln', [
       'Neue Rolle einlegen wie gewohnt.',
       'Im Servicemenü „Papier gewechselt“ antippen – wartende Fotos werden dann gedruckt.',
-      'Bei einer ganz neuen Rolle zusätzlich „Neue Rolle eingelegt“.',
+      '„Neue Rolle eingelegt“ zeigt gleich, wie viel Papier laut Drucker drauf ist.',
     ]),
     karte('Wenn etwas klemmt', [
       'Die Fotobox sagt auf dem Bildschirm in normalen Worten, was los ist.',

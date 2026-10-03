@@ -88,6 +88,17 @@ export function VorlagenEditor({
   // Tastatur: fein schieben, duplizieren, loeschen, rueckgaengig.
   useEffect(() => {
     const beiTaste = (e: KeyboardEvent) => {
+      // Fett und kursiv wie in jeder Textverarbeitung - auch mitten im Tippen.
+      if ((e.ctrlKey || e.metaKey) && ebene?.typ === 'text' && gewaehlt) {
+        const taste = e.key.toLowerCase();
+        if (taste === 'b' || taste === 'i') {
+          e.preventDefault();
+          merkeVorZug();
+          aendere(gewaehlt, taste === 'b' ? { fett: !ebene.fett } : { kursiv: !ebene.kursiv });
+          schliesseZugAb();
+          return;
+        }
+      }
       const ziel = e.target as HTMLElement | null;
       if (ziel && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ziel.tagName)) return;
 
@@ -786,104 +797,26 @@ function EbenenFelder({
         {ebene.typ === 'foto' ? `Foto ${ebene.index}` : ebene.typ === 'text' ? 'Text' : 'Bild'}
       </h2>
       {ebene.typ === 'text' && (
-        <TextInhalt text={ebene.text ?? ''} fokus={textFokus} beiAendern={(text) => beiAendern({ text })} />
+        <TextInhalt
+          text={ebene.text ?? ''}
+          fokus={textFokus}
+          stil={{
+            fontFamily: ebene.schrift || undefined,
+            fontWeight: ebene.fett ? 700 : 400,
+            fontStyle: ebene.kursiv ? 'italic' : 'normal',
+          }}
+          beiAendern={(text) => beiAendern({ text })}
+        />
       )}
 
       {ebene.typ === 'text' && (
-        <div className="zeile">
-          <div className="feld feld--klein">
-            <label>Schriftgröße (mm)</label>
-            <input
-              type="number"
-              step={0.5}
-              min={1}
-              value={Number(((ebene.groesse ?? 0.06) * canvas.hoeheMm).toFixed(1))}
-              onChange={(e) => {
-                const mm = Number(e.target.value);
-                if (e.target.value !== '' && mm >= 1) beiAendern({ groesse: mm / canvas.hoeheMm });
-              }}
-            />
-          </div>
-          <div className="feld feld--klein">
-            <label>Farbe</label>
-            <input
-              type="color"
-              value={ebene.farbe ?? '#333333'}
-              onChange={(e) => beiAendern({ farbe: e.target.value })}
-            />
-          </div>
-          <div className="feld feld--klein">
-            <label>Ausrichtung</label>
-            <select
-              value={ebene.ausrichtung ?? 'mitte'}
-              onChange={(e) => beiAendern({ ausrichtung: e.target.value })}
-            >
-              <option value="links">links</option>
-              <option value="mitte">mittig</option>
-              <option value="rechts">rechts</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {ebene.typ === 'text' && (
-        <div className="zeile">
-          <div className="feld" style={{ flex: 1, maxWidth: '18rem' }}>
-            <label htmlFor="schriftwahl">Schriftart</label>
-            {/*
-              Jeder Eintrag wird in seiner eigenen Schrift angezeigt - eine
-              Liste aus Namen in Einheitsschrift zwingt sonst zum Durchprobieren.
-            */}
-            <select
-              id="schriftwahl"
-              value={ebene.schrift ?? ''}
-              style={{ fontFamily: ebene.schrift || undefined, fontSize: '1rem' }}
-              onChange={(e) => {
-                const familie = e.target.value;
-                const eigene = eigeneSchriften.find((s) => s.familie === familie);
-                beiAendern({
-                  schrift: familie || undefined,
-                  // Nur eigene Schriften haengen an einer Datei; der
-                  // Startbereit-Check prueft damit, ob sie noch da ist.
-                  schriftDatei: eigene ? eigene.datei : undefined,
-                });
-              }}
-            >
-              <option value="">Vorgabe</option>
-              {SCHRIFTEN.map((s) => (
-                <option key={s.name} value={s.familie} style={{ fontFamily: s.familie }}>
-                  {s.name}
-                </option>
-              ))}
-              {eigeneSchriften.length > 0 && (
-                <optgroup label="Eigene Schriften">
-                  {eigeneSchriften.map((s) => (
-                    <option key={s.datei} value={s.familie} style={{ fontFamily: s.familie }}>
-                      {s.familie}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-          <label className="knopf knopf--neben" style={{ cursor: 'pointer' }}>
-            Schriftdatei hinzufügen
-            <input
-              type="file"
-              accept=".ttf,.otf,font/ttf,font/otf"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const datei = e.target.files?.[0];
-                if (datei) void beiSchriftDatei(datei);
-                e.target.value = '';
-              }}
-            />
-          </label>
-          <span style={{ fontSize: '0.74rem', color: 'var(--schrift-leise)', maxWidth: '20rem' }}>
-            TTF oder OTF. Die Schrift landet in <code>Fotobox-Daten/schriften</code> und steht
-            danach in allen Vorlagen zur Verfügung — auch im Ausdruck.
-          </span>
-        </div>
+        <TextFormat
+          ebene={ebene}
+          hoeheMm={canvas.hoeheMm}
+          eigeneSchriften={eigeneSchriften}
+          beiAendern={beiAendern}
+          beiSchriftDatei={beiSchriftDatei}
+        />
       )}
 
       {ebene.typ === 'text' && (
@@ -1030,10 +963,13 @@ function kennung(): string {
 function TextInhalt({
   text,
   fokus,
+  stil,
   beiAendern,
 }: {
   text: string;
   fokus: number;
+  /** Schrift, Fett und Kursiv der Ebene - das Feld zeigt den Text so, wie er gedruckt wird. */
+  stil?: React.CSSProperties;
   beiAendern: (text: string) => void;
 }) {
   const feld = useRef<HTMLTextAreaElement>(null);
@@ -1078,6 +1014,7 @@ function TextInhalt({
         rows={2}
         maxLength={500}
         value={text}
+        style={{ fontSize: '1.05rem', ...stil }}
         onChange={(e) => beiAendern(e.target.value)}
       />
       <div className="platzhalter-leiste">
@@ -1104,6 +1041,198 @@ function TextInhalt({
           laufenden Veranstaltung.
         </p>
       )}
+    </div>
+  );
+}
+
+/** Schnellfarben fuer Text - die haeufigsten mit einem Klick, alles andere ueber den Farbwaehler. */
+const SCHNELLFARBEN: { farbe: string; name: string }[] = [
+  { farbe: '#000000', name: 'Schwarz' },
+  { farbe: '#ffffff', name: 'Weiß' },
+  { farbe: '#4a4a4a', name: 'Dunkelgrau' },
+  { farbe: '#c8963e', name: 'Gold' },
+  { farbe: '#b3261e', name: 'Rot' },
+  { farbe: '#1f3a5f', name: 'Dunkelblau' },
+];
+
+/**
+ * Das Aussehen einer Textebene - aufgebaut wie die Formatleiste einer
+ * Textverarbeitung: Schrift und Groesse in einer Zeile, darunter Fett,
+ * Kursiv und Ausrichtung als Umschaltknoepfe, daneben die Farbe. Vorher
+ * standen Groesse, Farbe und Ausrichtung als drei Formularfelder
+ * nebeneinander, und Fett oder Kursiv gab es gar nicht.
+ */
+function TextFormat({
+  ebene,
+  hoeheMm,
+  eigeneSchriften,
+  beiAendern,
+  beiSchriftDatei,
+}: {
+  ebene: Ebene;
+  hoeheMm: number;
+  eigeneSchriften: { datei: string; familie: string }[];
+  beiAendern: (teil: Partial<Ebene>) => void;
+  beiSchriftDatei: (datei: File) => void;
+}) {
+  const groesseMm = Number(((ebene.groesse ?? 0.06) * hoeheMm).toFixed(1));
+  const setzeGroesse = (mm: number) => {
+    if (Number.isFinite(mm) && mm >= 1 && mm <= 80) beiAendern({ groesse: mm / hoeheMm });
+  };
+  const farbe = (ebene.farbe ?? '#333333').toLowerCase();
+  const ausrichtung = ebene.ausrichtung ?? 'mitte';
+
+  return (
+    <div className="textformat">
+      <div className="zeile" style={{ alignItems: 'flex-end' }}>
+        <div className="feld" style={{ flex: 1, minWidth: '12rem', maxWidth: '20rem' }}>
+          <label htmlFor="schriftwahl">Schriftart</label>
+          {/*
+            Jeder Eintrag wird in seiner eigenen Schrift angezeigt - eine
+            Liste aus Namen in Einheitsschrift zwingt sonst zum Durchprobieren.
+          */}
+          <select
+            id="schriftwahl"
+            value={ebene.schrift ?? ''}
+            style={{ fontFamily: ebene.schrift || undefined, fontSize: '1rem' }}
+            onChange={(e) => {
+              const familie = e.target.value;
+              const eigene = eigeneSchriften.find((s) => s.familie === familie);
+              beiAendern({
+                schrift: familie || undefined,
+                // Nur eigene Schriften haengen an einer Datei; der
+                // Startbereit-Check prueft damit, ob sie noch da ist.
+                schriftDatei: eigene ? eigene.datei : undefined,
+              });
+            }}
+          >
+            <option value="">Vorgabe</option>
+            {SCHRIFTEN.map((s) => (
+              <option key={s.name} value={s.familie} style={{ fontFamily: s.familie }}>
+                {s.name}
+              </option>
+            ))}
+            {eigeneSchriften.length > 0 && (
+              <optgroup label="Eigene Schriften">
+                {eigeneSchriften.map((s) => (
+                  <option key={s.datei} value={s.familie} style={{ fontFamily: s.familie }}>
+                    {s.familie}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
+        <div className="feld">
+          <label htmlFor="schriftgroesse">Größe (mm)</label>
+          <div className="stufer">
+            <button type="button" className="format-knopf" title="Kleiner" onClick={() => setzeGroesse(groesseMm - 0.5)}>
+              −
+            </button>
+            <input
+              id="schriftgroesse"
+              type="number"
+              step={0.5}
+              min={1}
+              max={80}
+              value={groesseMm}
+              onChange={(e) => {
+                if (e.target.value !== '') setzeGroesse(Number(e.target.value));
+              }}
+            />
+            <button type="button" className="format-knopf" title="Größer" onClick={() => setzeGroesse(groesseMm + 0.5)}>
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="format-leiste" role="toolbar" aria-label="Textformat">
+        <div className="format-gruppe">
+          <button
+            type="button"
+            className="format-knopf"
+            aria-pressed={ebene.fett === true}
+            title="Fett (Strg+B)"
+            style={{ fontWeight: 800 }}
+            onClick={() => beiAendern({ fett: !ebene.fett })}
+          >
+            F
+          </button>
+          <button
+            type="button"
+            className="format-knopf"
+            aria-pressed={ebene.kursiv === true}
+            title="Kursiv (Strg+I)"
+            style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}
+            onClick={() => beiAendern({ kursiv: !ebene.kursiv })}
+          >
+            K
+          </button>
+        </div>
+        <div className="format-gruppe">
+          {(
+            [
+              ['links', 'Linksbündig', 'M3 5h18M3 10h12M3 15h18M3 20h12'],
+              ['mitte', 'Zentriert', 'M3 5h18M6 10h12M3 15h18M6 20h12'],
+              ['rechts', 'Rechtsbündig', 'M3 5h18M9 10h12M3 15h18M9 20h12'],
+            ] as const
+          ).map(([wert, name, pfad]) => (
+            <button
+              key={wert}
+              type="button"
+              className="format-knopf"
+              aria-pressed={ausrichtung === wert}
+              title={name}
+              aria-label={name}
+              onClick={() => beiAendern({ ausrichtung: wert })}
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d={pfad} stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+              </svg>
+            </button>
+          ))}
+        </div>
+        <div className="format-gruppe format-gruppe--farbe">
+          {SCHNELLFARBEN.map((f) => (
+            <button
+              key={f.farbe}
+              type="button"
+              className="farbfeld"
+              aria-pressed={farbe === f.farbe}
+              title={f.name}
+              aria-label={`Farbe ${f.name}`}
+              style={{ background: f.farbe }}
+              onClick={() => beiAendern({ farbe: f.farbe })}
+            />
+          ))}
+          <label className="farbfeld farbfeld--waehler" title="Eigene Farbe">
+            <input type="color" value={farbe} onChange={(e) => beiAendern({ farbe: e.target.value })} />
+            <span style={{ background: farbe }} />
+          </label>
+        </div>
+      </div>
+
+      <div className="zeile" style={{ alignItems: 'center' }}>
+        <label className="knopf knopf--neben" style={{ cursor: 'pointer' }}>
+          Schriftdatei hinzufügen
+          <input
+            type="file"
+            accept=".ttf,.otf,font/ttf,font/otf"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const datei = e.target.files?.[0];
+              if (datei) void beiSchriftDatei(datei);
+              e.target.value = '';
+            }}
+          />
+        </label>
+        <span style={{ fontSize: '0.74rem', color: 'var(--schrift-leise)', maxWidth: '22rem' }}>
+          TTF oder OTF. Die Schrift landet in <code>Fotobox-Daten/schriften</code> und steht danach in allen
+          Vorlagen zur Verfügung — auch im Ausdruck. Hat sie keinen eigenen fetten oder kursiven Schnitt,
+          wird er nachgerechnet.
+        </span>
+      </div>
     </div>
   );
 }

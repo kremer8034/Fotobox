@@ -126,7 +126,9 @@ export function Ergebnis({
           <div className="quittung__karte">
             <p className="quittung__text">Foto wirklich löschen?</p>
             <p style={{ margin: '0 0 1.2rem', color: 'var(--schrift-leise)' }}>
-              Es wird nicht gedruckt und erscheint in keiner Galerie.
+              {gedruckt
+                ? 'Es wird endgültig gelöscht – niemand kann es danach zurückholen. Ein Ausdruck, der noch auf den Drucker wartet, wird abgebrochen.'
+                : 'Es wird endgültig gelöscht und nicht gedruckt – niemand kann es danach zurückholen.'}
             </p>
             <div className="ergebnis__frage">
               <button className="knopf knopf--haupt" onClick={() => setzeLoeschenFragen(false)}>

@@ -107,6 +107,9 @@ export interface TextEbene extends EbeneBasis {
    * verschwundener Schrift faellt sonst erst beim Druck auf.
    */
   schriftDatei?: string;
+  /** Fett und kursiv. Hat die Schrift keinen eigenen Schnitt dafuer, rechnet der Renderer ihn nach. */
+  fett?: boolean;
+  kursiv?: boolean;
 }
 
 export type Ebene = BildEbene | FotoEbene | TextEbene;
@@ -344,7 +347,6 @@ export interface EventEinstellungen {
   druckLimit: number;
 
   ersatzJeDruck: number;
-  materialStart: number;
 
   startTitel: string;
   startUntertitel: string;
@@ -376,7 +378,6 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   kopienMax: 3,
   druckLimit: 0,
   ersatzJeDruck: 0.2,
-  materialStart: 700,
   startTitel: 'Fotobox',
   startUntertitel: 'Tippt auf den Knopf und los geht es!',
   farbeAkzent: '#c8963e',
@@ -542,8 +543,8 @@ export interface Betriebsstatus {
   liveViewLaeuft: boolean;
   stoerung: Stoerung | null;
   warteschlangeOffen: number;
-  /** Restblaetter: laut Drucker, wenn er sie meldet, sonst selbst gezaehlt. */
-  materialRest: number;
+  /** Restblaetter laut Drucker; null, wenn er gerade nichts meldet. */
+  materialRest: number | null;
   /** Was der DNP-Drucker selbst ueber seinen Vorrat sagt; null, wenn er nicht gefragt werden kann. */
   druckerVorrat?: DruckerVorrat | null;
   speicherFreiGb: number;

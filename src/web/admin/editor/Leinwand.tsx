@@ -293,6 +293,8 @@ function Inhalt({ ebene, hoehePx }: { ebene: Ebene; hoehePx: number }) {
           // Dieselbe Familienangabe, die spaeter ins Druck-SVG geht - damit die
           // Vorschau zeigt, was gedruckt wird.
           fontFamily: ebene.schrift || undefined,
+          fontWeight: ebene.fett ? 700 : 400,
+          fontStyle: ebene.kursiv ? 'italic' : 'normal',
           fontSize: (ebene.groesse ?? 0.06) * hoehePx,
           lineHeight: 1.15,
           whiteSpace: 'pre',

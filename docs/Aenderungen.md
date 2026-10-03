@@ -4,6 +4,64 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.7
+
+- **Probelauf im Servicemenü:** Unter „Besitzer“ gibt es jetzt
+  „Probelauf starten“ und „Probelauf beenden“ – ohne den Umweg über die
+  Verwaltung. Läuft der Probelauf, steht das oben neben dem Namen der
+  Veranstaltung. Der Schalter fehlt bewusst im Betreuer-Menü: Probelauf-Drucke
+  zählen nicht in den Auslagenersatz.
+- **Filterauswahl zeigt das ganze Foto:** Jede Kachel zeigt das komplette
+  Bild mit dem Filter, oben und unten wird nichts mehr abgeschnitten. Bis
+  acht Filter passen auf den Schirm; sind es mehr, wird mit dem Finger
+  geblättert, und unten steht „Weitere Filter: nach oben wischen“, solange
+  noch etwas kommt. Das ersetzt die Verteilung auf mehr Spalten aus 1.0.6.
+- **Kein gezählter Materialvorrat mehr:** „Material Start“ und „Material
+  Rest“ sind aus den Auslagen, der Auslagen-CSV und der Liste der
+  Veranstaltungen verschwunden. Den Papiervorrat meldet allein der Drucker
+  (über DNP PrinterInfo) – in der Übersicht, im Servicemenü („Noch 501 Blatt
+  Papier“, unter 50 Blatt als Warnung), auf der Statusseite und im
+  Startbereit-Check. Meldet er gerade nichts, steht dort „unbekannt“ bzw.
+  „Papierstand: Drucker meldet gerade nichts“ statt einer geschätzten Zahl. „Neue Rolle eingelegt“ im
+  Servicemenü fragt jetzt nur noch den Drucker nach dem neuen Vorrat.
+- **Text fett und kursiv – und eine Formatleiste:** Im Vorlagen-Editor hat
+  eine Textebene jetzt eine Leiste wie in Word: **F** für fett, *K* für
+  kursiv (auch per Strg+B / Strg+I, mitten im Tippen), die drei
+  Ausrichtungen als Symbole, sechs Schnellfarben und daneben der freie
+  Farbwähler. Die Schriftgröße lässt sich mit − und + in halben Millimetern
+  verstellen. Das Textfeld zeigt den Text gleich in der gewählten Schrift,
+  fett und kursiv. Im Ausdruck erscheint es genauso; hat eine Schrift keinen
+  eigenen fetten oder kursiven Schnitt, wird er nachgerechnet.
+
+Durchsicht der ganzen Software – behoben:
+
+- **Abrechnung im Probelauf:** Ob ein Druck berechnet wird, hängt jetzt am
+  Foto, nicht am Schalter beim Drucken. Vorher war ein Nachdruck eines echten
+  Gästefotos gratis, solange der Probelauf an war – und ein Testfoto kostete,
+  wenn es erst nach dem Ausschalten gedruckt wurde.
+- **Probelauf vergessen?** Der Startbereit-Check warnt, wenn der Probelauf
+  noch an ist.
+- **Löschen am Ergebnis ist endgültig:** Löscht ein Gast sein Foto, ist es
+  danach für niemanden mehr da – nicht in der Galerie, nicht im Servicemenü,
+  nicht bei der Übergabe. Original, bearbeitete Fassung, Layout, Druckdatei
+  und Zwischenbilder werden von der Festplatte gelöscht. (Bisher wurde es nur
+  versteckt und ließ sich im Servicemenü zurückholen.) Ein noch wartender
+  Ausdruck wird abgebrochen und auch von „Papier gewechselt“ nicht wieder
+  angestoßen. Was der Betreuer im Servicemenü nur „aus der Galerie nimmt“,
+  bleibt umkehrbar und geht weiterhin an den Gastgeber.
+- **Übergabe an den Gastgeber:** Testfotos aus dem Probelauf werden nicht
+  mehr mitkopiert. Bisher landeten sie im Ordner beim Gastgeber.
+- **Aus der Galerie genommene Fotos drucken** nur noch über das
+  Servicemenü, nicht mehr über den Gästeweg.
+- **Filterauswahl:** Wer lange blättert und vergleicht, wird nicht mehr nach
+  drei Minuten seit dem letzten Foto auf den Start zurückgeworfen – jede
+  Berührung zählt jetzt als Lebenszeichen.
+- **Abbrechen in der Filterauswahl** löscht die Fotos jetzt sicher, bevor der
+  Startbildschirm neu lädt.
+- **Texte:** Die Gerät-Seite sprach noch vom Mitzählen ohne PrinterInfo, die
+  Kurzanleitung von „Neue Rolle eingelegt“ als Pflicht, und die Rückfrage beim
+  Löschen nach dem Drucken versprach „wird nicht gedruckt“.
+
 ## 1.0.6
 
 - **14 neue, kräftige Filter:** Pop-Art, Warhol, Comic, Neon-Nacht, Wärmebild,

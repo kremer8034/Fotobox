@@ -29,6 +29,17 @@ export interface Uebergabeergebnis {
   meldung: string;
 }
 
+/**
+ * Was nicht zum Gastgeber geht: der Zwischenspeicher und der Probelauf
+ * (Testfotos vom Aufbau). Vom Gast geloeschte Fotos gibt es gar nicht mehr;
+ * vom Betreuer aus der Galerie genommene gehen bewusst mit.
+ */
+const AUSGELASSEN = ['.cache', '_probelauf'];
+
+function ausgelassen(name: string, istOrdner: boolean): boolean {
+  return istOrdner && AUSGELASSEN.includes(name);
+}
+
 export async function bereiteUebergabeVor(event: Veranstaltung): Promise<void> {
   schreibeEventJson(event);
   await schreibeAuslagenCsv(event);
@@ -81,10 +92,10 @@ export async function uebergebeAufDatentraeger(
 async function kopiereOrdner(quelle: string, ziel: string): Promise<void> {
   if (process.platform === 'win32') {
     try {
-      // /E alle Unterordner, /XD .cache auslassen, /R:2 zwei Wiederholungen.
+      // /E alle Unterordner, /XD Ordner auslassen, /R:2 zwei Wiederholungen.
       await fuehreAus(
         'robocopy',
-        [quelle, ziel, '/E', '/XD', '.cache', '/R:2', '/W:2', '/NFL', '/NDL', '/NJH', '/NJS'],
+        [quelle, ziel, '/E', '/XD', ...AUSGELASSEN, '/R:2', '/W:2', '/NFL', '/NDL', '/NJH', '/NJS'],
         { timeout: 30 * 60_000, windowsHide: true },
       );
     } catch (fehler) {
@@ -101,7 +112,7 @@ async function kopiereOrdner(quelle: string, ziel: string): Promise<void> {
 async function kopiereRekursiv(quelle: string, ziel: string): Promise<void> {
   await mkdir(ziel, { recursive: true });
   for (const eintrag of await readdir(quelle, { withFileTypes: true })) {
-    if (eintrag.name === '.cache') continue;
+    if (ausgelassen(eintrag.name, eintrag.isDirectory())) continue;
     const von = join(quelle, eintrag.name);
     const nach = join(ziel, eintrag.name);
     if (eintrag.isDirectory()) await kopiereRekursiv(von, nach);
@@ -109,12 +120,13 @@ async function kopiereRekursiv(quelle: string, ziel: string): Promise<void> {
   }
 }
 
+/** Zaehlt, was uebergeben werden soll - mit denselben Auslassungen wie die Kopie. */
 async function zaehleDateien(ordner: string): Promise<{ anzahl: number; bytes: number }> {
   let anzahl = 0;
   let bytes = 0;
   const gehe = async (pfad: string): Promise<void> => {
     for (const eintrag of await readdir(pfad, { withFileTypes: true })) {
-      if (eintrag.name === '.cache') continue;
+      if (ausgelassen(eintrag.name, eintrag.isDirectory())) continue;
       const voll = join(pfad, eintrag.name);
       if (eintrag.isDirectory()) await gehe(voll);
       else {
