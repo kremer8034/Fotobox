@@ -57,6 +57,7 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { laufwerke, legeOrdnerAn, listeOrdner } from '../fach/ordnerwahl.js';
 import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
 import {
   leseMailzugang,
@@ -68,7 +69,13 @@ import {
   schwaerze,
   sendeTestmail,
 } from '../fach/email.js';
-import { galerieUrl as galerieAdresse, lanAdresse } from '../netzwerk.js';
+import {
+  aktualisiereRoutenAdresse,
+  galerieBlockiert,
+  galerieUrl as galerieAdresse,
+  lanAdresse,
+  netzDiagnose,
+} from '../netzwerk.js';
 import { CANVAS_PRESETS, fotoEbenen, type CanvasPreset, type Ebene, type FilterOperation, type Veranstaltung } from '../../shared/typen.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import { holeDb } from '../db/index.js';
@@ -116,6 +123,57 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       return { drucker: await betrieb.druckerListe(), fehler: null };
     } catch (fehler) {
       return { drucker: [], fehler: fehler instanceof Error ? fehler.message : String(fehler) };
+    }
+  });
+
+  /**
+   * Wo die Handy-Galerie im Netz steht und ob Windows die Handys durchlaesst:
+   * volle Adresse, WLAN-Name, Netzwerkprofil. Damit laesst sich "auf dem
+   * Handy laedt nichts" in einem Blick klaeren.
+   */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/galerie-netz', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    await aktualisiereRoutenAdresse();
+    const adresse = lanAdresse();
+    const diagnose = adresse ? await netzDiagnose(adresse) : null;
+    return {
+      url: galerieAdresse(event.galerieToken, konfig.portOeffentlich),
+      netz: diagnose?.netz ?? null,
+      kategorie: diagnose?.kategorie ?? null,
+      hinweis: !adresse
+        ? 'Die Box hat keine Netzwerkverbindung. Ist das WLAN verbunden?'
+        : diagnose
+          ? galerieBlockiert(diagnose)
+          : null,
+    };
+  });
+
+  /** Ordnerauswahl fuer die Uebergabe: ohne Pfad die Laufwerke, sonst die Unterordner. */
+  app.get<{ Querystring: { pfad?: string } }>('/api/admin/ordner', async (anfrage, antwort) => {
+    const pfad = anfrage.query.pfad?.trim();
+    if (!pfad) return { laufwerke: await laufwerke() };
+    try {
+      return await listeOrdner(pfad);
+    } catch (fehler) {
+      const code = (fehler as NodeJS.ErrnoException).code;
+      return antwort.code(400).send({
+        fehler:
+          code === 'ENOENT'
+            ? 'Diesen Ordner gibt es nicht (mehr). Ist der USB-Stick noch eingesteckt?'
+            : code === 'EACCES' || code === 'EPERM'
+              ? 'Auf diesen Ordner hat die Fotobox keinen Zugriff.'
+              : `Ordner nicht lesbar: ${(fehler as Error).message}`,
+      });
+    }
+  });
+
+  app.post<{ Body: unknown }>('/api/admin/ordner', async (anfrage, antwort) => {
+    const { pfad, name } = z.object({ pfad: z.string().min(1).max(500), name: z.string().max(80) }).parse(anfrage.body);
+    try {
+      return { pfad: await legeOrdnerAn(pfad, name) };
+    } catch (fehler) {
+      return antwort.code(400).send({ fehler: (fehler as Error).message });
     }
   });
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Zeiten } from '../api.js';
+import { OrdnerWahl } from './OrdnerWahl.js';
 import { STATUS_NAME, STATUS_WECHSEL, UEBERGAENGE, type EventStatus } from '../../shared/typen.js';
 
 interface EventVoll {
@@ -117,6 +118,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [zettelPin, setzeZettelPin] = useState('');
   const [zettel, setzeZettel] = useState<{ kurzanleitung: string; aushang: string | null } | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
+  const [ordnerWahlOffen, setzeOrdnerWahlOffen] = useState(false);
   const [telefon, setzeTelefon] = useState('');
   const [wlanName, setzeWlanName] = useState('');
   const [wlanPasswort, setzeWlanPasswort] = useState('');
@@ -431,6 +433,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           )}
           <Adressen eventId={id} />
+          {e.galerieAktiv && <GalerieNetz eventId={id} />}
           {e.galerieAktiv && (
             <div className="zeile" style={{ fontSize: '0.8rem', color: 'var(--schrift-leise)' }}>
               <span>
@@ -640,12 +643,18 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             <div className="zeile">
               <div className="feld" style={{ flex: 1 }}>
                 <label>Ziel (USB-Stick oder Ordner)</label>
+                {/* Antippen oeffnet die Ordnerauswahl - tippen muss niemand mehr. */}
                 <input
                   value={zielPfad}
-                  onChange={(ev) => setzeZielPfad(ev.target.value)}
-                  placeholder="E:\ oder D:\Fotobox-Uebergabe"
+                  readOnly
+                  onClick={() => setzeOrdnerWahlOffen(true)}
+                  placeholder="Noch kein Ziel gewählt – „Ordner wählen …“ antippen"
+                  style={{ cursor: 'pointer' }}
                 />
               </div>
+              <button className="knopf knopf--neben" onClick={() => setzeOrdnerWahlOffen(true)}>
+                Ordner wählen …
+              </button>
               <button
                 className="knopf knopf--neben"
                 disabled={zielPfad.length < 2}
@@ -672,6 +681,17 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             </div>
           )}
         </>
+      )}
+
+      {ordnerWahlOffen && (
+        <OrdnerWahl
+          start={zielPfad}
+          beiWahl={(pfad) => {
+            setzeZielPfad(pfad);
+            setzeOrdnerWahlOffen(false);
+          }}
+          beiAbbruch={() => setzeOrdnerWahlOffen(false)}
+        />
       )}
 
       {/* Fest in der Ecke statt oben auf der Seite: Wer unten die PIN eintippt,
@@ -1297,6 +1317,50 @@ function HintergrundKarte({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Wo die Handys die Galerie finden - und ob Windows sie durchlaesst. Auf der
+ * Box hiess es vorher nur "auf dem Handy laedt nichts", ohne Anhaltspunkt.
+ */
+function GalerieNetz({ eventId }: { eventId: string }) {
+  const [stand, setzeStand] = useState<{
+    url: string | null;
+    netz: string | null;
+    kategorie: string | null;
+    hinweis: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let aktiv = true;
+    api
+      .hole<NonNullable<typeof stand>>(`/api/admin/events/${eventId}/galerie-netz`)
+      .then((s) => aktiv && setzeStand(s))
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, [eventId]);
+
+  if (!stand) return null;
+  return (
+    <div style={{ fontSize: '0.82rem', margin: '0.6rem 0' }}>
+      {stand.url && (
+        <p style={{ margin: '0 0 0.3rem' }}>
+          Die Handys öffnen <code>{stand.url}</code>
+          {stand.netz ? (
+            <>
+              {' '}– sie müssen dafür im WLAN <strong>„{stand.netz}“</strong> sein, im selben Netz wie die Box.
+            </>
+          ) : (
+            ' – sie müssen dafür im selben WLAN sein wie die Box.'
+          )}{' '}
+          Mit mobilen Daten klappt es nicht.
+        </p>
+      )}
+      {stand.hinweis && <p style={{ margin: 0, color: 'var(--warnung)' }}>{stand.hinweis}</p>}
     </div>
   );
 }

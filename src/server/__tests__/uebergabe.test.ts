@@ -90,6 +90,17 @@ describe('Unterlagen', () => {
     const inhalt = readFileSync(pfad, 'latin1');
     expect(inhalt.startsWith('%PDF')).toBe(true);
     expect(inhalt.length).toBeGreaterThan(1000);
+    // A4 hoch und genau eine Seite - vorher rutschte die Fusszeile auf eine fast leere zweite.
+    expect(inhalt).toMatch(/\/MediaBox \[0 0 595\.28 841\.89\]/);
+    expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
+  });
+
+  it('bleibt auf einer Seite, auch mit Galerie und langem Namen', async () => {
+    const pfad = await schreibeKurzanleitung(
+      { ...event, name: 'Goldene Hochzeit von Maria-Theresa und Friedrich-Wilhelm Mustermann' },
+      { betreuerPin: '87654321', telefon: '0170 1234567', galerieUrl: 'http://192.168.8.2:8787/g/abc', wlanName: 'Fotobox' },
+    );
+    expect(readFileSync(pfad, 'latin1').match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 
   it('erzeugt den Aushang mit den beiden QR-Codes', async () => {

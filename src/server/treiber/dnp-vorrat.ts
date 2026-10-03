@@ -41,11 +41,16 @@ export interface DnpVorrat {
   port: number;
 }
 
-/** Wo PrinterInfo (und damit CspStat.dll) ueblicherweise liegt. */
-function suchorte(): string[] {
+/**
+ * Wo PrinterInfo (und damit CspStat.dll) liegen kann. DNP installiert je nach
+ * Fassung nach C:\DNPIA oder C:\DNPPIA (so auf der Box) - deshalb jeder
+ * Ordner mit "DNP" im Namen direkt auf C:, dazu die Programme-Ordner.
+ */
+export function suchorte(): string[] {
   const umg = process.env;
-  const orte = ['C:\\DNPIA'];
-  for (const basis of [umg['ProgramFiles(x86)'], umg.ProgramFiles, umg.ProgramW6432]) {
+  const orte: string[] = [];
+  const laufwerk = (umg.SystemDrive ?? 'C:') + '\\';
+  for (const basis of [laufwerk, umg['ProgramFiles(x86)'], umg.ProgramFiles, umg.ProgramW6432]) {
     if (!basis || !existsSync(basis)) continue;
     try {
       for (const name of readdirSync(basis)) {

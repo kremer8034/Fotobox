@@ -60,9 +60,10 @@ export function Schloss({ beiOeffnen }: { beiOeffnen: () => void }) {
   // Besitzer zu lang.
   useZeitgeber(beiOeffnen, gedruecktSeit === null ? null : SCHLOSS_HALTEN_MS, [gedruecktSeit]);
 
-  // Sichtbar, aber unaufdringlich: Bei 8 % Deckkraft fand selbst der Besitzer
-  // die Stelle nicht mehr. Waehrend des Drueckens fuellt sich ein Ring, damit
-  // klar ist, dass es zaehlt und der Finger liegen bleiben muss.
+  // Nur ein Kreis, kein Schloss-Symbol: markiert die Stelle, ohne Gaeste
+  // neugierig zu machen. Bei 8 % Deckkraft fand selbst der Besitzer sie nicht
+  // mehr. Waehrend des Drueckens fuellt sich der Ring, damit klar ist, dass es
+  // zaehlt und der Finger liegen bleiben muss.
   return (
     <div
       className={gedruecktSeit === null ? 'schloss' : 'schloss schloss--gedrueckt'}
@@ -72,7 +73,7 @@ export function Schloss({ beiOeffnen }: { beiOeffnen: () => void }) {
       onPointerCancel={() => setzeGedruecktSeit(null)}
       aria-hidden
     >
-      <span className="schloss__knopf">🔒</span>
+      <span className="schloss__knopf" />
     </div>
   );
 }

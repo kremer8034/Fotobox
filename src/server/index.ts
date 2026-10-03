@@ -25,7 +25,7 @@ import { registriereOeffentlich } from './routen/oeffentlich.js';
 import { registriereMedien } from './routen/medien.js';
 import { registriereStream } from './routen/stream.js';
 import { registriereEntwicklung } from './routen/entwicklung.js';
-import { lanAdresse } from './netzwerk.js';
+import { aktualisiereRoutenAdresse, lanAdresse } from './netzwerk.js';
 import { beantworteFehler, haerteOeffentlich, schuetzeLokal } from './sicherheit.js';
 
 /**
@@ -111,6 +111,8 @@ protokolliere('info', 'server', `Kiosk und Admin laufen auf http://127.0.0.1:${k
 // die Galerie eingeschaltet hat
 // --------------------------------------------------------------------------
 let oeffentlich: FastifyInstance | null = null;
+/** An welcher Adresse die Galerie gerade lauscht. */
+let galerieAdresseJetzt: string | null = null;
 
 async function galerieAn(): Promise<void> {
   if (oeffentlich) return;
@@ -128,6 +130,7 @@ async function galerieAn(): Promise<void> {
   await registriereWeb(app);
   await app.listen({ host: adresse, port: konfig.portOeffentlich });
   oeffentlich = app;
+  galerieAdresseJetzt = adresse;
   protokolliere('info', 'server', `Galerie erreichbar unter http://${adresse}:${konfig.portOeffentlich}`);
 }
 
@@ -135,6 +138,7 @@ async function galerieAus(): Promise<void> {
   if (!oeffentlich) return;
   await oeffentlich.close();
   oeffentlich = null;
+  galerieAdresseJetzt = null;
   protokolliere('info', 'server', 'Galerie im Netz abgeschaltet.');
 }
 
@@ -145,6 +149,14 @@ async function galerieAus(): Promise<void> {
 async function pruefeGalerie(): Promise<void> {
   const event = holeAktivesEvent();
   const soll = Boolean(event && event.einstellungen.galerieAktiv);
+  await aktualisiereRoutenAdresse();
+  // Hat die Box inzwischen eine andere Adresse (anderes WLAN, neue Adresse vom
+  // Router), lauschte die Galerie vorher weiter an der alten - der QR-Code
+  // zeigte schon auf die neue, und auf dem Handy lud nichts.
+  if (soll && oeffentlich && galerieAdresseJetzt !== lanAdresse()) {
+    protokolliere('info', 'server', `Netzwerkadresse hat sich geaendert (${galerieAdresseJetzt} -> ${lanAdresse()}).`);
+    await galerieAus();
+  }
   if (soll) await galerieAn();
   else await galerieAus();
 }

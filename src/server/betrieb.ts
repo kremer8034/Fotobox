@@ -7,7 +7,7 @@ import { MockKamera } from './treiber/kamera-mock.js';
 import { DigiCamControlKamera } from './treiber/kamera-digicamcontrol.js';
 import { MockDrucker } from './treiber/drucker-mock.js';
 import { istDnp, listeWindowsDrucker, WindowsDrucker, type GefundenerDrucker } from './treiber/drucker-windows.js';
-import { deuteDnpStatus, findeCspStat, leseDnpVorrat, type DnpVorrat } from './treiber/dnp-vorrat.js';
+import { deuteDnpStatus, findeCspStat, leseDnpVorrat, suchorte, type DnpVorrat } from './treiber/dnp-vorrat.js';
 import type { KameraGrund, KameraTreiber } from './treiber/kamera.js';
 import {
   cameraControlExe,
@@ -106,7 +106,6 @@ export class Betrieb {
   /** Warum der Vorrat nicht gelesen werden kann; null, wenn es klappt. */
   vorratHinweis: string | null = null;
   private dnpDll: string | null | undefined = undefined;
-  private dnpDllGesucht = 0;
 
   /** Wie lange der Drucker nach dem letzten Auftrag noch arbeitet, bevor er gefragt werden darf. */
   private static readonly RUHE_NACH_DRUCK_MS = 90_000;
@@ -161,15 +160,18 @@ export class Betrieb {
 
   private async frageVorrat(): Promise<void> {
     this.letzterVorratVersuch = Date.now();
-    // Nach PrinterInfo nicht bei jeder Runde die Platte durchsuchen.
-    if (this.dnpDll === undefined || (this.dnpDll === null && Date.now() - this.dnpDllGesucht > Betrieb.VORRAT_ALLE_MS)) {
+    // Einmal gefunden, bleibt der Pfad; sonst bei jedem Versuch neu suchen
+    // (hoechstens alle zehn Minuten oder auf Knopfdruck).
+    if (!this.dnpDll) {
       this.dnpDll = findeCspStat();
-      this.dnpDllGesucht = Date.now();
       if (this.dnpDll) protokolliere('info', 'druck', `DNP PrinterInfo gefunden: ${this.dnpDll}`);
     }
     if (!this.dnpDll) {
+      const gesucht = suchorte();
       this.vorratHinweis =
-        'DNP PrinterInfo ist nicht installiert. Damit liest die Fotobox den Papiervorrat direkt vom Drucker.';
+        'CspStat.dll von DNP PrinterInfo nicht gefunden' +
+        (gesucht.length > 0 ? ` (gesucht in ${gesucht.join(', ')}).` : ' - auf C: gibt es keinen Ordner mit "DNP" im Namen.') +
+        ' Damit liest die Fotobox den Papiervorrat direkt vom Drucker.';
       return;
     }
     const blattVorher = this.blattSeitLesung;

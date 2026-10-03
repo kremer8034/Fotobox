@@ -1102,19 +1102,19 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(4.2 * var(--mm));
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  opacity: 0.45;
+  /* Nur ein Ring - innen durchsichtig. */
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  opacity: 0.5;
   transition: opacity 0.15s;
 }
 
 .schloss--gedrueckt .schloss__knopf {
   opacity: 1;
   border-color: transparent;
-  background:
-    radial-gradient(closest-side, rgba(16, 18, 22, 0.85) 82%, transparent 84%),
-    conic-gradient(var(--akzent) var(--schloss-fortschritt), rgba(255, 255, 255, 0.2) 0);
+  background: conic-gradient(var(--akzent) var(--schloss-fortschritt), rgba(255, 255, 255, 0.25) 0);
+  /* Die Mitte ausstanzen, damit es ein Ring bleibt, der sich fuellt. */
+  -webkit-mask: radial-gradient(closest-side, transparent 72%, #000 74%);
+  mask: radial-gradient(closest-side, transparent 72%, #000 74%);
   animation: schloss-fuellen 1s linear forwards;
 }
 
@@ -1183,7 +1183,8 @@ button {
 .qr-ecke {
   position: fixed;
   bottom: var(--rand-sicher);
-  right: var(--rand-sicher);
+  /* Links unten - so gewuenscht; rechts oben sitzt das Schloss. */
+  left: var(--rand-sicher);
   text-align: center;
   /* 0,6 rem waren 2,5 mm Schrifthoehe - aus einem halben Meter Abstand kaum
      zu lesen, und ohne die Zeile weiss niemand, wozu der Code gut ist. */
@@ -1890,4 +1891,90 @@ html.handy-ansicht body {
 }
 .knopf-text:hover {
   opacity: 1;
+}
+
+/* Ordnerauswahl fuer die Uebergabe - ein Fenster ueber der Verwaltung. */
+.ordnerwahl {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.ordnerwahl__fenster {
+  background: var(--flaeche);
+  border: 1px solid var(--kante);
+  border-radius: 0.8rem;
+  padding: 1.2rem 1.4rem;
+  width: min(900px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ordnerwahl__pfad {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.ordnerwahl__pfad code {
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
+.ordnerwahl__liste {
+  list-style: none;
+  margin: 0 0 0.8rem;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  border: 1px solid var(--kante);
+  border-radius: 0.5rem;
+  min-height: 12rem;
+}
+
+.ordnerwahl__liste li + li {
+  border-top: 1px solid var(--kante);
+}
+
+/* Grosse Zeilen: Am Touchscreen wird mit dem Finger gewaehlt. */
+.ordnerwahl__liste button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.75rem 0.9rem;
+  background: none;
+  border: none;
+  color: var(--schrift);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ordnerwahl__liste button:hover,
+.ordnerwahl__liste button:focus-visible {
+  background: var(--flaeche-hell);
+}
+
+.ordnerwahl__frei {
+  margin-left: auto;
+  color: var(--schrift-leise);
+  font-size: 0.85rem;
+}
+
+.ordnerwahl__leer {
+  padding: 0.9rem;
+  color: var(--schrift-leise);
+}
+
+.ordnerwahl__fuss {
+  justify-content: flex-end;
 }

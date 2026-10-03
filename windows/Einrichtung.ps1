@@ -67,13 +67,16 @@ function Richte-AutostartEin {
 }
 
 function Richte-SystemEin {
-  # Eng begrenzt: nur dieser eine Port, nur im privaten Netzwerkprofil. Eine
-  # vorhandene Regel wird ersetzt - vorher kam bei jedem Lauf eine weitere
-  # gleichnamige Regel dazu.
+  # Eng begrenzt auf diesen einen Port - aber fuer alle Netzwerkprofile.
+  # Bis 1.0.4 nur "Privat": Windows 11 stuft ein neues WLAN jedoch als
+  # "Oeffentlich" ein, und die Galerie lud auf den Handys endlos. Offen ist
+  # der Port trotzdem nur, solange eine Veranstaltung die Galerie
+  # eingeschaltet hat - sonst hoert dort niemand zu. Eine vorhandene Regel
+  # wird ersetzt - vorher kam bei jedem Lauf eine weitere dazu.
   Get-NetFirewallRule -DisplayName $FIREWALL_NAME -ErrorAction SilentlyContinue | Remove-NetFirewallRule
   New-NetFirewallRule -DisplayName $FIREWALL_NAME -Direction Inbound -Action Allow -Protocol TCP `
-      -LocalPort $Port -Profile Private | Out-Null
-  Gut "Firewall-Freigabe fuer Port $Port (nur privates Netz)"
+      -LocalPort $Port -Profile Any | Out-Null
+  Gut "Firewall-Freigabe fuer Port $Port (alle Netzwerkprofile)"
 
   powercfg /change monitor-timeout-ac 0
   powercfg /change standby-timeout-ac 0

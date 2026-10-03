@@ -106,7 +106,7 @@ Du musst davon nichts tun — nur wissen, dass es passiert ist:
   selbst. Das Fenster des Servers liegt klein in der Taskleiste.
 - **Energiesparen aus:** Bildschirm und PC schlafen am Netzteil nicht ein.
 - **Keine Update-Neustarts**, solange jemand angemeldet ist.
-- **Firewall-Freigabe** für die Handy-Galerie (nur im privaten Netzwerk).
+- **Firewall-Freigabe** für die Handy-Galerie (in jedem Netzwerkprofil – Windows 11 stuft neue WLANs als „öffentlich“ ein).
 - **Desktop:** **„Fotobox starten“** (startet alles, was fehlt, und öffnet den
   Kiosk) und **„Fotobox Verwaltung“**.
 - **Startmenü → Fotobox:** dieselben beiden, dazu „Fotobox beenden“,
