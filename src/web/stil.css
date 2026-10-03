@@ -142,6 +142,30 @@ button {
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Platzhalter-Knoepfe im Vorlagen-Editor */
+.platzhalter-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--schrift-leise);
+}
+
+.platzhalter-knopf {
+  border: 1px solid var(--kante);
+  background: var(--flaeche-hell);
+  border-radius: 1rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.platzhalter-knopf:hover {
+  border-color: var(--akzent);
+}
+
 /* Vorschau des Startbildschirms in der Verwaltung, im Format des Touchscreens. */
 .hintergrund-vorschau {
   width: 22rem;

@@ -72,6 +72,17 @@ export interface FotoEbene extends EbeneBasis {
 
 export type TextAusrichtung = 'links' | 'mitte' | 'rechts';
 
+/**
+ * Platzhalter fuer Textebenen. Im Editor als Knoepfe zum Einfuegen, beim
+ * Zusammensetzen durch die Werte der laufenden Veranstaltung ersetzt.
+ */
+export const PLATZHALTER: { name: string; titel: string; beispiel: string }[] = [
+  { name: 'veranstaltung', titel: 'Name der Veranstaltung', beispiel: 'Hochzeit Anna & Ben' },
+  { name: 'datum', titel: 'Datum der Veranstaltung', beispiel: '30.09.2026' },
+  { name: 'uhrzeit', titel: 'Uhrzeit des Fotos', beispiel: '21:37' },
+  { name: 'nummer', titel: 'Fortlaufende Nummer', beispiel: '42' },
+];
+
 export interface TextEbene extends EbeneBasis {
   typ: 'text';
   /**

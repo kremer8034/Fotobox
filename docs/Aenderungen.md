@@ -19,6 +19,12 @@ ihn auf der Box verstehst.
   „Aussehen & PIN“ ein Bild auswählen. Es füllt den ganzen Bildschirm hinter
   Titel und Knöpfen; ein Regler dunkelt es ab, damit alles lesbar bleibt. Die
   Vorschau daneben zeigt, wie es aussieht.
+- **Textebenen im Vorlagen-Editor einfacher:** Text und Schriftart stehen
+  jetzt ganz oben bei der ausgewählten Ebene. Knöpfe fügen Name der
+  Veranstaltung, Datum, Uhrzeit oder eine fortlaufende Nummer ein, und darunter
+  steht, wie der Text im Ausdruck aussieht. Eine neue Textebene beginnt mit
+  „Euer Text“ statt einem unerklärten Platzhalter; ein Doppelklick auf einen
+  Text springt ins Textfeld.
 - Die Galerie am Touchscreen sagt im Probelauf, dass Testfotos dort nicht
   erscheinen, statt einfach leer zu sein.
 - Fehlt in digiCamControl eine Einstellung, sagen Übersicht und
