@@ -14,6 +14,9 @@ import {
   galerieEintraege,
   holeAusgabe,
   setzeVerborgen,
+  darfKioskLoeschen,
+  darfKioskVerschicken,
+  verwirfSitzung,
   vorschauBasis,
   starteSitzung,
   stelleFertig,
@@ -21,14 +24,13 @@ import {
   zahlDerFotos,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
-import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin } from '../fach/druckwarteschlange.js';
+import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin, verwirfAuftraegeVon } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
 import {
   adresseZuOft,
   drosselGreift,
   einwilligungstextFuer,
-  FOTO_FRISCH_MS,
   istOnline,
   leseMailzugang,
   pruefeAdresse,
@@ -323,10 +325,21 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     },
   );
 
-  app.post<{ Params: { id: string } }>('/api/kiosk/sitzung/:id/abbrechen', async (anfrage) => {
+  /**
+   * Sitzung abbrechen. Mit "verwerfen" (der Gast hat "Abbrechen" getippt)
+   * werden die Fotos geloescht - ohne (Neustart, Untaetigkeit) bleiben sie
+   * im Ordner, falls jemand doch danach fragt.
+   */
+  app.post<{ Params: { id: string }; Body: unknown }>('/api/kiosk/sitzung/:id/abbrechen', async (anfrage) => {
+    const { verwerfen } = z.object({ verwerfen: z.boolean().default(false) }).parse(anfrage.body ?? {});
     if (betrieb.aktiveSitzung?.id === anfrage.params.id) {
-      brichSitzungAb(anfrage.params.id);
       betrieb.aktiveSitzung = null;
+      if (verwerfen) {
+        const geloescht = await verwirfSitzung(anfrage.params.id);
+        protokolliere('info', 'sitzung', `Sitzung abgebrochen, ${geloescht} Foto(s) gelöscht.`);
+      } else {
+        brichSitzungAb(anfrage.params.id);
+      }
     }
     return { ok: true };
   });
@@ -419,6 +432,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         ausgabeId: z.string(),
         adresse: z.string().max(254),
         einwilligung: z.literal(true),
+        // Ergebnisseite: nur das gerade fertige Foto. Galerie am Touchscreen:
+        // jedes Foto, das dort ohnehin jeder sieht.
+        aus: z.enum(['ergebnis', 'galerie']).default('ergebnis'),
       })
       .parse(anfrage.body);
 
@@ -447,15 +463,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(429).send({ fehler: 'An diese Adresse sind heute schon genug Fotos gegangen.' });
     }
 
-    // Nur das Foto, das gerade eben fertig wurde - nicht jedes beliebige aus
-    // der Galerie, und keines, das der Gastgeber herausgenommen hat.
+    // Siehe darfKioskVerschicken. Die Route ist nur an der Box selbst
+    // erreichbar, nicht vom Handy.
     const ausgabe = holeAusgabe(koerper.ausgabeId);
-    if (
-      !ausgabe ||
-      ausgabe.eventId !== event.id ||
-      ausgabe.verborgen ||
-      Date.now() - Date.parse(ausgabe.erstellt) > FOTO_FRISCH_MS
-    ) {
+    if (!ausgabe || !darfKioskVerschicken(event.id, ausgabe.id, koerper.aus)) {
       return antwort.code(404).send({ fehler: 'Dieses Foto lässt sich nicht mehr verschicken.' });
     }
 
@@ -496,6 +507,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       // Galerie im Probelauf nicht wie ein Fehler aussieht, sagt sie das.
       probelauf: event.probelauf,
       nachdruckMoeglich: event.einstellungen.druckAktiv && !druckLimitErreicht(event.id),
+      // Wie auf der Ergebnisseite: der Knopf erscheint nur, wenn es auch geht.
+      emailMoeglich: event.einstellungen.emailAktiv && leseMailzugang() !== null && (await istOnline()),
+      einwilligungstext: einwilligungstextFuer(event),
       // Auch der Betreuer druckt nicht ueber das Druck-Limit hinaus.
       kopienMax: Math.min(event.einstellungen.kopienMax, limitRest ?? Infinity),
       bilder: galerieEintraege(event.id, { mitVerborgenen: anfrage.query.alle === '1' }).map((e) => ({
@@ -510,6 +524,28 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         ),
       })),
     };
+  });
+
+  /**
+   * Ergebnisseite: "Foto löschen". Das Bild verschwindet aus der Galerie
+   * (Touchscreen und Handys) und wird nicht mehr gedruckt. Nur fuer das
+   * gerade entstandene Foto - siehe darfKioskLoeschen. Die Dateien bleiben,
+   * im Servicemenue (mit PIN) laesst es sich zurueckholen.
+   */
+  app.post<{ Params: { id: string } }>('/api/kiosk/ausgabe/:id/loeschen', async (anfrage, antwort) => {
+    const event = holeAktivesEvent();
+    const ausgabe = holeAusgabe(anfrage.params.id);
+    if (!event || !ausgabe || ausgabe.eventId !== event.id || !darfKioskLoeschen(event.id, ausgabe.id)) {
+      return antwort.code(403).send({ fehler: 'Dieses Foto lässt sich hier nicht mehr löschen.' });
+    }
+    setzeVerborgen(ausgabe.id, true);
+    const verworfen = verwirfAuftraegeVon(ausgabe.id);
+    protokolliere(
+      'info',
+      'galerie',
+      `Foto ${ausgabe.id.slice(0, 8)} am Ergebnis gelöscht${verworfen > 0 ? `, ${verworfen} Druckauftrag verworfen` : ''}.`,
+    );
+    return { ok: true };
   });
 
   /**

@@ -36,10 +36,13 @@ type Zustand = 'eingabe' | 'senden' | 'fertig';
 export function EmailEingabe({
   ausgabeId,
   einwilligungstext,
+  aus = 'ergebnis',
   beiSchliessen,
 }: {
   ausgabeId: string;
   einwilligungstext: string;
+  /** Woher der Wunsch kommt - aus der Galerie darf jedes gezeigte Foto verschickt werden. */
+  aus?: 'ergebnis' | 'galerie';
   beiSchliessen: () => void;
 }) {
   const [adresse, setzeAdresse] = useState('');
@@ -146,7 +149,7 @@ export function EmailEingabe({
     setzeZustand('senden');
     setzeFehler(null);
     try {
-      await api.sende('/api/kiosk/email', { ausgabeId, adresse, einwilligung: true });
+      await api.sende('/api/kiosk/email', { ausgabeId, adresse, einwilligung: true, aus });
       setzeZustand('fertig');
     } catch (u) {
       // Die Texte vom Server sind schon fuer Gaeste geschrieben ("Diese Adresse

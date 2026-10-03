@@ -8,6 +8,8 @@ import { leseGeraet, schreibeGeraet, schreibeMailPasswort } from '../db/geraet.j
 import { aktualisiereEvent, erstelleEvent } from '../fach/events.js';
 import { wurzelpfade } from '../fach/pfade.js';
 import {
+  absenderKopf,
+  absenderVollstaendig,
   adresseZuOft,
   leseMailzugang,
   listeAdressen,
@@ -147,6 +149,37 @@ describe('Versand', () => {
     const listig = { ...event, name: 'Feier\r\nBcc: alle@firma.de' };
     await versende(listig, 'dora@web.de', layout, 'd1', zugang, 'x', t.fabrik);
     expect(String(t.gesendet[0]!.subject)).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe('Absender', () => {
+  it('ergaenzt einen blossen Namen um die Mailadresse aus dem Benutzernamen', () => {
+    // So eingetragen auf der Box: Name "Fotobox", Benutzer = Mailadresse.
+    expect(absenderKopf('Fotobox', 'fotobox@alexanderkremer.de')).toEqual({
+      name: 'Fotobox',
+      address: 'fotobox@alexanderkremer.de',
+    });
+    expect(absenderKopf(' Fotobox Großheubach ', 'fotobox@example.de')).toEqual({
+      name: 'Fotobox Großheubach',
+      address: 'fotobox@example.de',
+    });
+  });
+
+  it('laesst vollstaendige Angaben, wie sie sind', () => {
+    expect(absenderKopf('Fotobox <box@example.de>', 'login@example.de')).toBe('Fotobox <box@example.de>');
+    expect(absenderKopf('box@example.de', 'login')).toBe('box@example.de');
+  });
+
+  it('weist einen Namen ohne jede Adresse ab', () => {
+    expect(absenderVollstaendig('Fotobox', 'fotobox@example.de')).toBe(true);
+    expect(absenderVollstaendig('Fotobox', 'kunde4711')).toBe(false);
+    expect(absenderVollstaendig('Fotobox <box@example.de>', 'kunde4711')).toBe(true);
+  });
+
+  it('setzt den Absender in die Mail', async () => {
+    const t = testTransport();
+    await versende(event, 'bert@web.de', layout, 'a9', { ...zugang, absender: 'Fotobox' }, 'Ja.', t.fabrik);
+    expect(t.gesendet[0]!.from).toEqual({ name: 'Fotobox', address: 'fotobox@example.de' });
   });
 });
 

@@ -4,6 +4,61 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.6
+
+- **14 neue, kräftige Filter:** Pop-Art, Warhol, Comic, Neon-Nacht, Wärmebild,
+  Glitch, Pink & Blau, Gold, Alien, Infrarot, Solar, Lomo, 70er und Film Noir.
+  Sie verändern das Foto deutlich – Farbflächen wie im Siebdruck,
+  Wärmekamera-Farben, verschobene Farbkanäle, Filmkorn, grüne Alien-Haut.
+  Damit sie die Gäste sehen, in der Veranstaltung unter „Vorlagen & Filter“
+  anhaken.
+- **Foto am Ergebnis löschen:** Neben „Fertig“ gibt es „Löschen“ (mit
+  Rückfrage). Das Foto wird nicht gedruckt – ein schon angestoßener Druck,
+  der noch wartet, wird verworfen – und erscheint in keiner Galerie. Löschen
+  lässt sich nur das gerade entstandene Foto; in der Galerie gibt es den
+  Knopf bewusst nicht. Wer sich vertan hat: Im Servicemenü unter „Galerie“
+  lässt es sich zurückholen.
+- **Handy-Galerie: „Teilen“:** Neben „Aufs Handy laden“ ein Teilen-Knopf.
+  Weil die Galerie ohne Internet im WLAN der Box läuft, lassen Handys das
+  direkte Teilen aus der Seite meist nicht zu; dann erklärt der Knopf den
+  Weg: Foto gedrückt halten und „Teilen“ wählen – das öffnet WhatsApp,
+  OneDrive & Co.
+- **E-Mail ohne Mailserver:** Ist E-Mail in der Veranstaltung an, aber unter
+  Gerät kein Mailserver eingetragen, erscheint der Knopf „Per E-Mail
+  schicken“ nicht. Das steht jetzt unter „Ausgabe“ und im Startbereit-Check,
+  statt still zu passieren.
+- **E-Mail aus der Galerie:** In der Galerie am Touchscreen hat jedes Foto
+  jetzt auch „Per E-Mail schicken“ – nicht nur das gerade entstandene auf der
+  Ergebnisseite. Es gelten dieselben Grenzen (Einwilligung, höchstens drei
+  Mails je Adresse und Tag, Tageslimit); Fotos, die der Gastgeber aus der
+  Galerie genommen hat, lassen sich nicht verschicken.
+- **Absender in der Mail:** Stand unter „Absender“ nur ein Name wie
+  „Fotobox“, kam die Mail ohne lesbaren Absender an. Ist der Benutzername
+  eine Mailadresse, wird daraus jetzt „Fotobox <adresse>“. Ein Name ohne
+  jede Adresse lässt sich nicht mehr speichern.
+- **„Bitte lächeln!“ bildschirmfüllend:** Vom Auslösen, bis das Foto zu
+  sehen ist, wird der ganze Bildschirm weiß, die Schrift schwarz und groß,
+  dazu ein großer Pfeil nach unten zur Kamera und „Nicht bewegen, bis das
+  Foto erscheint“. Kamera und Übertragung brauchen ein, zwei Sekunden – so
+  bleibt die Gruppe in Pose, statt sich vom weiterlaufenden Live-Bild
+  täuschen zu lassen. Die weiße Fläche hellt nebenbei die Gesichter auf.
+- **Filterauswahl: „Abbrechen“:** Unten rechts zurück zum Start, ohne einen
+  Filter wählen zu müssen. Die gerade gemachten Fotos werden dabei gelöscht –
+  sie werden nicht gespeichert, zählen nirgends mit und erscheinen in keiner
+  Galerie. Dasselbe gilt jetzt für „Abbrechen“ während der Aufnahme. Bricht
+  die Box nach drei Minuten ohne Berührung von selbst ab, bleiben die Fotos
+  wie bisher im Ordner.
+- **Viele Filter:** Sind mehr als zwölf Filter freigegeben, verteilt die
+  Auswahl sie auf mehr Spalten statt auf mehr Zeilen – die Vorschaubilder
+  bleiben groß genug zum Erkennen.
+- **Filtervorschau mit echtem Foto:** Unter „Filter“ in der Verwaltung (und
+  am Kiosk, solange es noch kein eigenes Foto gibt) zeigt jede Kachel den
+  Filter an einem Fotobox-Bild zweier Gäste statt an bunten Kreisen – so
+  sieht man, was er mit Gesichtern und Farben macht.
+- **Kalibrierung zurücksetzen nur nach Rückfrage:** „Zurücksetzen …“ fragt
+  erst nach und nennt die Werte, die verloren gingen. Ein versehentlicher
+  Klick löscht keine mühsam justierten Werte mehr.
+
 ## 1.0.5
 
 - **Papiervorrat vom Drucker – jetzt auch mit PrinterInfo unter C:\DNPPIA:**

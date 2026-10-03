@@ -36,6 +36,27 @@ export interface Mailzugang {
   absender: string;
 }
 
+const NUR_ADRESSE = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/;
+
+/**
+ * Der Absender, wie er in die Mail gehoert. Eine Mail braucht als Absender
+ * immer eine Adresse - nur "Fotobox" einzutragen, ergab Mails ohne
+ * Absenderkennung (so auf der Box: Das Postfach zeigte gar keinen Absender).
+ * Steht im Feld nur ein Name, kommt die Adresse aus dem Benutzernamen dazu:
+ * "Fotobox" + fotobox@example.de -> "Fotobox" <fotobox@example.de>.
+ */
+export function absenderKopf(absender: string, benutzer: string): string | { name: string; address: string } {
+  const text = absender.trim();
+  if (/<[^<>\s@]+@[^<>\s]+>/.test(text) || NUR_ADRESSE.test(text)) return text;
+  if (NUR_ADRESSE.test(benutzer.trim())) return { name: text, address: benutzer.trim() };
+  return text;
+}
+
+/** Hat der Absender eine Mailadresse - selbst oder ueber den Benutzernamen? */
+export function absenderVollstaendig(absender: string, benutzer: string): boolean {
+  return typeof absenderKopf(absender, benutzer) !== 'string' || /@/.test(absender);
+}
+
 /** Die Adresspruefung liegt in shared/adresse.ts - der Kiosk prueft mit derselben Regel. */
 export { pruefeAdresse };
 
@@ -177,7 +198,7 @@ export async function versende(
 
   try {
     await transport.sendMail({
-      from: zugang.absender,
+      from: absenderKopf(zugang.absender, zugang.benutzer),
       // Als Objekt statt als Text: Dann wird die Adresse nicht noch einmal
       // als Empfaengerliste gedeutet.
       to: { name: '', address: adresse },
@@ -206,7 +227,7 @@ export async function sendeTestmail(
   const transport = fabrik(transportOptionen(zugang));
   try {
     await transport.sendMail({
-      from: zugang.absender,
+      from: absenderKopf(zugang.absender, zugang.benutzer),
       to: { name: '', address: an },
       subject: 'Testmail der Fotobox',
       text: 'Der E-Mail-Versand der Fotobox funktioniert. Die Verbindung war verschlüsselt.',

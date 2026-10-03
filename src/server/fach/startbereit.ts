@@ -1,3 +1,4 @@
+import { istOnline, leseMailzugang } from './email.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { leseGeraet } from '../db/geraet.js';
@@ -127,6 +128,24 @@ export async function startbereitPruefung(
           ? `${event.einstellungen.vorlagen.length} Vorlage(n) freigegeben.`
           : 'Der Veranstaltung ist keine Vorlage zugeordnet.',
   });
+
+  // E-Mail an, aber kein Mailserver: Der Knopf "Per E-Mail schicken" fehlt
+  // dann still - so auf der Box geschehen. Jetzt steht hier, warum.
+  if (event.einstellungen.emailAktiv) {
+    const zugang = leseMailzugang() !== null;
+    const online = zugang ? await istOnline() : false;
+    punkte.push({
+      schluessel: 'email',
+      titel: 'E-Mail-Versand eingerichtet',
+      bestanden: zugang && online,
+      nurWarnung: true,
+      hinweis: !zugang
+        ? 'Kein Mailserver eingetragen (Gerät → E-Mail). Solange erscheint der Knopf „Per E-Mail schicken“ nicht.'
+        : online
+          ? 'Mailserver eingetragen, die Box ist online.'
+          : 'Die Box ist gerade offline. Der Knopf „Per E-Mail schicken“ erscheint erst mit Internet.',
+    });
+  }
 
   if (event.einstellungen.galerieAktiv) {
     await aktualisiereRoutenAdresse();

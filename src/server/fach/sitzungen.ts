@@ -10,6 +10,7 @@ import { miniatur } from '../bild/vorschau.js';
 import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
 import { holeVorlage } from './vorlagen.js';
+import { FOTO_FRISCH_MS } from './email.js';
 import { fotoEbenen, type Ausgabe, type Veranstaltung, type Vorlage } from '../../shared/typen.js';
 
 /**
@@ -154,6 +155,38 @@ export function brichSitzungAb(sitzungId: string): void {
   // beendet, damit die Box wieder frei ist.
   holeDb().prepare('UPDATE sitzungen SET beendet = ? WHERE id = ?').run(jetzt(), sitzungId);
   vergiss(sitzungId);
+}
+
+/**
+ * Der Gast hat "Abbrechen" getippt: Die Sitzung verschwindet ganz - Fotos
+ * von der Platte, Sitzung aus der Datenbank. Sie zaehlt nirgends mit und
+ * taucht in keiner Galerie auf. Gibt es schon ein fertiges Bild, bleibt
+ * alles stehen (das loescht man auf der Ergebnisseite). Liefert die Zahl
+ * der geloeschten Fotos.
+ */
+export async function verwirfSitzung(sitzungId: string): Promise<number> {
+  const db = holeDb();
+  vergiss(sitzungId);
+  const fertig = db.prepare('SELECT 1 FROM ausgaben WHERE sitzung_id = ? LIMIT 1').get(sitzungId);
+  if (fertig) {
+    brichSitzungAb(sitzungId);
+    return 0;
+  }
+  const fotos = db.prepare('SELECT pfad_original, pfad_bearbeitet FROM fotos WHERE sitzung_id = ?').all(sitzungId) as {
+    pfad_original: string;
+    pfad_bearbeitet: string | null;
+  }[];
+  db.transaction(() => {
+    db.prepare('DELETE FROM fotos WHERE sitzung_id = ?').run(sitzungId);
+    db.prepare('DELETE FROM sitzungen WHERE id = ?').run(sitzungId);
+  })();
+  for (const f of fotos) {
+    for (const pfad of [f.pfad_original, f.pfad_bearbeitet]) {
+      // Schon weg ist auch recht.
+      if (pfad) await unlink(pfad).catch(() => undefined);
+    }
+  }
+  return fotos.length;
 }
 
 /**
@@ -353,6 +386,41 @@ export function galerieEintraege(
     erstellt: z.erstellt,
     verborgen: z.verborgen === 1,
   }));
+}
+
+/**
+ * Darf der Kiosk dieses Foto loeschen? Nur das gerade entstandene: das
+ * juengste der laufenden Veranstaltung, hoechstens eine Viertelstunde alt.
+ * So kann am Touchscreen niemand die Fotos anderer Gaeste verschwinden
+ * lassen - fuer aeltere Bilder gibt es das Servicemenue mit PIN.
+ */
+export function darfKioskLoeschen(eventId: string, ausgabeId: string, jetztMs = Date.now()): boolean {
+  const zeile = holeDb()
+    .prepare(
+      `SELECT a.id, a.erstellt FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id
+        WHERE s.event_id = ? ORDER BY a.erstellt DESC LIMIT 1`,
+    )
+    .get(eventId) as { id: string; erstellt: string } | undefined;
+  if (!zeile || zeile.id !== ausgabeId) return false;
+  return jetztMs - new Date(zeile.erstellt).getTime() <= 15 * 60_000;
+}
+
+/**
+ * Darf dieses Foto am Kiosk per E-Mail verschickt werden? Von der
+ * Ergebnisseite nur das gerade fertige (FOTO_FRISCH_MS), aus der Galerie jedes,
+ * das dort steht - also nie ein Probelauf-Foto und keines, das der Gastgeber
+ * herausgenommen hat.
+ */
+export function darfKioskVerschicken(
+  eventId: string,
+  ausgabeId: string,
+  aus: 'ergebnis' | 'galerie',
+  jetztMs = Date.now(),
+): boolean {
+  const ausgabe = holeAusgabe(ausgabeId);
+  if (!ausgabe || ausgabe.eventId !== eventId || ausgabe.verborgen) return false;
+  if (aus === 'galerie') return galerieEintraege(eventId).some((e) => e.ausgabeId === ausgabeId);
+  return jetztMs - Date.parse(ausgabe.erstellt) <= FOTO_FRISCH_MS;
 }
 
 export function holeAusgabe(

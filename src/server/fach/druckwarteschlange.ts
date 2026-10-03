@@ -27,6 +27,9 @@ import { druckerBlockiert, type DruckerStatus, type DruckerTreiber } from '../tr
  * bis der Drucker bereit ist, und Windows bekommt nie mehr als zwei auf einmal.
  */
 
+/** Fehldrucke nachholen - aber keine Fotos, die am Ergebnis geloescht oder aus der Galerie genommen wurden. */
+const NICHT_GELOESCHT = 'AND (ausgabe_id IS NULL OR ausgabe_id NOT IN (SELECT id FROM ausgaben WHERE verborgen = 1))';
+
 /** So viele Auftraege duerfen gleichzeitig bei Windows liegen. */
 const HOECHSTENS_BEIM_SYSTEM = 2;
 /** Bewegt sich bei Windows so lange nichts, klemmt etwas. Ein Blatt dauert
@@ -272,16 +275,16 @@ export class Druckschleife {
     this.letzterFehler = null;
     const db = holeDb();
     if (eventId) {
-      db.prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen' AND event_id = ?").run(
-        eventId,
-      );
+      db.prepare(
+        `UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen' AND event_id = ? ${NICHT_GELOESCHT}`,
+      ).run(eventId);
       return (
         db
           .prepare("SELECT COUNT(*) AS n FROM druckauftraege WHERE status IN ('wartend','laeuft') AND event_id = ?")
           .get(eventId) as { n: number }
       ).n;
     }
-    db.prepare("UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen'").run();
+    db.prepare(`UPDATE druckauftraege SET status = 'wartend' WHERE status = 'fehlgeschlagen' ${NICHT_GELOESCHT}`).run();
     return offeneAuftraege();
   }
 
@@ -380,6 +383,21 @@ export function letzteAuftraege(anzahl = 15): {
 }
 
 /** Alle noch wartenden Auftraege verwerfen - sie werden nicht mehr gedruckt. */
+/**
+ * Ein Foto wurde am Ergebnis geloescht: Was davon noch auf den Druck wartet,
+ * wird nicht mehr gedruckt und nicht berechnet. Schon Gedrucktes bleibt
+ * gezaehlt - das Blatt ist ja verbraucht.
+ */
+export function verwirfAuftraegeVon(ausgabeId: string): number {
+  return holeDb()
+    .prepare(
+      `UPDATE druckauftraege SET status = 'fehlgeschlagen', berechnen = 0,
+              fehlertext = 'Nicht gedruckt: Das Foto wurde am Ergebnis gelöscht.'
+        WHERE ausgabe_id = ? AND status = 'wartend'`,
+    )
+    .run(ausgabeId).changes;
+}
+
 export function verwirfWartende(): number {
   return holeDb()
     .prepare(

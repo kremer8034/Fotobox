@@ -210,7 +210,14 @@ export type FilterOperation =
   | { op: 'tonung'; farbe: string; staerke: number }
   | { op: 'farbmatrix'; matrix: [number, number, number, number, number, number, number, number, number] }
   | { op: 'vignette'; staerke: number }
-  | { op: 'lut'; datei: string };
+  | { op: 'lut'; datei: string }
+  // Effekte auf dem Rohpuffer (bild/effekte.ts) - fuer die kraeftigen Looks.
+  | { op: 'posterisieren'; stufen: number }
+  | { op: 'verlaufskarte'; farben: string[]; stufen?: number }
+  | { op: 'teiltonung'; schatten: string; lichter: string; staerke: number }
+  | { op: 'koernung'; staerke: number }
+  | { op: 'kanalversatz'; staerke: number }
+  | { op: 'solarisation'; schwelle: number };
 
 export interface FilterPreset {
   id: string;

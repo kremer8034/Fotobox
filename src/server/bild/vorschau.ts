@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import { fotoEbenen, type FilterPreset, type Vorlage } from '../../shared/typen.js';
 import { baueLayout, layoutMasse } from './layout.js';
@@ -123,7 +124,23 @@ async function platzhalterFlaeche(nummer: number): Promise<Buffer> {
   return sharp(Buffer.from(svg)).jpeg({ quality: 88 }).toBuffer();
 }
 
+/**
+ * Das Musterfoto der Filterseite: zwei Gaeste in einer Fotobox vor
+ * Lichterkette und Blumen - Hauttoene, kraeftige Kleidung, helle und dunkle
+ * Flaechen. Daran sieht man, was ein Filter mit echten Gesichtern macht.
+ * Liegt neben dieser Datei; fehlt es, springt das gezeichnete Muster ein.
+ */
+const MUSTER_DATEI = new URL('./muster-fotobox.jpg', import.meta.url);
+
 async function musterFoto(): Promise<Buffer> {
+  try {
+    return await miniatur(await readFile(MUSTER_DATEI));
+  } catch {
+    return gezeichnetesMuster();
+  }
+}
+
+async function gezeichnetesMuster(): Promise<Buffer> {
   const k = FILTER_KANTE;
   const svg = `<svg width="${k}" height="${k}" xmlns="http://www.w3.org/2000/svg">
     <defs>

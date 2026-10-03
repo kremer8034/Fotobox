@@ -2,11 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useZeitgeber } from './zeitgeber.js';
 import { api } from '../api.js';
 import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
+import { EmailEingabe } from './Email.js';
 
 interface GalerieDaten {
   veranstaltung?: string;
   probelauf?: boolean;
   nachdruckMoeglich?: boolean;
+  emailMoeglich?: boolean;
+  einwilligungstext?: string;
   kopienMax?: number;
   bilder: { id: string; erstellt: string; verborgen?: boolean; restKopien?: number }[];
 }
@@ -84,6 +87,9 @@ export function Galerie({
         <Einzelbild
           id={offen}
           nachdruckMoeglich={daten?.nachdruckMoeglich ?? false}
+          // Betreuer verschicken keine Mails im Namen der Gaeste.
+          emailMoeglich={!betreuung && (daten?.emailMoeglich ?? false)}
+          einwilligungstext={daten?.einwilligungstext ?? ''}
           // Gaeste: nur, was von "maximale Kopien" fuer dieses Foto noch uebrig
           // ist. Betreuer: je Druck bis zur Obergrenze, ohne Anrechnung.
           kopienMax={
@@ -172,6 +178,8 @@ export function Galerie({
 function Einzelbild({
   id,
   nachdruckMoeglich,
+  emailMoeglich,
+  einwilligungstext,
   kopienMax,
   beiZurueck,
   beiGedruckt,
@@ -181,6 +189,8 @@ function Einzelbild({
 }: {
   id: string;
   nachdruckMoeglich: boolean;
+  emailMoeglich: boolean;
+  einwilligungstext: string;
   kopienMax: number;
   beiZurueck: () => void;
   beiGedruckt: () => void;
@@ -190,6 +200,7 @@ function Einzelbild({
 }) {
   const [kopien, setzeKopien] = useState(1);
   const [meldung, setzeMeldung] = useState<string | null>(null);
+  const [emailOffen, setzeEmailOffen] = useState(false);
 
   async function umschalten() {
     try {
@@ -236,10 +247,23 @@ function Einzelbild({
             </button>
           </>
         )}
+        {emailMoeglich && (
+          <button className="knopf" onClick={() => setzeEmailOffen(true)}>
+            Per E-Mail schicken
+          </button>
+        )}
         <button className="knopf" onClick={beiZurueck}>
           Zurück
         </button>
       </div>
+      {emailOffen && (
+        <EmailEingabe
+          ausgabeId={id}
+          einwilligungstext={einwilligungstext}
+          aus="galerie"
+          beiSchliessen={() => setzeEmailOffen(false)}
+        />
+      )}
       {druck.quittung && (
         <Quittung
           text={druck.quittung.text}

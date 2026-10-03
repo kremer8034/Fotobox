@@ -1,6 +1,7 @@
 import sharp, { type Sharp } from 'sharp';
 import { join } from 'node:path';
 import { ladeLut, wendeLutAn, type Lut } from './lut.js';
+import { istRohOperation, wendeRohAn, type Roh, type RohOperation } from './effekte.js';
 import {
   FILTER_OHNE,
   type FilterOperation,
@@ -78,6 +79,8 @@ export async function wendeFilterAn(
   let lutDatei: string | null = null;
   let affin = EINHEIT;
   let einfarbig = false;
+  // Effekte auf dem Rohpuffer laufen nach der sharp-Kette, in ihrer Reihenfolge.
+  const rohSchritte: RohOperation[] = [];
 
   // Eine Toenung ersetzt die Farben ohnehin durch ihren Ton. Ein Graustufen-
   // Schritt davor macht das Bild in sharp einkanalig - und dann geht die
@@ -87,6 +90,10 @@ export async function wendeFilterAn(
   for (const operation of preset.operationen) {
     if (operation.op === 'graustufen' && hatToenung) {
       einfarbig = true;
+      continue;
+    }
+    if (istRohOperation(operation)) {
+      rohSchritte.push(operation);
       continue;
     }
     const schritt = alsAffin(operation);
@@ -101,19 +108,21 @@ export async function wendeFilterAn(
   }
   bild = wendeAffinAn(bild, affin, einfarbig);
 
-  if (!lutDatei && vignetteStaerke <= 0) return bild.jpeg({ quality: 92 }).toBuffer();
+  if (!lutDatei && vignetteStaerke <= 0 && rohSchritte.length === 0) return bild.jpeg({ quality: 92 }).toBuffer();
 
   // LUT und Vignette brauchen das fertig gefilterte Bild: sharp fuehrt seine
   // Schritte in fester Reihenfolge aus, und das Ueberlagern kaeme dort vor
   // Kontrast und Tonung. Zwischendurch geht es als Rohpuffer weiter, nicht als
   // JPEG - das spart auf dem N100 ein Kodieren und Dekodieren je Foto.
   const { data, info } = await bild.raw().toBuffer({ resolveWithObject: true });
+  let roh: Roh = { data, width: info.width, height: info.height, channels: info.channels };
+  for (const schritt of rohSchritte) roh = wendeRohAn(roh, schritt);
   if (lutDatei) {
     const lut = await holeLut(kontext.lutOrdner, lutDatei);
-    wendeLutAn(data, info.channels, lut);
+    wendeLutAn(roh.data, roh.channels, lut);
   }
-  let ergebnis = sharp(data, {
-    raw: { width: info.width, height: info.height, channels: info.channels },
+  let ergebnis = sharp(roh.data, {
+    raw: { width: roh.width, height: roh.height, channels: roh.channels as 1 | 2 | 3 | 4 },
   });
   if (vignetteStaerke > 0) {
     ergebnis = ergebnis.composite([
@@ -244,7 +253,13 @@ function anwenden(bild: Sharp, operation: FilterOperation): Sharp {
       // Laufen zusammengefasst ueber wendeAffinAn().
     case 'vignette':
     case 'lut':
-      // Beide werden ausserhalb der sharp-Kette behandelt.
+    case 'posterisieren':
+    case 'verlaufskarte':
+    case 'teiltonung':
+    case 'koernung':
+    case 'kanalversatz':
+    case 'solarisation':
+      // Werden ausserhalb der sharp-Kette behandelt.
       return bild;
   }
 }
@@ -329,6 +344,151 @@ export const EINGEBAUTE_FILTER: FilterPreset[] = [
       { op: 'helligkeit', wert: 1.15 },
       { op: 'kontrast', wert: 0.9 },
       { op: 'saettigung', wert: 0.9 },
+    ],
+  },
+
+  // --- Die kraeftigen Looks: veraendern das Foto deutlich, nicht nur ein wenig.
+  {
+    id: 'pop-art',
+    name: 'Pop-Art',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 1.9 },
+      { op: 'kontrast', wert: 1.3 },
+      { op: 'posterisieren', stufen: 5 },
+    ],
+  },
+  {
+    id: 'warhol',
+    name: 'Warhol',
+    eingebaut: true,
+    operationen: [
+      { op: 'kontrast', wert: 1.25 },
+      { op: 'verlaufskarte', farben: ['#1d1d6b', '#e6007e', '#ffde00', '#fff8e7'], stufen: 4 },
+    ],
+  },
+  {
+    id: 'neon',
+    name: 'Neon-Nacht',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 1.4 },
+      { op: 'kontrast', wert: 1.2 },
+      { op: 'teiltonung', schatten: '#3a00ff', lichter: '#ff2fb0', staerke: 0.6 },
+      { op: 'vignette', staerke: 0.5 },
+    ],
+  },
+  {
+    id: 'waermebild',
+    name: 'Wärmebild',
+    eingebaut: true,
+    operationen: [
+      { op: 'kontrast', wert: 1.15 },
+      { op: 'verlaufskarte', farben: ['#000010', '#2b00a8', '#c000c0', '#ff2a00', '#ff9a00', '#ffff40', '#ffffff'] },
+    ],
+  },
+  {
+    id: 'glitch',
+    name: 'Glitch',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 1.3 },
+      { op: 'kontrast', wert: 1.15 },
+      { op: 'kanalversatz', staerke: 0.012 },
+      { op: 'koernung', staerke: 0.18 },
+    ],
+  },
+  {
+    id: 'comic',
+    name: 'Comic',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 1.6 },
+      { op: 'kontrast', wert: 1.45 },
+      { op: 'posterisieren', stufen: 3 },
+    ],
+  },
+  {
+    id: 'duoton-pink',
+    name: 'Pink & Blau',
+    eingebaut: true,
+    operationen: [
+      { op: 'kontrast', wert: 1.15 },
+      { op: 'verlaufskarte', farben: ['#1b1464', '#ff2d95', '#ffe3f1'] },
+    ],
+  },
+  {
+    id: 'gold',
+    name: 'Gold',
+    eingebaut: true,
+    operationen: [
+      { op: 'kontrast', wert: 1.1 },
+      { op: 'verlaufskarte', farben: ['#140c02', '#8a5a00', '#e8b84a', '#fff6d6'] },
+      { op: 'vignette', staerke: 0.4 },
+    ],
+  },
+  {
+    id: 'alien',
+    name: 'Alien',
+    eingebaut: true,
+    operationen: [
+      { op: 'farbton', grad: 150 },
+      { op: 'saettigung', wert: 1.5 },
+      { op: 'kontrast', wert: 1.15 },
+    ],
+  },
+  {
+    id: 'infrarot',
+    name: 'Infrarot',
+    eingebaut: true,
+    operationen: [
+      // Rot und Gruen getauscht: Haut wird blass, Kleidung und Pflanzen leuchten.
+      { op: 'farbmatrix', matrix: [0.1, 1.0, 0, 0.9, 0.1, 0, 0, 0, 1.05] },
+      { op: 'saettigung', wert: 1.35 },
+      { op: 'kontrast', wert: 1.1 },
+    ],
+  },
+  {
+    id: 'solar',
+    name: 'Solar',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 1.3 },
+      { op: 'solarisation', schwelle: 0.6 },
+      { op: 'kontrast', wert: 1.25 },
+    ],
+  },
+  {
+    id: 'lomo',
+    name: 'Lomo',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 1.45 },
+      { op: 'kontrast', wert: 1.3 },
+      { op: 'teiltonung', schatten: '#003a5c', lichter: '#ffd27a', staerke: 0.5 },
+      { op: 'vignette', staerke: 1 },
+    ],
+  },
+  {
+    id: 'retro70',
+    name: '70er',
+    eingebaut: true,
+    operationen: [
+      { op: 'saettigung', wert: 0.8 },
+      { op: 'kontrast', wert: 0.88 },
+      { op: 'teiltonung', schatten: '#4a2a6e', lichter: '#ff9d3c', staerke: 0.7 },
+      { op: 'koernung', staerke: 0.16 },
+    ],
+  },
+  {
+    id: 'noir',
+    name: 'Film Noir',
+    eingebaut: true,
+    operationen: [
+      { op: 'graustufen' },
+      { op: 'kontrast', wert: 1.6 },
+      { op: 'koernung', staerke: 0.22 },
+      { op: 'vignette', staerke: 0.8 },
     ],
   },
 ];
