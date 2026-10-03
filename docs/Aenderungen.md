@@ -4,6 +4,36 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.2
+
+- **Kamera-Verbindung repariert:** Die Fotobox erreichte digiCamControl nicht,
+  obwohl die Kamera dort verbunden war, und startete das Programm alle zwei
+  Minuten neu – es sprang dabei jedes Mal vor den Kiosk. Jetzt spricht sie
+  digiCamControl richtig an, startet es nicht mehr endlos neu und minimiert
+  sein Fenster, sobald es antwortet.
+- **Drucker aus einer Liste wählen:** Unter Gerät → Drucker stehen jetzt alle
+  Drucker, die Windows kennt, der DNP-Drucker oben mit ★. Kein Abtippen des
+  Namens mehr. Stimmt der eingetragene Name nicht und gibt es genau einen
+  DNP-Drucker, trägt die Box ihn beim Start selbst ein.
+- **Hintergrundbild für den Startbildschirm:** In der Veranstaltung unter
+  „Aussehen & PIN“ ein Bild auswählen. Es füllt den ganzen Bildschirm hinter
+  Titel und Knöpfen; ein Regler dunkelt es ab, damit alles lesbar bleibt. Die
+  Vorschau daneben zeigt, wie es aussieht.
+- **Textebenen im Vorlagen-Editor einfacher:** Text und Schriftart stehen
+  jetzt ganz oben bei der ausgewählten Ebene. Knöpfe fügen Name der
+  Veranstaltung, Datum, Uhrzeit oder eine fortlaufende Nummer ein, und darunter
+  steht, wie der Text im Ausdruck aussieht. Eine neue Textebene beginnt mit
+  „Euer Text“ statt einem unerklärten Platzhalter; ein Doppelklick auf einen
+  Text springt ins Textfeld.
+- Die Galerie am Touchscreen sagt im Probelauf, dass Testfotos dort nicht
+  erscheinen, statt einfach leer zu sein.
+- Fehlt in digiCamControl eine Einstellung, sagen Übersicht und
+  Startbereit-Check jetzt genau, welcher Haken unter File → Settings →
+  Webserver fehlt.
+- Das Schloss oben rechts am Kiosk ist jetzt als kleiner runder Knopf zu
+  sehen. Gedrückt halten füllt einen Ring – nach zwei Sekunden kommt die
+  PIN-Abfrage. Ein kurzes Antippen bewirkt weiterhin nichts.
+
 ## 1.0.1
 
 Wartungsversion: alle Bausteine auf dem neuesten Stand. Für dich ändert sich

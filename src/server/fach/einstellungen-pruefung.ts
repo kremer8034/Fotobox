@@ -58,6 +58,9 @@ export const EINSTELLUNGEN_EINGABE = z
     startUntertitel: text('Untertitel', 160),
     logoDatei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/).optional(),
     farbeAkzent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Akzentfarbe als #RRGGBB.'),
+    // Nur Namen, die der Server beim Hochladen selbst vergeben hat.
+    hintergrundDatei: z.string().regex(/^[0-9a-f-]{36}\.jpg$/).nullable(),
+    hintergrundAbdunkeln: ganz('Abdunkeln', 0, 80),
     fokus: z.enum(['fest', 'vor-jedem-foto']),
     einwilligungstext: z
       .string()

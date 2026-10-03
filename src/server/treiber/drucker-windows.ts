@@ -121,3 +121,70 @@ export function deuteStatus(roh: string): DruckerStatus {
   if (status === 7) return mit({ zustand: 'offline', meldung: 'Windows meldet den Drucker als offline.' });
   return mit({ zustand: 'unbekannt', meldung: `Windows meldet Status ${statusText}.` });
 }
+
+/** Ein Drucker, wie Windows ihn kennt. */
+export interface GefundenerDrucker {
+  name: string;
+  treiber: string;
+  anschluss: string;
+  offline: boolean;
+  /** Sieht nach dem DNP-Fotodrucker aus. */
+  dnp: boolean;
+}
+
+/**
+ * Alle Drucker, die Windows kennt - fuer die Auswahl in der Verwaltung.
+ * Vorher musste der Name von Hand eingetragen werden, und ein Zeichen daneben
+ * hiess: "Der Drucker meldet sich gerade nicht", obwohl er bereitstand.
+ */
+export async function listeWindowsDrucker(): Promise<GefundenerDrucker[]> {
+  const { stdout } = await fuehreAus(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      '[Console]::OutputEncoding = [Text.Encoding]::UTF8;' +
+        ' @(Get-CimInstance Win32_Printer | Select-Object Name, DriverName, PortName, WorkOffline)' +
+        ' | ConvertTo-Json -Compress',
+    ],
+    { timeout: 15_000, windowsHide: true },
+  );
+  return deuteDruckerliste(stdout);
+}
+
+/** Die JSON-Antwort von PowerShell deuten - ein einzelner Drucker kommt als Objekt, mehrere als Liste. */
+export function deuteDruckerliste(json: string): GefundenerDrucker[] {
+  const text = json.trim();
+  if (!text) return [];
+  const roh: unknown = JSON.parse(text);
+  const liste = (Array.isArray(roh) ? roh : [roh]) as Record<string, unknown>[];
+  return liste
+    .filter((d) => typeof d?.Name === 'string' && d.Name !== '')
+    .map((d) => {
+      const name = String(d.Name);
+      const treiber = typeof d.DriverName === 'string' ? d.DriverName : '';
+      return {
+        name,
+        treiber,
+        anschluss: typeof d.PortName === 'string' ? d.PortName : '',
+        offline: d.WorkOffline === true,
+        dnp: istDnp(name, treiber),
+      };
+    })
+    .sort((a, b) => Number(b.dnp) - Number(a.dnp) || a.name.localeCompare(b.name, 'de'));
+}
+
+export function istDnp(name: string, treiber: string): boolean {
+  return /\bDNP\b|DS-?RX1|DS-?40|DS-?80|DS620|QW410/i.test(`${name} ${treiber}`);
+}
+
+/**
+ * Den passenden Drucker vorschlagen: Ist der eingetragene in Windows nicht
+ * (mehr) vorhanden und gibt es genau einen DNP-Drucker, dann den.
+ */
+export function druckerVorschlag(eingetragen: string, gefunden: GefundenerDrucker[]): string | null {
+  if (gefunden.some((d) => d.name === eingetragen)) return null;
+  const dnp = gefunden.filter((d) => d.dnp);
+  return dnp.length === 1 ? dnp[0]!.name : null;
+}

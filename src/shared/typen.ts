@@ -72,6 +72,17 @@ export interface FotoEbene extends EbeneBasis {
 
 export type TextAusrichtung = 'links' | 'mitte' | 'rechts';
 
+/**
+ * Platzhalter fuer Textebenen. Im Editor als Knoepfe zum Einfuegen, beim
+ * Zusammensetzen durch die Werte der laufenden Veranstaltung ersetzt.
+ */
+export const PLATZHALTER: { name: string; titel: string; beispiel: string }[] = [
+  { name: 'veranstaltung', titel: 'Name der Veranstaltung', beispiel: 'Hochzeit Anna & Ben' },
+  { name: 'datum', titel: 'Datum der Veranstaltung', beispiel: '30.09.2026' },
+  { name: 'uhrzeit', titel: 'Uhrzeit des Fotos', beispiel: '21:37' },
+  { name: 'nummer', titel: 'Fortlaufende Nummer', beispiel: '42' },
+];
+
 export interface TextEbene extends EbeneBasis {
   typ: 'text';
   /**
@@ -332,6 +343,10 @@ export interface EventEinstellungen {
   startUntertitel: string;
   logoDatei?: string;
   farbeAkzent: string;
+  /** Hintergrundbild des Startbildschirms (Dateiname im Ordner "hintergruende"), null = keins. */
+  hintergrundDatei: string | null;
+  /** Wie stark das Hintergrundbild abgedunkelt wird, damit Schrift und Knoepfe lesbar bleiben (0-80 %). */
+  hintergrundAbdunkeln: number;
 
   fokus: Fokusverhalten;
   einwilligungstext: string;
@@ -358,6 +373,8 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   startTitel: 'Fotobox',
   startUntertitel: 'Tippt auf den Knopf und los geht es!',
   farbeAkzent: '#c8963e',
+  hintergrundDatei: null,
+  hintergrundAbdunkeln: 35,
   fokus: 'fest',
   // {loeschfrist} wird durch die eingestellte Zahl von Tagen ersetzt - der Text
   // hatte vorher "nach der Veranstaltung" versprochen, geloescht wurde aber
@@ -513,6 +530,8 @@ export type Stoerung =
 
 export interface Betriebsstatus {
   kamera: GeraeteZustand;
+  /** Was zu tun ist, wenn die Kamera nicht bereit ist. */
+  kameraHinweis?: string | null;
   drucker: GeraeteZustand;
   liveViewLaeuft: boolean;
   stoerung: Stoerung | null;

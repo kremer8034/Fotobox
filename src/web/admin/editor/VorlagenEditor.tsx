@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../../api.js';
 import { Leinwand } from './Leinwand.js';
 import { richteAus, verteile, type Ausrichtung } from './einrasten.js';
 import type { Ebene, Vorlage } from './typen.js';
-import { SCHRIFTEN } from '../../../shared/typen.js';
+import { PLATZHALTER, SCHRIFTEN } from '../../../shared/typen.js';
 
 /**
  * Vorlagen-Editor.
@@ -34,6 +34,8 @@ export function VorlagenEditor({
     ebenen: nummeriereFotos(vorlage.ebenen),
   }));
   const [gewaehlt, setzeGewaehlt] = useState<string | null>(null);
+  /** Zaehlt hoch, wenn das Textfeld den Fokus bekommen soll (neue Textebene, Doppelklick). */
+  const [textFokus, setzeTextFokus] = useState(0);
   const [gespeichert, setzeGespeichert] = useState(true);
 
   // Rueckgaengig: Es wird der Stand VOR einem Zug abgelegt, nicht jeder
@@ -223,6 +225,9 @@ export function VorlagenEditor({
               beiWahl={setzeGewaehlt}
               beiAenderung={aendere}
               beiAbschluss={schliesseZugAb}
+              beiDoppelklick={(ebene) => {
+                if (ebene.typ === 'text') setzeTextFokus((n) => n + 1);
+              }}
             />
             <p className="editor__hilfe">
               {entwurf.canvas.breiteMm} × {entwurf.canvas.hoeheMm} mm ·{' '}
@@ -299,6 +304,7 @@ export function VorlagenEditor({
           {ebene && (
             <EbenenFelder
               ebene={ebene}
+              textFokus={textFokus}
               fotoAnzahl={entwurf.ebenen.filter((e) => e.typ === 'foto').length}
               beiReihenfolge={(nummer) => tauscheReihenfolge(ebene.id, nummer)}
               canvas={entwurf.canvas}
@@ -372,7 +378,10 @@ export function VorlagenEditor({
         : {
             id: kennung(),
             typ: 'text',
-            text: '{veranstaltung}',
+            // Vorher stand hier "{veranstaltung}" - ein Platzhalter, den
+            // niemand erklaert hatte. Jetzt ein schlichter Text, und das
+            // Textfeld bekommt gleich den Fokus.
+            text: 'Euer Text',
             x: 0.1,
             y: 0.8,
             w: 0.8,
@@ -383,6 +392,7 @@ export function VorlagenEditor({
           };
     setzeEntwurf({ ...entwurf, ebenen: [...entwurf.ebenen, neu] });
     setzeGewaehlt(neu.id);
+    if (typ === 'text') setzeTextFokus((n) => n + 1);
     schliesseZugAb();
   }
 
@@ -728,6 +738,7 @@ function Ebenenliste({
 /** Zahlenfelder in Millimetern - beim Druck denkt man in Millimetern. */
 function EbenenFelder({
   ebene,
+  textFokus,
   fotoAnzahl,
   beiReihenfolge,
   canvas,
@@ -736,6 +747,7 @@ function EbenenFelder({
   beiAendern,
 }: {
   ebene: Ebene;
+  textFokus: number;
   fotoAnzahl: number;
   beiReihenfolge: (nummer: number) => void;
   canvas: { breiteMm: number; hoeheMm: number };
@@ -773,39 +785,12 @@ function EbenenFelder({
         Ausgewählte Ebene —{' '}
         {ebene.typ === 'foto' ? `Foto ${ebene.index}` : ebene.typ === 'text' ? 'Text' : 'Bild'}
       </h2>
-      <div className="zeile">
-        {feldMm('x', 'Links (mm)', canvas.breiteMm)}
-        {feldMm('y', 'Oben (mm)', canvas.hoeheMm)}
-        {feldMm('w', 'Breite (mm)', canvas.breiteMm)}
-        {feldMm('h', 'Höhe (mm)', canvas.hoeheMm)}
-        <div className="feld feld--klein">
-          <label>Drehung (Grad)</label>
-          <input
-            type="number"
-            step={1}
-            min={-360}
-            max={360}
-            value={ebene.rotation ?? 0}
-            onChange={(e) => {
-              const grad = Number(e.target.value);
-              if (Number.isFinite(grad)) beiAendern({ rotation: Math.max(-360, Math.min(360, grad)) });
-            }}
-          />
-        </div>
-      </div>
+      {ebene.typ === 'text' && (
+        <TextInhalt text={ebene.text ?? ''} fokus={textFokus} beiAendern={(text) => beiAendern({ text })} />
+      )}
 
       {ebene.typ === 'text' && (
         <div className="zeile">
-          <div className="feld" style={{ flex: 1 }}>
-            <label>Text — Platzhalter: {'{veranstaltung} {datum} {uhrzeit} {nummer}'}</label>
-            {/* Mehrzeilig: Der Druck kann Zeilenumbrueche, das Eingabefeld konnte sie nicht. */}
-            <textarea
-              rows={2}
-              maxLength={500}
-              value={ebene.text ?? ''}
-              onChange={(e) => beiAendern({ text: e.target.value })}
-            />
-          </div>
           <div className="feld feld--klein">
             <label>Schriftgröße (mm)</label>
             <input
@@ -900,6 +885,32 @@ function EbenenFelder({
           </span>
         </div>
       )}
+
+      {ebene.typ === 'text' && (
+        <h3 style={{ fontSize: '0.85rem', margin: '1rem 0 0.4rem', color: 'var(--schrift-leise)' }}>
+          Position und Größe
+        </h3>
+      )}
+      <div className="zeile">
+        {feldMm('x', 'Links (mm)', canvas.breiteMm)}
+        {feldMm('y', 'Oben (mm)', canvas.hoeheMm)}
+        {feldMm('w', 'Breite (mm)', canvas.breiteMm)}
+        {feldMm('h', 'Höhe (mm)', canvas.hoeheMm)}
+        <div className="feld feld--klein">
+          <label>Drehung (Grad)</label>
+          <input
+            type="number"
+            step={1}
+            min={-360}
+            max={360}
+            value={ebene.rotation ?? 0}
+            onChange={(e) => {
+              const grad = Number(e.target.value);
+              if (Number.isFinite(grad)) beiAendern({ rotation: Math.max(-360, Math.min(360, grad)) });
+            }}
+          />
+        </div>
+      </div>
 
       {ebene.typ === 'foto' && (
         <div className="zeile">
@@ -1009,4 +1020,90 @@ function bildLage(
 
 function kennung(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/**
+ * Der Inhalt einer Textebene. Oben im Bereich der ausgewaehlten Ebene, nicht
+ * mehr unter Position und Drehung, wo ihn niemand fand. Platzhalter werden
+ * per Knopf an der Schreibmarke eingefuegt - man muss ihre Namen nicht kennen.
+ */
+function TextInhalt({
+  text,
+  fokus,
+  beiAendern,
+}: {
+  text: string;
+  fokus: number;
+  beiAendern: (text: string) => void;
+}) {
+  const feld = useRef<HTMLTextAreaElement>(null);
+  /** Wohin die Schreibmarke nach dem Einfuegen eines Platzhalters soll. */
+  const marke = useRef<number | null>(null);
+
+  // Erst nachdem React den neuen Text gesetzt hat, die Schreibmarke setzen -
+  // sonst springt sie an den Anfang.
+  useLayoutEffect(() => {
+    if (marke.current === null || !feld.current) return;
+    feld.current.focus();
+    feld.current.setSelectionRange(marke.current, marke.current);
+    marke.current = null;
+  }, [text]);
+
+  useEffect(() => {
+    if (fokus === 0 || !feld.current) return;
+    feld.current.focus();
+    feld.current.select();
+    feld.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [fokus]);
+
+  function fuegePlatzhalterEin(name: string) {
+    const el = feld.current;
+    const einschub = `{${name}}`;
+    const von = el?.selectionStart ?? text.length;
+    const bis = el?.selectionEnd ?? text.length;
+    marke.current = von + einschub.length;
+    beiAendern(text.slice(0, von) + einschub + text.slice(bis));
+  }
+
+  const beispiel = PLATZHALTER.reduce((t, p) => t.split(`{${p.name}}`).join(p.beispiel), text);
+  const enthaeltPlatzhalter = beispiel !== text;
+
+  return (
+    <div className="feld" style={{ marginBottom: '0.8rem' }}>
+      <label htmlFor="ebene-text">Text</label>
+      {/* Mehrzeilig: Der Druck kann Zeilenumbrueche. */}
+      <textarea
+        id="ebene-text"
+        ref={feld}
+        rows={2}
+        maxLength={500}
+        value={text}
+        onChange={(e) => beiAendern(e.target.value)}
+      />
+      <div className="platzhalter-leiste">
+        <span>Automatisch einsetzen:</span>
+        {PLATZHALTER.map((p) => (
+          <button
+            key={p.name}
+            type="button"
+            className="platzhalter-knopf"
+            // Der Knopf nimmt dem Textfeld den Fokus nicht weg - weitertippen
+            // geht direkt hinter dem Platzhalter weiter.
+            onMouseDown={(e) => e.preventDefault()}
+            title={`Fügt {${p.name}} ein – im Druck z. B. „${p.beispiel}“`}
+            onClick={() => fuegePlatzhalterEin(p.name)}
+          >
+            + {p.titel}
+          </button>
+        ))}
+      </div>
+      {enthaeltPlatzhalter && (
+        <p style={{ fontSize: '0.74rem', color: 'var(--schrift-leise)', margin: '0.3rem 0 0' }}>
+          Im Ausdruck zum Beispiel: <strong style={{ color: 'var(--schrift)' }}>{beispiel}</strong>. Die
+          Werte in geschweiften Klammern ersetzt die Fotobox bei jedem Foto durch die echten Angaben der
+          laufenden Veranstaltung.
+        </p>
+      )}
+    </div>
+  );
 }

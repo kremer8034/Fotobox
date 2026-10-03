@@ -52,7 +52,7 @@ export async function startbereitPruefung(
     hinweis:
       status.kamera === 'bereit'
         ? 'Kamera antwortet.'
-        : 'Kamera meldet sich nicht. USB-Kabel und digiCamControl pruefen.',
+        : (status.kameraHinweis ?? 'Kamera meldet sich nicht. USB-Kabel und digiCamControl pruefen.'),
   });
 
   punkte.push({

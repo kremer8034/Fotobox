@@ -79,10 +79,15 @@ darf es nicht mitbringen, deshalb einmal von Hand:
    **„Next"** und am Ende **„Install"**.
 4. **Wichtig:** Starte digiCamControl einmal.
    - Klicke oben auf **„File"**, dann **„Settings"**.
-   - Suche links den Punkt **„Webserver"**.
-   - Setze einen Haken bei **„Enable"** (oder „Webserver aktivieren").
+   - Klappe den Abschnitt **„Webserver"** auf.
+   - Setze **beide** Haken:
+     - **„Benutze Webserver"** (englisch „Use web server")
+     - **„Interaktion über Webserver erlauben"** (englisch „Allow interaction
+       via webserver") – ohne diesen Haken antwortet digiCamControl zwar, löst
+       aber nicht aus und zeigt kein Livebild.
    - Der Port muss **5513** sein.
-   - Schließe digiCamControl und starte es noch einmal neu.
+   - Schließe digiCamControl ganz. Der Webserver startet erst beim nächsten
+     Programmstart; die Fotobox startet digiCamControl dann selbst.
 
 ## Schritt 6: SumatraPDF (für den Drucker) — schon erledigt
 
@@ -172,26 +177,26 @@ dabei laufen.
 
 **Erste Adresse** — schaltet das Livebild ein:
 ```
-http://localhost:5513/?CMD=LiveViewWnd_Show
+http://127.0.0.1:5513/?CMD=LiveViewWnd_Show
 ```
 An der Kamera muss der Spiegel hochklappen (es klackt), und in digiCamControl
 öffnet sich ein Fenster mit dem Livebild.
 
 **Zweite Adresse** — holt ein Einzelbild:
 ```
-http://localhost:5513/liveview.jpg
+http://127.0.0.1:5513/liveview.jpg
 ```
 Im Browser muss ein Foto von dem erscheinen, was die Kamera gerade sieht.
 
 **Dritte Adresse** — löst aus:
 ```
-http://localhost:5513/?CMD=Capture
+http://127.0.0.1:5513/?CMD=Capture
 ```
 Die Kamera muss auslösen.
 
 **Wenn eine dieser Adressen nicht funktioniert**, liegt es an der Kamera oder an
 digiCamControl — nicht an der Fotobox-Software. Gehe zurück zu Schritt 7 und
-prüfe, ob der Webserver in digiCamControl wirklich eingeschaltet und der Port
+prüfe, ob in digiCamControl beide Webserver-Haken gesetzt sind, der Port
 5513 eingetragen ist, und ob du das Programm danach neu gestartet hast.
 
 ## Schritt 12: Die Fotobox sieht die Kamera

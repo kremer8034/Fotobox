@@ -121,6 +121,89 @@ button {
   gap: var(--abstand);
 }
 
+/*
+ * Startbildschirm mit Hintergrundbild: randlos ueber die ganze Flaeche, der
+ * Ausschnitt mittig. Die Abdunkelung kommt als Verlauf aus dem Kiosk (je
+ * Veranstaltung einstellbar); der Schatten haelt helle Schrift auch auf
+ * unruhigen Stellen lesbar.
+ */
+.kiosk--hintergrund {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.kiosk--hintergrund .titel,
+.kiosk--hintergrund .untertitel {
+  text-shadow: 0 0.08rem 0.5rem rgba(0, 0, 0, 0.75);
+}
+
+.kiosk--hintergrund .untertitel {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Platzhalter-Knoepfe im Vorlagen-Editor */
+.platzhalter-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--schrift-leise);
+}
+
+.platzhalter-knopf {
+  border: 1px solid var(--kante);
+  background: var(--flaeche-hell);
+  border-radius: 1rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.platzhalter-knopf:hover {
+  border-color: var(--akzent);
+}
+
+/* Vorschau des Startbildschirms in der Verwaltung, im Format des Touchscreens. */
+.hintergrund-vorschau {
+  width: 22rem;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.5rem;
+  border: 1px solid var(--kante);
+  background: var(--flaeche) center / cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  text-align: center;
+  padding: 0.6rem;
+  overflow: hidden;
+  text-shadow: 0 0.05rem 0.3rem rgba(0, 0, 0, 0.75);
+}
+
+.hintergrund-vorschau strong {
+  font-size: 1.1rem;
+}
+
+.hintergrund-vorschau span {
+  font-size: 0.62rem;
+  color: var(--schrift-leise);
+}
+
+.hintergrund-vorschau .hintergrund-vorschau__knopf {
+  margin-top: 0.3rem;
+  padding: 0.35rem 1.2rem;
+  border-radius: 0.3rem;
+  background: var(--akzent);
+  color: var(--akzent-schrift);
+  font-weight: 700;
+  text-shadow: none;
+}
+
 .knopf {
   min-height: var(--knopf-haupt);
   min-width: var(--ziel-min);
@@ -912,19 +995,57 @@ button {
   font-weight: 700;
 }
 
-/* Kaum sichtbares Schloss oben rechts, rund 10 x 10 mm. */
+/*
+ * Schloss oben rechts: ein dezenter runder Knopf, rund 8 mm, in einer
+ * Tippflaeche von 14 x 14 mm. Etwas von der Kante abgerueckt, damit ihn ein
+ * Gehaeuserahmen nicht verdeckt. Beim Gedrueckthalten fuellt sich in zwei
+ * Sekunden ein Ring - so lange wie das Schloss zum Oeffnen braucht.
+ */
+@property --schloss-fortschritt {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
 .schloss {
   position: fixed;
   top: 0;
   right: 0;
-  width: calc(10 * var(--mm));
-  height: calc(10 * var(--mm));
-  opacity: 0.08;
+  width: calc(14 * var(--mm));
+  height: calc(14 * var(--mm));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
   z-index: 50;
+  touch-action: none;
+}
+
+.schloss__knopf {
+  width: calc(8 * var(--mm));
+  height: calc(8 * var(--mm));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(4.2 * var(--mm));
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.schloss--gedrueckt .schloss__knopf {
+  opacity: 1;
+  border-color: transparent;
+  background:
+    radial-gradient(closest-side, rgba(16, 18, 22, 0.85) 82%, transparent 84%),
+    conic-gradient(var(--akzent) var(--schloss-fortschritt), rgba(255, 255, 255, 0.2) 0);
+  animation: schloss-fuellen 2s linear forwards;
+}
+
+@keyframes schloss-fuellen {
+  from { --schloss-fortschritt: 0%; }
+  to { --schloss-fortschritt: 100%; }
 }
 
 .pinfeld {

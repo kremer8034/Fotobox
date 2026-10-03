@@ -5,6 +5,7 @@ import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
 
 interface GalerieDaten {
   veranstaltung?: string;
+  probelauf?: boolean;
   nachdruckMoeglich?: boolean;
   kopienMax?: number;
   bilder: { id: string; erstellt: string; verborgen?: boolean; restKopien?: number }[];
@@ -132,7 +133,11 @@ export function Galerie({
       )}
       {daten && daten.bilder.length === 0 && (
         <div className="mitte">
-          <p className="untertitel">Hier ist noch nichts. Macht das erste Foto!</p>
+          <p className="untertitel">
+            {daten.probelauf
+              ? 'Probelauf läuft – Testfotos erscheinen nicht in der Galerie.'
+              : 'Hier ist noch nichts. Macht das erste Foto!'}
+          </p>
         </div>
       )}
 

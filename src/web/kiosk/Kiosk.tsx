@@ -392,11 +392,24 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Startbildschirm - ruhig und immer gleich, kein Attract-Modus.
+    // Startbildschirm - ruhig und immer gleich, kein Attract-Modus. Auf Wunsch
+    // mit einem Hintergrundbild der Veranstaltung, randlos ueber die ganze
+    // Flaeche und so weit abgedunkelt, dass Schrift und Knoepfe lesbar bleiben.
+    const hintergrund = start.darstellung?.hintergrund;
+    const dunkel = (start.darstellung?.abdunkeln ?? 35) / 100;
     return (
       <>
         {schloss}
-        <div className="seite kiosk">
+        <div
+          className={hintergrund ? 'seite kiosk kiosk--hintergrund' : 'seite kiosk'}
+          style={
+            hintergrund
+              ? {
+                  backgroundImage: `linear-gradient(rgba(0, 0, 0, ${dunkel}), rgba(0, 0, 0, ${dunkel})), url("${hintergrund}")`,
+                }
+              : undefined
+          }
+        >
           <div className="mitte">
             <h1 className="titel" style={{ fontSize: '2.8rem' }}>
               {start.darstellung?.titel}

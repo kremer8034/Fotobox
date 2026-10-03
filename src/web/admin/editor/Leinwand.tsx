@@ -35,6 +35,7 @@ export function Leinwand({
   beiWahl,
   beiAenderung,
   beiAbschluss,
+  beiDoppelklick,
 }: {
   ebenen: Ebene[];
   breiteMm: number;
@@ -45,6 +46,8 @@ export function Leinwand({
   beiAenderung: (id: string, teil: Partial<Ebene>) => void;
   /** Wird am Ende einer Geste gerufen, damit "Rueckgaengig" ganze Zuege kennt. */
   beiAbschluss: () => void;
+  /** Doppelklick auf eine Ebene - bei Text springt der Editor ins Textfeld. */
+  beiDoppelklick?: (ebene: Ebene) => void;
 }) {
   const flaeche = useRef<HTMLDivElement>(null);
   const [hilfslinien, setzeHilfslinien] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] });
@@ -167,6 +170,7 @@ export function Leinwand({
         return (
           <div
             key={ebene.id}
+            onDoubleClick={() => beiDoppelklick?.(ebene)}
             onPointerDown={(e) => {
               if (ebene.gesperrt) return;
               e.stopPropagation();

@@ -124,6 +124,10 @@ export interface KioskStart {
     akzent: string;
     qrAufStartseite: boolean;
     galerieUrl: string | null;
+    /** Adresse des Hintergrundbilds, null = keins. */
+    hintergrund?: string | null;
+    /** Abdunkeln des Hintergrundbilds in Prozent. */
+    abdunkeln?: number;
   };
   zeiten?: Zeiten;
   toene?: Toene;

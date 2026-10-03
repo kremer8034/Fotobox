@@ -41,6 +41,18 @@ export function registriereMedien(app: FastifyInstance): void {
       .send(daten);
   });
 
+  /** Hintergrundbild des Startbildschirms - nur die Namen, die der Upload vergeben hat. */
+  app.get<{ Params: { datei: string } }>('/medien/hintergrund/:datei', async (anfrage, antwort) => {
+    const name = anfrage.params.datei;
+    if (!/^[0-9a-f-]{36}\.jpg$/.test(name)) return antwort.code(400).send();
+    const pfad = join(wurzelpfade(leseGeraet().datenpfad).hintergruende, name);
+    if (!existsSync(pfad)) return antwort.code(404).send();
+    return antwort
+      .header('Content-Type', 'image/jpeg')
+      .header('Cache-Control', 'private, max-age=86400, immutable')
+      .send(createReadStream(pfad));
+  });
+
   app.get<{ Params: { id: string }; Querystring: { klein?: string } }>(
     '/medien/ausgabe/:id.jpg',
     async (anfrage, antwort) => {

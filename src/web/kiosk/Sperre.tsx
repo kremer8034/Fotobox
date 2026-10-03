@@ -55,15 +55,19 @@ export function Schloss({ beiOeffnen }: { beiOeffnen: () => void }) {
   // Zaehlung vorher von vorn - das Schloss ging "manchmal nicht auf".
   useZeitgeber(beiOeffnen, gedruecktSeit === null ? null : 2000, [gedruecktSeit]);
 
+  // Sichtbar, aber unaufdringlich: Bei 8 % Deckkraft fand selbst der Besitzer
+  // die Stelle nicht mehr. Waehrend des Drueckens fuellt sich ein Ring, damit
+  // klar ist, dass es zaehlt und der Finger liegen bleiben muss.
   return (
     <div
-      className="schloss"
+      className={gedruecktSeit === null ? 'schloss' : 'schloss schloss--gedrueckt'}
       onPointerDown={() => setzeGedruecktSeit(Date.now())}
       onPointerUp={() => setzeGedruecktSeit(null)}
       onPointerLeave={() => setzeGedruecktSeit(null)}
+      onPointerCancel={() => setzeGedruecktSeit(null)}
       aria-hidden
     >
-      🔒
+      <span className="schloss__knopf">🔒</span>
     </div>
   );
 }

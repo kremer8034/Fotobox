@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deuteStatus } from '../treiber/drucker-windows.js';
+import { deuteStatus, deuteDruckerliste, druckerVorschlag } from '../treiber/drucker-windows.js';
 
 /**
  * Die Windows-Abfrage selbst laeuft nur unter Windows; ihre Antwort zu deuten
@@ -36,5 +36,48 @@ describe('Windows-Druckerstatus', () => {
 
   it('versteht auch die alte Antwort ohne Auftragsspalten', () => {
     expect(deuteStatus('3;0;False')).toEqual({ zustand: 'bereit', auftraegeBeimSystem: 0 });
+  });
+});
+
+describe('Druckerauswahl', () => {
+  // So liefert PowerShell die Liste: mehrere Drucker als Feld, einer als Objekt.
+  const windows = JSON.stringify([
+    { Name: 'Microsoft Print to PDF', DriverName: 'Microsoft Print To PDF', PortName: 'PORTPROMPT:', WorkOffline: false },
+    { Name: 'DS-RX1HS', DriverName: 'DS-RX1HS', PortName: 'USB001', WorkOffline: false },
+    { Name: 'OneNote (Desktop)', DriverName: 'Send to Microsoft OneNote 16 Driver', PortName: 'nul:', WorkOffline: false },
+  ]);
+
+  it('listet alle Drucker, den DNP zuerst und markiert', () => {
+    const liste = deuteDruckerliste(windows);
+    expect(liste.map((d) => d.name)).toEqual(['DS-RX1HS', 'Microsoft Print to PDF', 'OneNote (Desktop)']);
+    expect(liste[0]).toMatchObject({ dnp: true, anschluss: 'USB001' });
+    expect(liste.filter((d) => d.dnp)).toHaveLength(1);
+  });
+
+  it('versteht auch einen einzelnen Drucker und eine leere Antwort', () => {
+    expect(deuteDruckerliste(JSON.stringify({ Name: 'DS-RX1', DriverName: 'DNP DS-RX1', WorkOffline: true }))).toEqual([
+      { name: 'DS-RX1', treiber: 'DNP DS-RX1', anschluss: '', offline: true, dnp: true },
+    ]);
+    expect(deuteDruckerliste('')).toEqual([]);
+  });
+
+  it('schlaegt den DNP vor, wenn der eingetragene Name in Windows nicht existiert', () => {
+    const liste = deuteDruckerliste(windows);
+    expect(druckerVorschlag('DS-RX1', liste)).toBe('DS-RX1HS');
+    expect(druckerVorschlag('', liste)).toBe('DS-RX1HS');
+    // Ein vorhandener, bewusst gewaehlter Drucker bleibt.
+    expect(druckerVorschlag('Microsoft Print to PDF', liste)).toBeNull();
+  });
+
+  it('raet nicht, wenn es keinen oder mehrere DNP-Drucker gibt', () => {
+    const ohne = deuteDruckerliste(JSON.stringify([{ Name: 'Microsoft Print to PDF', DriverName: 'x' }]));
+    expect(druckerVorschlag('DS-RX1', ohne)).toBeNull();
+    const zwei = deuteDruckerliste(
+      JSON.stringify([
+        { Name: 'DS-RX1HS', DriverName: 'DS-RX1HS' },
+        { Name: 'DS-RX1HS (Kopie 1)', DriverName: 'DS-RX1HS' },
+      ]),
+    );
+    expect(druckerVorschlag('DS-RX1', zwei)).toBeNull();
   });
 });
