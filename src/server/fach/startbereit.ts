@@ -46,6 +46,19 @@ export async function startbereitPruefung(
   const geraet = leseGeraet();
   const wurzel = wurzelpfade(konfig.datenpfad);
 
+  // Den Probelauf schaltet man vor Ort schnell im Servicemenue ein - und
+  // vergisst leicht, ihn wieder auszuschalten. Dann waere die ganze Feier
+  // gratis und die Galerie leer.
+  punkte.push({
+    schluessel: 'probelauf',
+    titel: 'Probelauf ausgeschaltet',
+    bestanden: !event.probelauf,
+    nurWarnung: true,
+    hinweis: event.probelauf
+      ? 'Der Probelauf ist noch an: Drucke werden nicht berechnet, Fotos erscheinen in keiner Galerie.'
+      : 'Fotos und Drucke zählen ganz normal.',
+  });
+
   punkte.push({
     schluessel: 'kamera',
     titel: 'Kamera verbunden, Live-View liefert ein Bild',

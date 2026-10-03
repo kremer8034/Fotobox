@@ -71,6 +71,13 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
   // Liegen in der Filterauswahl noch Kacheln unterhalb des Schirms? Dann
   // steht unten ein Hinweis - sonst ahnt niemand, dass man blaettern kann.
   const [mehrUnten, setzeMehrUnten] = useState(false);
+  // Lebenszeichen der Filterauswahl an den Server, hoechstens alle 20 s.
+  const letztesLebenszeichen = useRef(0);
+  const meldeLebenszeichen = (sitzungId: string) => {
+    if (Date.now() - letztesLebenszeichen.current < 20_000) return;
+    letztesLebenszeichen.current = Date.now();
+    void api.sende(`/api/kiosk/sitzung/${sitzungId}/lebt`, {}).catch(() => undefined);
+  };
   const pruefeMehrUnten = (raster: Element | null) => {
     if (raster) setzeMehrUnten(raster.scrollTop + raster.clientHeight < raster.scrollHeight - 8);
   };
@@ -288,7 +295,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
               setzeSchirm({ art: 'start' });
               void ladeStart();
             }}
-            beiAbbrechen={() => verwirf(schirm.sitzung.sitzungId)}
+            beiAbbrechen={() => void verwirf(schirm.sitzung.sitzungId)}
           />
         </>
       );
@@ -306,7 +313,11 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             <div
               className={`raster filter-raster${wartetAuf ? ' raster--wartet' : ''}`}
               style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(start.filter?.length ?? 1, 1), 4)}, 1fr)` }}
-              onScroll={(e) => pruefeMehrUnten(e.currentTarget)}
+              onScroll={(e) => {
+                pruefeMehrUnten(e.currentTarget);
+                meldeLebenszeichen(schirm.sitzungId);
+              }}
+              onPointerDown={() => meldeLebenszeichen(schirm.sitzungId)}
             >
               {start.filter?.map((f) => (
                 <button
@@ -335,7 +346,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             {!wartetAuf && (
               <div className="filter__leiste">
                 {mehrUnten && <p className="filter__mehr">Weitere Filter: nach oben wischen ↓</p>}
-                <button className="knopf knopf--neben" onClick={() => verwirf(schirm.sitzungId)}>
+                <button className="knopf knopf--neben" onClick={() => void verwirf(schirm.sitzungId)}>
                   Abbrechen
                 </button>
               </div>
@@ -519,11 +530,13 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
   }
 
   /** "Abbrechen": Sitzung samt Fotos verwerfen und zurueck zum Start. */
-  function verwirf(sitzungId: string) {
+  async function verwirf(sitzungId: string) {
     if (beschaeftigt.current) return;
-    void api.sende(`/api/kiosk/sitzung/${sitzungId}/abbrechen`, { verwerfen: true }).catch(() => undefined);
     setzeFehler(null);
     setzeSchirm({ art: 'start' });
+    // Erst verwerfen, dann den Start neu laden: Sonst sah die Startabfrage die
+    // Sitzung womoeglich noch als verwaist und brach sie ohne Loeschen ab.
+    await api.sende(`/api/kiosk/sitzung/${sitzungId}/abbrechen`, { verwerfen: true }).catch(() => undefined);
     void ladeStart();
   }
 }

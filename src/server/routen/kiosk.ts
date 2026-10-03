@@ -296,6 +296,19 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     return { bereit: await betrieb.liveBildDa() };
   });
 
+  /**
+   * Lebenszeichen aus der Filterauswahl: Der Gast blaettert und vergleicht.
+   * Die Rettungsleine (Abbruch nach Untaetigkeit) soll nur greifen, wenn
+   * wirklich niemand mehr da ist - nicht mitten im Aussuchen.
+   */
+  app.post<{ Params: { id: string } }>('/api/kiosk/sitzung/:id/lebt', async (anfrage, antwort) => {
+    if (betrieb.aktiveSitzung?.id !== anfrage.params.id) {
+      return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
+    }
+    betrieb.letzteBeruehrung = Date.now();
+    return { ok: true };
+  });
+
   /** Filter anwenden, Layout bauen, Druck-PDF erzeugen. */
   app.post<{ Params: { id: string }; Body: unknown }>(
     '/api/kiosk/sitzung/:id/fertig',
@@ -379,6 +392,11 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!ausgabe || ausgabe.eventId !== event.id || !ausgabe.pfadDruckPdf) {
       return antwort.code(404).send({ fehler: 'Ausgabe nicht gefunden.' });
     }
+    // Ein geloeschtes oder aus der Galerie genommenes Bild druckt nur noch der
+    // Betreuer im Servicemenue (dort laesst es sich auch zurueckholen).
+    if (ausgabe.verborgen && koerper.quelle !== 'servicemenue') {
+      return antwort.code(404).send({ fehler: 'Dieses Foto wurde gelöscht.' });
+    }
 
     // "Maximale Kopien" gilt je Foto, nicht je Tipper. Vorher liess sich
     // dasselbe Foto ueber die Galerie immer wieder drucken - im Test zwoelf
@@ -406,8 +424,11 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       pfadPdf: ausgabe.pfadDruckPdf,
       kopien: koerper.kopien,
       quelle: koerper.quelle,
-      // Probelauf-Sitzungen zaehlen nicht in den Auslagenersatz.
-      berechnen: !event.probelauf,
+      // Probelauf-Fotos zaehlen nicht in den Auslagenersatz. Entscheidend ist,
+      // wann das Foto entstand - nicht, ob der Probelauf beim Drucken gerade
+      // an ist: Sonst druckte ein Nachdruck waehrend des Probelaufs gratis,
+      // und ein Testfoto nach dem Ausschalten kostete.
+      berechnen: !ausgabe.istTest,
     });
 
     betrieb.letzteBeruehrung = Date.now();

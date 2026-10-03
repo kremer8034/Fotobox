@@ -33,6 +33,29 @@ ihn auf der Box verstehst.
   fett und kursiv. Im Ausdruck erscheint es genauso; hat eine Schrift keinen
   eigenen fetten oder kursiven Schnitt, wird er nachgerechnet.
 
+Durchsicht der ganzen Software – behoben:
+
+- **Abrechnung im Probelauf:** Ob ein Druck berechnet wird, hängt jetzt am
+  Foto, nicht am Schalter beim Drucken. Vorher war ein Nachdruck eines echten
+  Gästefotos gratis, solange der Probelauf an war – und ein Testfoto kostete,
+  wenn es erst nach dem Ausschalten gedruckt wurde.
+- **Probelauf vergessen?** Der Startbereit-Check warnt, wenn der Probelauf
+  noch an ist.
+- **Übergabe an den Gastgeber:** Testfotos aus dem Probelauf und gelöschte
+  oder aus der Galerie genommene Fotos werden nicht mehr mitkopiert – auch
+  nicht als Originale oder Druckdateien. Bisher landeten sie im Ordner beim
+  Gastgeber, nur in der Offline-Galerie fehlten sie.
+- **Gelöschte Fotos drucken** nur noch über das Servicemenü, nicht mehr über
+  den Gästeweg.
+- **Filterauswahl:** Wer lange blättert und vergleicht, wird nicht mehr nach
+  drei Minuten seit dem letzten Foto auf den Start zurückgeworfen – jede
+  Berührung zählt jetzt als Lebenszeichen.
+- **Abbrechen in der Filterauswahl** löscht die Fotos jetzt sicher, bevor der
+  Startbildschirm neu lädt.
+- **Texte:** Die Gerät-Seite sprach noch vom Mitzählen ohne PrinterInfo, die
+  Kurzanleitung von „Neue Rolle eingelegt“ als Pflicht, und die Rückfrage beim
+  Löschen nach dem Drucken versprach „wird nicht gedruckt“.
+
 ## 1.0.6
 
 - **14 neue, kräftige Filter:** Pop-Art, Warhol, Comic, Neon-Nacht, Wärmebild,

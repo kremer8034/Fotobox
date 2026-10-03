@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { promisify } from 'node:util';
+import { holeDb } from '../db/index.js';
 import { galerieEintraege } from './sitzungen.js';
 import { eventpfade } from './pfade.js';
 import { schreibeAuslagenCsv } from './auslagen.js';
@@ -29,6 +30,32 @@ export interface Uebergabeergebnis {
   meldung: string;
 }
 
+/**
+ * Was nicht zum Gastgeber geht: Zwischenspeicher, der Probelauf (Testfotos vom
+ * Aufbau) und jeder Durchgang, dessen Bild geloescht oder aus der Galerie
+ * genommen wurde. Alle Dateien eines Durchgangs beginnen mit seiner Kennung -
+ * so laesst er sich auch fuer robocopy per Namensmuster auslassen.
+ */
+interface Auslassen {
+  ordner: string[];
+  praefixe: string[];
+}
+
+function wasAuslassen(event: Veranstaltung): Auslassen {
+  const verborgen = holeDb()
+    .prepare(
+      `SELECT DISTINCT s.id FROM sitzungen s JOIN ausgaben a ON a.sitzung_id = s.id
+        WHERE s.event_id = ? AND a.verborgen = 1`,
+    )
+    .all(event.id) as { id: string }[];
+  return { ordner: ['.cache', '_probelauf'], praefixe: verborgen.map((z) => z.id) };
+}
+
+function ausgelassen(name: string, istOrdner: boolean, regel: Auslassen): boolean {
+  if (istOrdner) return regel.ordner.includes(name);
+  return regel.praefixe.some((p) => name.startsWith(p));
+}
+
 export async function bereiteUebergabeVor(event: Veranstaltung): Promise<void> {
   schreibeEventJson(event);
   await schreibeAuslagenCsv(event);
@@ -51,14 +78,15 @@ export async function uebergebeAufDatentraeger(
   await writeFile(join(quelle, marker), markerInhalt, 'utf8');
 
   try {
-    await kopiereOrdner(quelle, ziel);
+    const regel = wasAuslassen(event);
+    await kopiereOrdner(quelle, ziel, regel);
 
     const markerZiel = join(ziel, marker);
     const markerAngekommen =
       existsSync(markerZiel) && (await readFile(markerZiel, 'utf8')) === markerInhalt;
 
-    const quelleDateien = await zaehleDateien(quelle);
-    const zielDateien = await zaehleDateien(ziel);
+    const quelleDateien = await zaehleDateien(quelle, regel);
+    const zielDateien = await zaehleDateien(ziel, regel);
     const geprueft = markerAngekommen && zielDateien.anzahl >= quelleDateien.anzahl;
 
     return {
@@ -78,13 +106,15 @@ export async function uebergebeAufDatentraeger(
 }
 
 /** Unter Windows uebernimmt robocopy, sonst wird von Hand kopiert. */
-async function kopiereOrdner(quelle: string, ziel: string): Promise<void> {
+async function kopiereOrdner(quelle: string, ziel: string, regel: Auslassen): Promise<void> {
   if (process.platform === 'win32') {
     try {
-      // /E alle Unterordner, /XD .cache auslassen, /R:2 zwei Wiederholungen.
+      // /E alle Unterordner, /XD Ordner auslassen, /XF Dateien nach Muster
+      // auslassen, /R:2 zwei Wiederholungen.
+      const dateiMuster = regel.praefixe.length > 0 ? ['/XF', ...regel.praefixe.map((p) => `${p}*`)] : [];
       await fuehreAus(
         'robocopy',
-        [quelle, ziel, '/E', '/XD', '.cache', '/R:2', '/W:2', '/NFL', '/NDL', '/NJH', '/NJS'],
+        [quelle, ziel, '/E', '/XD', ...regel.ordner, ...dateiMuster, '/R:2', '/W:2', '/NFL', '/NDL', '/NJH', '/NJS'],
         { timeout: 30 * 60_000, windowsHide: true },
       );
     } catch (fehler) {
@@ -95,26 +125,27 @@ async function kopiereOrdner(quelle: string, ziel: string): Promise<void> {
     }
     return;
   }
-  await kopiereRekursiv(quelle, ziel);
+  await kopiereRekursiv(quelle, ziel, regel);
 }
 
-async function kopiereRekursiv(quelle: string, ziel: string): Promise<void> {
+async function kopiereRekursiv(quelle: string, ziel: string, regel: Auslassen): Promise<void> {
   await mkdir(ziel, { recursive: true });
   for (const eintrag of await readdir(quelle, { withFileTypes: true })) {
-    if (eintrag.name === '.cache') continue;
+    if (ausgelassen(eintrag.name, eintrag.isDirectory(), regel)) continue;
     const von = join(quelle, eintrag.name);
     const nach = join(ziel, eintrag.name);
-    if (eintrag.isDirectory()) await kopiereRekursiv(von, nach);
+    if (eintrag.isDirectory()) await kopiereRekursiv(von, nach, regel);
     else await copyFile(von, nach);
   }
 }
 
-async function zaehleDateien(ordner: string): Promise<{ anzahl: number; bytes: number }> {
+/** Zaehlt, was uebergeben werden soll - mit denselben Auslassungen wie die Kopie. */
+async function zaehleDateien(ordner: string, regel: Auslassen): Promise<{ anzahl: number; bytes: number }> {
   let anzahl = 0;
   let bytes = 0;
   const gehe = async (pfad: string): Promise<void> => {
     for (const eintrag of await readdir(pfad, { withFileTypes: true })) {
-      if (eintrag.name === '.cache') continue;
+      if (ausgelassen(eintrag.name, eintrag.isDirectory(), regel)) continue;
       const voll = join(pfad, eintrag.name);
       if (eintrag.isDirectory()) await gehe(voll);
       else {

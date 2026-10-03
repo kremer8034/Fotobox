@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { oeffneDb, schliesseDb } from '../db/index.js';
@@ -7,7 +7,7 @@ import { schreibeGeraet } from '../db/geraet.js';
 import { legeEingebauteFilterAn } from '../fach/filter.js';
 import { legeStandardvorlagenAn } from '../fach/vorlagen.js';
 import { aktualisiereEvent, erstelleEvent, setzeStatus } from '../fach/events.js';
-import { starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
+import { setzeVerborgen, starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
 import { warteAufNeueDatei } from '../fach/aufnahme.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
@@ -81,6 +81,38 @@ describe('Uebergabe an den Gastgeber', () => {
     expect(existsSync(join(kopie, '.cache'))).toBe(false);
     // Und die Markerdatei raeumt sich selbst wieder weg.
     expect(readdirSync(kopie).some((n) => n.endsWith('.chk'))).toBe(false);
+  });
+
+  it('laesst geloeschte Fotos und den Probelauf weg - und prueft trotzdem vollstaendig', async () => {
+    // Ein zweiter Durchgang, dessen Bild der Gast am Ergebnis geloescht hat.
+    const pfade = eventpfade(event.ordner, false);
+    const kamera = new MockKamera();
+    await kamera.setzeZielordner(pfade.originale);
+    const sitzung = starteSitzung(event, 'standard-1-quer');
+    const wartet = warteAufNeueDatei(pfade.originale, { zeitlimitMs: 10_000 });
+    await kamera.ausloesen();
+    await verbucheFoto(sitzung, event, await wartet, 1);
+    const weg = await stelleFertig(sitzung, event, null, {
+      lutOrdner: wurzel.luts,
+      vorlagenOrdner: wurzel.vorlagen,
+      kalibrierung: KALIBRIERUNG_VORGABE,
+    });
+    setzeVerborgen(weg.id, true);
+    // Und ein Testfoto vom Aufbau.
+    mkdirSync(join(event.ordner, '_probelauf', '01_originale'), { recursive: true });
+    writeFileSync(join(event.ordner, '_probelauf', '01_originale', 'test.jpg'), 'jpeg');
+
+    const ziel = mkdtempSync(join(tmpdir(), 'fotobox-stick-'));
+    const ergebnis = await uebergebeAufDatentraeger(event, ziel);
+    expect(ergebnis.geprueft).toBe(true);
+
+    const kopie = join(ziel, readdirSync(ziel)[0]!);
+    expect(existsSync(join(kopie, '_probelauf'))).toBe(false);
+    for (const ordner of ['01_originale', '03_layouts', '04_druck']) {
+      const namen = readdirSync(join(kopie, ordner));
+      expect(namen.some((n) => n.startsWith(sitzung.id)), ordner).toBe(false);
+      expect(namen.length, ordner).toBeGreaterThan(0);
+    }
   });
 });
 
