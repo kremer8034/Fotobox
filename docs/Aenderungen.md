@@ -6,10 +6,17 @@ ihn auf der Box verstehst.
 
 ## 1.0.10
 
-- **Übergabe ohne Druckdateien:** Der Ordner `04_druck` geht nicht mehr mit
-  an den Gastgeber. Die Druckdateien sind nur die Layouts als PDF verpackt –
-  dieselben Bilder liegen schon in `03_layouts`. Auf der Box bleiben sie
-  erhalten.
+- **Übergabe nur mit den Fotos:** Der Gastgeber bekommt die Ordner
+  `01_originale`, `02_bearbeitet` und `03_layouts`. Nicht mehr mit gehen:
+  - `04_druck` – die Druckdateien sind nur die Layouts als PDF verpackt,
+    dieselben Bilder liegen schon in `03_layouts`.
+  - `auslagen.csv` und `event.json` – die Abrechnung und die Einstellungen
+    der Box. Sie bleiben auf der Box; die Abrechnung lässt sich wie bisher im
+    Reiter „Auslagen“ als CSV herunterladen. Vor dem Löschen einer
+    Veranstaltung also dort sichern.
+  - `galerie.html` – wird nicht mehr erzeugt.
+- **„Nur Ordner vorbereiten“ entfällt:** Der Knopf hat genau diese Dateien
+  angelegt und hätte keinen Zweck mehr.
 
 ## 1.0.9
 

@@ -602,10 +602,10 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
           <div className="karte">
             <h2>Übergabe an den Gastgeber</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-              Kopiert den kompletten Event-Ordner samt Originalen, bearbeiteten Fotos, Layouts,
-              Auslagen-CSV und einer eigenständigen <code>galerie.html</code>, die der Gastgeber per
-              Doppelklick öffnen kann. Erst wenn eine Markerdatei drüben ankommt und die Dateizahl
-              stimmt, gilt die Kopie als vollständig.
+              Kopiert die Fotos der Veranstaltung: Originale, bearbeitete Fotos und die fertigen
+              Layouts. Druckdateien, Testfotos aus dem Probelauf und die Unterlagen der Box
+              (Auslagen, Einstellungen) bleiben auf der Box. Erst wenn eine Markerdatei drüben ankommt
+              und die Dateizahl stimmt, gilt die Kopie als vollständig.
             </p>
             <div className="zeile">
               <div className="feld" style={{ flex: 1 }}>
@@ -625,9 +625,6 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
                 onClick={() => void uebergeben()}
               >
                 Jetzt übergeben
-              </button>
-              <button className="knopf knopf--neben" onClick={() => void vorbereiten()}>
-                Nur Ordner vorbereiten
               </button>
             </div>
           </div>
@@ -799,13 +796,6 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
       );
       zeige(`${ergebnis.meldung} Ziel: ${ergebnis.ziel}`);
       await lade();
-    });
-  }
-
-  function vorbereiten() {
-    return versuche(async () => {
-      const antwort = await api.sende<{ ordner: string }>(`/api/admin/events/${id}/uebergabe-vorbereiten`, {});
-      zeige(`Ordner ist übergabefertig: ${antwort.ordner}`);
     });
   }
 

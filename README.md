@@ -65,9 +65,9 @@ Papier“), nicht als Fehlercode.
   setzt die Box selbst ein. Der Betreuer lädt sie auch über einen kleinen
   Link in der Handy-Galerie. Der **Aushang** für die Gäste gilt für jede Feier
   und liegt unter „WLAN & Portal“.
-- **Übergabe** an den Gastgeber: ganzer Ordner auf einen USB-Stick, mit
-  Prüfmarker und einer `galerie.html` zum Doppelklicken, ohne Server und ohne
-  Internet.
+- **Übergabe** an den Gastgeber: die Fotos (Originale, bearbeitete Fotos,
+  Layouts) auf einen USB-Stick, mit Prüfmarker. Druckdateien, Probelauf und
+  die Unterlagen der Box (Auslagen, Einstellungen) bleiben auf der Box.
 
 **Vorlagen und Filter**
 - **Vorlagen-Editor** mit freiem Ebenenstapel aus Bild-, Foto- und
@@ -203,15 +203,14 @@ Fotobox-Daten/
   luts/                         eigene .cube-Filter
   events/
     2026-05-16_Hochzeit-Mueller/
-      event.json                Konfiguration, macht den Ordner portabel
+      event.json                Konfiguration (bleibt bei der Übergabe auf der Box)
       01_originale/             unveränderte Kameradateien
       02_bearbeitet/            Fotos mit Filter
       03_layouts/               fertige Layouts, der Inhalt der Galerie
       04_druck/                 Druckdateien 152,4 × 101,6 mm (bleiben bei der Übergabe auf der Box)
       _probelauf/               Testfotos (gehen nicht in die Übergabe)
       .cache/                   Vorschaubilder, Testdrucke, Unterlagen
-      auslagen.csv
-      galerie.html              Offline-Galerie für den Gastgeber
+      auslagen.csv              Abrechnung (bleibt bei der Übergabe auf der Box)
 ```
 
 ## Datenschutz und Sicherheit

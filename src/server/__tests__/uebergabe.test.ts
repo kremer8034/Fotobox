@@ -11,7 +11,7 @@ import { loescheAusgabeEndgueltig, starteSitzung, stelleFertig, verbucheFoto } f
 import { warteAufNeueDatei } from '../fach/aufnahme.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
-import { schreibeGalerieHtml, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { erzeugeKurzanleitung, schreibeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
 import { hashePin } from '../fach/pin.js';
 import { drosselGreift, pruefeAdresse } from '../fach/email.js';
@@ -54,17 +54,10 @@ beforeAll(async () => {
 afterAll(() => schliesseDb());
 
 describe('Uebergabe an den Gastgeber', () => {
-  it('schreibt eine eigenstaendige Galerie in den Event-Ordner', async () => {
-    const pfad = await schreibeGalerieHtml(event);
-    const html = readFileSync(pfad, 'utf8');
-    // Relative Pfade, damit die Datei per Doppelklick funktioniert - ohne
-    // Server, ohne Internet.
-    expect(html).toContain('03_layouts/');
-    expect(html).not.toContain('http://');
-    expect(html).toContain('Übergabe Test');
-  });
-
   it('kopiert vollstaendig und bestaetigt erst nach geprueftem Marker', async () => {
+    // Liegen auf der Box (Abrechnung, aeltere Version) - gehen aber nicht mit.
+    writeFileSync(join(event.ordner, 'auslagen.csv'), 'datum;anzahl');
+    writeFileSync(join(event.ordner, 'galerie.html'), '<!doctype html>');
     const ziel = mkdtempSync(join(tmpdir(), 'fotobox-stick-'));
     const ergebnis = await uebergebeAufDatentraeger(event, ziel);
 
@@ -72,9 +65,11 @@ describe('Uebergabe an den Gastgeber', () => {
     expect(ergebnis.dateien).toBeGreaterThan(0);
 
     const kopie = join(ziel, readdirSync(ziel)[0]!);
-    expect(existsSync(join(kopie, 'event.json'))).toBe(true);
-    expect(existsSync(join(kopie, 'auslagen.csv'))).toBe(true);
-    expect(existsSync(join(kopie, 'galerie.html'))).toBe(true);
+    // Nur die Fotos - die Unterlagen der Box bleiben auf der Box.
+    expect(existsSync(join(event.ordner, 'event.json'))).toBe(true);
+    expect(existsSync(join(kopie, 'event.json'))).toBe(false);
+    expect(existsSync(join(kopie, 'auslagen.csv'))).toBe(false);
+    expect(existsSync(join(kopie, 'galerie.html'))).toBe(false);
     expect(readdirSync(join(kopie, '01_originale'))).toHaveLength(1);
     expect(readdirSync(join(kopie, '03_layouts'))).toHaveLength(1);
 

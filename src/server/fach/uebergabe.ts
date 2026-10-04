@@ -2,12 +2,8 @@ import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
-import { basename, join, relative } from 'node:path';
+import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
-import { galerieEintraege } from './sitzungen.js';
-import { eventpfade } from './pfade.js';
-import { schreibeAuslagenCsv } from './auslagen.js';
-import { schreibeEventJson } from './events.js';
 import type { Veranstaltung } from '../../shared/typen.js';
 
 const fuehreAus = promisify(execFile);
@@ -30,30 +26,25 @@ export interface Uebergabeergebnis {
 }
 
 /**
- * Was nicht zum Gastgeber geht: der Zwischenspeicher, der Probelauf
- * (Testfotos vom Aufbau) und die Druckdateien - die sind nur das Layout aus
- * 03_layouts als PDF verpackt, der Gastgeber haette jedes Bild doppelt. Vom
- * Gast geloeschte Fotos gibt es gar nicht mehr; vom Betreuer aus der Galerie
- * genommene gehen bewusst mit.
+ * Der Gastgeber bekommt nur die Fotos: 01_originale, 02_bearbeitet und
+ * 03_layouts. Nicht mit gehen der Zwischenspeicher, der Probelauf (Testfotos
+ * vom Aufbau), die Druckdateien (nur die Layouts als PDF - jedes Bild doppelt)
+ * und die Unterlagen der Box: event.json und auslagen.csv bleiben fuer die
+ * eigene Abrechnung auf der Box; eine galerie.html aus aelteren Versionen
+ * ebenso. Vom Gast geloeschte Fotos gibt es gar nicht mehr; vom Betreuer aus
+ * der Galerie genommene gehen bewusst mit.
  */
-const AUSGELASSEN = ['.cache', '_probelauf', '04_druck'];
+const AUSGELASSENE_ORDNER = ['.cache', '_probelauf', '04_druck'];
+const AUSGELASSENE_DATEIEN = ['event.json', 'auslagen.csv', 'galerie.html'];
 
 function ausgelassen(name: string, istOrdner: boolean): boolean {
-  return istOrdner && AUSGELASSEN.includes(name);
-}
-
-export async function bereiteUebergabeVor(event: Veranstaltung): Promise<void> {
-  schreibeEventJson(event);
-  await schreibeAuslagenCsv(event);
-  await schreibeGalerieHtml(event);
+  return istOrdner ? AUSGELASSENE_ORDNER.includes(name) : AUSGELASSENE_DATEIEN.includes(name);
 }
 
 export async function uebergebeAufDatentraeger(
   event: Veranstaltung,
   zielWurzel: string,
 ): Promise<Uebergabeergebnis> {
-  await bereiteUebergabeVor(event);
-
   const quelle = event.ordner;
   const ziel = join(zielWurzel, basename(quelle));
   await mkdir(ziel, { recursive: true });
@@ -94,10 +85,24 @@ export async function uebergebeAufDatentraeger(
 async function kopiereOrdner(quelle: string, ziel: string): Promise<void> {
   if (process.platform === 'win32') {
     try {
-      // /E alle Unterordner, /XD Ordner auslassen, /R:2 zwei Wiederholungen.
+      // /E alle Unterordner, /XD Ordner und /XF Dateien auslassen, /R:2 zwei Wiederholungen.
       await fuehreAus(
         'robocopy',
-        [quelle, ziel, '/E', '/XD', ...AUSGELASSEN, '/R:2', '/W:2', '/NFL', '/NDL', '/NJH', '/NJS'],
+        [
+          quelle,
+          ziel,
+          '/E',
+          '/XD',
+          ...AUSGELASSENE_ORDNER,
+          '/XF',
+          ...AUSGELASSENE_DATEIEN,
+          '/R:2',
+          '/W:2',
+          '/NFL',
+          '/NDL',
+          '/NJH',
+          '/NJS',
+        ],
         { timeout: 30 * 60_000, windowsHide: true },
       );
     } catch (fehler) {
@@ -139,54 +144,6 @@ async function zaehleDateien(ordner: string): Promise<{ anzahl: number; bytes: n
   };
   await gehe(ordner);
   return { anzahl, bytes };
-}
-
-/**
- * Eigenstaendige Galerie im Event-Ordner. Der Gastgeber oeffnet sie per
- * Doppelklick, ohne irgendetwas zu installieren - kein Server, kein Internet.
- */
-export async function schreibeGalerieHtml(event: Veranstaltung): Promise<string> {
-  const pfade = eventpfade(event.ordner);
-  const bilder = galerieEintraege(event.id).map((e) => relative(event.ordner, e.pfadLayout).replace(/\\/g, '/'));
-
-  const html = `<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${maskiere(event.name)}</title>
-<style>
-  body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background:#14161a; color:#f4f5f7; }
-  header { padding:1.5rem 1.5rem 0.5rem; }
-  h1 { margin:0; font-size:1.6rem; }
-  p.leise { color:#a8adb8; margin:0.3rem 0 0; }
-  .raster { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; padding:1.5rem; }
-  .raster a { display:block; }
-  .raster img { width:100%; border-radius:8px; display:block; background:#000; }
-  footer { padding:0 1.5rem 2rem; color:#a8adb8; font-size:0.85rem; }
-</style>
-</head>
-<body>
-<header>
-  <h1>${maskiere(event.name)}</h1>
-  <p class="leise">${maskiere(new Date(event.datum).toLocaleDateString('de-DE'))} · ${bilder.length} Bilder</p>
-</header>
-<div class="raster">
-${bilder.map((b) => `  <a href="${b}" target="_blank"><img src="${b}" alt="" loading="lazy"></a>`).join('\n')}
-</div>
-<footer>
-  Alle Bilder liegen im Ordner <code>03_layouts</code>. Die Einzelaufnahmen findest du unter
-  <code>01_originale</code>, die bearbeiteten Fassungen unter <code>02_bearbeitet</code>.
-</footer>
-</body>
-</html>
-`;
-  await writeFile(pfade.galerieHtml, html, 'utf8');
-  return pfade.galerieHtml;
-}
-
-function maskiere(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** Nur zur Sicherheit: Pruefsumme einer Datei, falls einmal genauer verglichen werden soll. */
