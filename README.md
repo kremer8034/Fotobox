@@ -8,6 +8,14 @@ der Hand. Jede Veranstaltung landet sauber in einem eigenen Ordner.
 **Die Box braucht kein Internet.** Galerie fürs Handy und Foto per E-Mail sind
 je Veranstaltung zuschaltbar und standardmäßig aus.
 
+### Die Fotobox im Video
+
+[![Fotobox-Vorstellungsvideo ansehen](docs/video/Fotobox-Vorstellung-Vorschau.jpg)](docs/video/Fotobox-Vorstellung.mp4)
+
+In 44 Sekunden vom Antippen bis zum fertigen Druck: [Video im Querformat](docs/video/Fotobox-Vorstellung.mp4)
+· [Video im Hochformat](docs/video/Fotobox-Vorstellung-Hochformat.mp4) für WhatsApp-Status und
+Instagram-Stories. Die Musik ist eigens erzeugt und frei von Rechten Dritter.
+
 **Aktuelle Version: 1.0.10.** Die Setup-Datei liegt auf der
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
