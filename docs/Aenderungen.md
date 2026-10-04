@@ -18,6 +18,12 @@ ihn auf der Box verstehst.
 - **Aushang unter „WLAN & Portal“:** Der Aushang für die Gäste hat keinen
   Bezug zur Veranstaltung mehr – einmal drucken, er passt für jede Feier. Der
   kleine Rückfall-Code führt immer zur gerade laufenden Galerie.
+- **Rückweg zur Galerie, deutlich beschriftet:** Wer schon im WLAN ist, bei
+  dem sich das Anmeldefenster aber nicht geöffnet hat oder der es geschlossen
+  hat, kommt über „Schon im WLAN? Galerie hier öffnen“ auf dem Aushang direkt
+  in die Galerie – per Code oder durch Eintippen von 192.168.254.1 im
+  Browser. Dieselbe Adresse steht klein in der Anleitung am Startbildschirm
+  und in der Galerie.
 - **Drei Hochzeitsschriften ab Werk:** Great Vibes, Parisienne und Pinyon
   Script – geschwungene Schreibschriften, mit Umlauten und ß. Sie stehen im
   Vorlagen-Editor unter „Schriftart“ bereit, ohne dass man sie hochladen muss,

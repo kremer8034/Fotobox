@@ -40,6 +40,10 @@ export function WlanAnleitung({ name, form }: { name: string; form: 'karte' | 'l
           </li>
           <li>Die Fotos öffnen sich von selbst</li>
         </ol>
+        {/* Rueckweg fuer alle, deren Anmeldefenster nicht aufging oder schon zu ist. */}
+        <div className="wlan-hilfe__rueckweg">
+          Schon im WLAN? Im Browser <strong>192.168.254.1</strong> eingeben
+        </div>
       </div>
     </div>
   );

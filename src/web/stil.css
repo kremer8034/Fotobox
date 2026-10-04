@@ -1386,6 +1386,17 @@ button {
   color: var(--schrift);
 }
 
+.wlan-hilfe__rueckweg {
+  margin-top: calc(1.5 * var(--mm));
+  font-size: 0.62rem;
+  color: var(--schrift-leise);
+}
+
+.wlan-hilfe__rueckweg strong {
+  color: var(--schrift);
+  letter-spacing: 0.02em;
+}
+
 /* In der Galerie nebeneinander statt untereinander - die Leiste ist flach. */
 .wlan-hilfe--leiste .wlan-hilfe__symbol {
   width: calc(11 * var(--mm));

@@ -318,7 +318,7 @@ function zeichnePortalAnleitung(
   ];
 
   const hauptHoehe = 310;
-  const rueckHoehe = galerieQr ? 140 : 0;
+  const rueckHoehe = galerieQr ? 180 : 0;
   const luecke = 22;
   let y = 172 + Math.max(30, (hoehe - 172 - 90 - hauptHoehe - (galerieQr ? rueckHoehe + luecke : 0)) / 2);
 
@@ -346,16 +346,27 @@ function zeichnePortalAnleitung(
   });
   y += hauptHoehe + luecke;
 
-  // Rueckfall klein darunter - bewusst nicht als Hauptweg.
+  // Rueckweg zur Galerie: fuer alle, die schon im WLAN sind, deren
+  // Anmeldefenster aber nicht aufging oder schon geschlossen ist - danach
+  // oeffnet das Handy es meist nicht noch einmal. Der Code ist ein Link (kein
+  // WLAN-Code): Die Box leitet ihn immer zur gerade laufenden Galerie.
   if (galerieQr) {
     d.roundedRect(rand, y, innen, rueckHoehe, 12).lineWidth(1).fillAndStroke('#ffffff', '#e1e4e9');
     const qr = rueckHoehe - 40;
     d.image(galerieQr, rand + 22, y + 20, { width: qr });
-    const rx = rand + 22 + qr + 26;
+    const rx = rand + 22 + qr + 28;
     const rb = rand + innen - 22 - rx;
-    d.font('Helvetica-Bold').fontSize(15).fillColor(FARBE.text).text('Falls sich nichts öffnet', rx, y + 36, { width: rb });
+    d.font('Helvetica-Bold').fontSize(17).fillColor(FARBE.text)
+      .text('Schon im WLAN? Galerie hier öffnen', rx, y + 30, { width: rb });
     d.font('Helvetica').fontSize(12).fillColor(FARBE.text)
-      .text('Mit dem WLAN verbunden bleiben und diesen Code scannen.', rx, d.y + 6, { width: rb });
+      .text(
+        'Hat sich die Galerie nicht von selbst geöffnet oder ist sie zu: diesen Code mit der Handykamera scannen – er öffnet die Galerie direkt.',
+        rx,
+        d.y + 6,
+        { width: rb },
+      );
+    d.font('Helvetica-Bold').fontSize(11).fillColor(FARBE.leise)
+      .text(`Oder im Browser eingeben: ${PORTAL_ADRESSE}`, rx, d.y + 8, { width: rb });
   }
 }
 
