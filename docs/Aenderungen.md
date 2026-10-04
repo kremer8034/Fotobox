@@ -4,7 +4,7 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
-## 1.0.10
+## 1.1.0
 
 - **Übergabe nur mit den Fotos:** Der Gastgeber bekommt die Ordner
   `01_originale`, `02_bearbeitet` und `03_layouts`. Nicht mehr mit gehen:
