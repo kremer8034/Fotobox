@@ -529,12 +529,14 @@ auch der Gastgeber benutzen.
 Die Fotobox kopiert alles und prüft danach nach, ob wirklich alles angekommen
 ist. Erst dann meldet sie Vollzug.
 
-Auf dem Stick liegt unter anderem eine Datei **`galerie.html`**. Der Gastgeber
-kann sie doppelklicken und bekommt alle Bilder als Übersicht — ohne irgendetwas
-zu installieren.
+Auf dem Stick landen nur die Fotos: die Ordner `01_originale` (die
+unveränderten Kamerabilder), `02_bearbeitet` (mit Filter) und `03_layouts`
+(die fertigen Bilder, wie sie gedruckt wurden). Druckdateien, Testfotos und
+die Unterlagen der Box – Auslagen und Einstellungen – bleiben auf der Box.
 
 **Danach von der Box löschen:** Die Fotos gehören jetzt dem Gastgeber, nicht
-der Box, die du weiterverleihst. Wenn der Stick geprüft ist: Veranstaltung
+der Box, die du weiterverleihst. Vorher die Abrechnung sichern: im Reiter
+**Auslagen** die CSV-Datei herunterladen. Wenn der Stick geprüft ist: Veranstaltung
 auf **„Abschließen"**, dann im Reiter **Übergabe** ganz unten **„Veranstaltung
 löschen"**. Zur Sicherheit musst du den Namen der Feier eintippen — gelöscht ist
 danach alles: Originale, Layouts und E-Mail-Adressen.

@@ -21,7 +21,6 @@ import { join } from 'node:path';
  *         _probelauf/      Sitzungen aus dem Probelauf, zaehlen nirgends mit
  *         .cache/          Thumbnails und QR-Codes, nicht Teil der Uebergabe
  *         auslagen.csv
- *         galerie.html
  */
 
 export interface Wurzelpfade {
@@ -55,7 +54,6 @@ export interface Eventpfade {
   cache: string;
   eventJson: string;
   auslagenCsv: string;
-  galerieHtml: string;
 }
 
 export function eventpfade(eventOrdner: string, probelauf = false): Eventpfade {
@@ -72,7 +70,6 @@ export function eventpfade(eventOrdner: string, probelauf = false): Eventpfade {
     cache: join(eventOrdner, '.cache'),
     eventJson: join(eventOrdner, 'event.json'),
     auslagenCsv: join(eventOrdner, 'auslagen.csv'),
-    galerieHtml: join(eventOrdner, 'galerie.html'),
   };
 }
 

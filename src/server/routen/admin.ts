@@ -63,7 +63,7 @@ import { kalibrierTestbild, platzhalterFoto } from '../bild/testbilder.js';
 import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vorschau.js';
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
-import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
 import {
@@ -930,17 +930,6 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       } catch (fehler) {
         return antwort.code(500).send({ fehler: (fehler as Error).message });
       }
-    },
-  );
-
-  /** Ordner uebergabefertig machen, ohne zu kopieren. */
-  app.post<{ Params: { id: string } }>(
-    '/api/admin/events/:id/uebergabe-vorbereiten',
-    async (anfrage, antwort) => {
-      const event = holeEvent(anfrage.params.id);
-      if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
-      await bereiteUebergabeVor(event);
-      return { ok: true, ordner: event.ordner };
     },
   );
 
