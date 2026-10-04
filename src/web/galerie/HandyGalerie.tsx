@@ -275,6 +275,12 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
           </button>
         ))}
       </div>
+      {/* Fuer den Betreuer, bewusst unauffaellig unten rechts: die Kurzanleitung
+          mit der Betreuer-PIN aufs eigene Handy. Gewollt in Kauf genommen: Wer
+          die Galerie sieht, koennte sie auch laden. */}
+      <a className="handy__betreuer" href={`/medien/kurzanleitung/${token}.pdf`} download>
+        Für Betreuer: Kurzanleitung
+      </a>
     </div>
   );
 }

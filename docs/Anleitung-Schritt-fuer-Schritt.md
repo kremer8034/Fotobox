@@ -580,6 +580,11 @@ einziges Foto geht dabei verloren —
 die wartenden Ausdrucke laufen danach durch.
 
 **Kann ich die Fotobox ohne mich verleihen?**
-Ja, dafür ist sie gebaut. Erzeuge auf der Detailseite unter **Unterlagen** die
-Kurzanleitung — sie enthält die Betreuer-PIN und kommt in die Box. Der
-Gastgeber kann damit Papier wechseln und nachdrucken, aber nichts verstellen.
+Ja, dafür ist sie gebaut. Auf der Detailseite der Veranstaltung unter
+**Übergabe** auf **„Kurzanleitung erzeugen“** tippen – die Betreuer-PIN setzt
+die Fotobox selbst ein, die Notfall-Telefonnummer merkt sie sich für alle
+Veranstaltungen. Der Zettel kommt in die Box. Der Gastgeber kann damit Papier
+wechseln und nachdrucken, aber nichts verstellen. Aufs eigene Handy lädt er
+ihn über den kleinen Link „Für Betreuer: Kurzanleitung“ ganz unten in der
+Handy-Galerie. Den Aushang für die Gäste gibt es unter **„WLAN & Portal“** –
+einmal drucken, er passt für jede Feier.

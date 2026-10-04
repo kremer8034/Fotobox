@@ -30,6 +30,7 @@ import {
   holeEvent,
   listeEvents,
   loescheEvent,
+  merkeBetreuerPin,
   setzeProbelauf,
   setzeStatus,
 } from '../fach/events.js';
@@ -64,7 +65,7 @@ import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.j
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { bereiteUebergabeVor, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
-import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
+import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
 import {
   absenderVollstaendig,
   leseMailzugang,
@@ -789,12 +790,15 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const koerper = geprueft.data;
 
       try {
-        return eventFuerBrowser(aktualisiereEvent(anfrage.params.id, {
+        const event = aktualisiereEvent(anfrage.params.id, {
           name: koerper.name,
           datum: koerper.datum,
           einstellungen: koerper.einstellungen as never,
           ...(koerper.betreuerPin ? { betreuerPinHash: await hashePin(koerper.betreuerPin) } : {}),
-        }));
+        });
+        // Lesbar mitmerken - sie kommt automatisch auf die Kurzanleitung.
+        if (koerper.betreuerPin) merkeBetreuerPin(event.id, koerper.betreuerPin);
+        return eventFuerBrowser(event);
       } catch (fehler) {
         return antwort.code(400).send({ fehler: (fehler as Error).message });
       }
@@ -942,76 +946,49 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
 
   // ------------------------------------------------------ Unterlagen
   /**
-   * Zwei Zettel mit unterschiedlichen Lesern: Die Kurzanleitung mit der PIN
-   * kommt in die Box, der QR-Aushang aussen dran.
+   * Die Kurzanleitung mit der Betreuer-PIN - ohne Eingaben: PIN aus der
+   * Veranstaltung, Notfall-Telefon und WLAN aus den Geraeteeinstellungen. Ein
+   * mitgeschicktes Telefon wird fuer alle kuenftigen Zettel gemerkt.
    */
   app.post<{ Params: { id: string }; Body: unknown }>(
     '/api/admin/events/:id/unterlagen',
     async (anfrage, antwort) => {
-      const koerper = z
-        .object({
-          betreuerPin: z.string().max(8),
-          telefon: z.string().max(40).default(''),
-          wlanName: z.string().max(64).optional(),
-          wlanPasswort: z.string().max(64).optional(),
-        })
-        .parse(anfrage.body ?? {});
+      const koerper = z.object({ telefon: z.string().trim().max(40).optional() }).parse(anfrage.body ?? {});
       const event = holeEvent(anfrage.params.id);
       if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
-
-      // Die Kurzanleitung ist der Zettel, mit dem der Gastgeber allein
-      // zurechtkommen muss - die PIN darauf muss stimmen. Gespeichert ist sie
-      // nur als Hash; vorher stand bei einem spaeter erzeugten Zettel deshalb
-      // "(im Admin gesetzt)" statt einer PIN darauf.
-      if (!event.betreuerPinHash) {
-        return antwort.code(409).send({ fehler: 'Erst unter "Aussehen & PIN" eine Betreuer-PIN setzen.' });
-      }
-      if (!(await pruefePin(koerper.betreuerPin, event.betreuerPinHash))) {
-        return antwort
-          .code(400)
-          .send({ fehler: 'Diese PIN stimmt nicht mit der gesetzten Betreuer-PIN überein - sie kommt so auf den Zettel.' });
-      }
-
-      const galerieUrl = event.einstellungen.galerieAktiv
-        ? (galerieAdresse(event.galerieToken, konfig.portOeffentlich) ?? undefined)
-        : undefined;
-
-      // Leere WLAN-Felder: die unter Geraet gespeicherten Daten des Vonets.
-      const geraet = leseGeraet();
-      const angaben = {
-        ...koerper,
-        wlanName: koerper.wlanName?.trim() || geraet.wlan?.name || undefined,
-        wlanPasswort: koerper.wlanPasswort?.trim() || geraet.wlan?.passwort || undefined,
-        galerieUrl,
-        portal: geraet.portalAktiv,
-      };
-      const kurzanleitung = await schreibeKurzanleitung(event, angaben);
-      const aushang = event.einstellungen.galerieAktiv
-        ? await schreibeAushang(event, angaben)
-        : null;
-      return {
-        kurzanleitung,
-        aushang,
-        links: {
-          kurzanleitung: `/api/admin/events/${event.id}/unterlagen/kurzanleitung.pdf`,
-          aushang: aushang ? `/api/admin/events/${event.id}/unterlagen/aushang.pdf` : null,
-        },
-      };
+      if (koerper.telefon !== undefined) schreibeGeraet({ notfallTelefon: koerper.telefon });
+      const ergebnis = await erzeugeKurzanleitung(event);
+      if ('fehler' in ergebnis) return antwort.code(409).send({ fehler: ergebnis.fehler });
+      return { link: `/api/admin/events/${event.id}/unterlagen/kurzanleitung.pdf` };
     },
   );
 
-  /** Die erzeugten Zettel zum Ansehen und Drucken - ohne sie auf der Platte zu suchen. */
-  app.get<{ Params: { id: string; art: string } }>(
-    '/api/admin/events/:id/unterlagen/:art',
+  /** Die erzeugte Kurzanleitung zum Ansehen und Drucken - ohne sie auf der Platte zu suchen. */
+  app.get<{ Params: { id: string } }>(
+    '/api/admin/events/:id/unterlagen/kurzanleitung.pdf',
     async (anfrage, antwort) => {
       const event = holeEvent(anfrage.params.id);
-      const datei = { 'kurzanleitung.pdf': 'kurzanleitung.pdf', 'aushang.pdf': 'qr-aushang.pdf' }[anfrage.params.art];
-      if (!event || !datei) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
-      const pfad = join(eventpfade(event.ordner).cache, 'unterlagen', datei);
+      if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+      const pfad = join(eventpfade(event.ordner).cache, 'unterlagen', 'kurzanleitung.pdf');
       if (!existsSync(pfad)) return antwort.code(404).send({ fehler: 'Noch nicht erzeugt.' });
       return antwort.type('application/pdf').header('Cache-Control', 'no-store').send(createReadStream(pfad));
     },
   );
+
+  /**
+   * Der Aushang fuer die Gaeste - fuer jede Feier derselbe (offenes WLAN,
+   * Captive Portal), deshalb unter "WLAN & Portal" statt in der Veranstaltung.
+   */
+  app.post('/api/admin/portal/aushang', async () => {
+    await schreibePortalAushang(konfig.datenpfad, leseGeraet().wlan?.name || undefined);
+    return { link: '/api/admin/portal/aushang.pdf' };
+  });
+
+  app.get('/api/admin/portal/aushang.pdf', async (_anfrage, antwort) => {
+    const pfad = join(konfig.datenpfad, 'unterlagen', 'aushang.pdf');
+    if (!existsSync(pfad)) return antwort.code(404).send({ fehler: 'Noch nicht erzeugt.' });
+    return antwort.type('application/pdf').header('Cache-Control', 'no-store').send(createReadStream(pfad));
+  });
 
   /** Erfasste E-Mail-Adressen einer Veranstaltung - fuer Auskunft und Loeschung. */
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/adressen', async (anfrage, antwort) => {

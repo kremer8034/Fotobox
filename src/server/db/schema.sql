@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS events (
   galerie_token       TEXT NOT NULL,
   status_token        TEXT NOT NULL,
   betreuer_pin_hash   TEXT,
+  -- Die Betreuer-PIN lesbar, nur fuer die Kurzanleitung (siehe merkeBetreuerPin).
+  betreuer_pin        TEXT,
   material_verbraucht INTEGER NOT NULL DEFAULT 0,
   probelauf           INTEGER NOT NULL DEFAULT 0,
   erstellt            TEXT NOT NULL,

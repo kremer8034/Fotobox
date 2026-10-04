@@ -2115,6 +2115,17 @@ html.handy-ansicht body {
   text-align: left;
 }
 
+/* Handy-Galerie: Link fuer den Betreuer - klein und blass, unten rechts. */
+.handy__betreuer {
+  display: block;
+  margin: 2rem 0 0.5rem;
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--schrift-leise);
+  opacity: 0.55;
+  text-decoration: none;
+}
+
 /* Handy-Galerie: der Weg zum Speichern und Teilen, je Geraet. */
 .handy__weg ol {
   margin: 0.35rem 0 0;

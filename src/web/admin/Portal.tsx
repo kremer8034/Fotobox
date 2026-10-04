@@ -34,6 +34,7 @@ export function PortalSeite() {
   const [diagnose, setzeDiagnose] = useState<PortalDiagnose | null>(null);
   const [arbeitet, setzeArbeitet] = useState<string | null>(null);
   const [meldung, setzeMeldung] = useState<string | null>(null);
+  const [aushang, setzeAushang] = useState<string | null>(null);
 
   useEffect(() => {
     void lade().then((g) => g?.wlan && setzeWlan(g.wlan));
@@ -110,6 +111,33 @@ export function PortalSeite() {
           >
             Speichern
           </button>
+        </div>
+      </div>
+
+      <div className="karte">
+        <h2>Aushang für die Gäste</h2>
+        <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+          Ein Blatt A4 für jede Feier: „WLAN-Einstellungen öffnen – {wlan.name.trim() ? `„${wlan.name.trim()}“` : 'das WLAN'}{' '}
+          antippen – die Fotos öffnen sich von selbst“. Dazu klein ein Code für den Fall, dass sich nichts öffnet –
+          er führt immer zur gerade laufenden Galerie. Keine Veranstaltung, keine PIN darauf: einmal drucken,
+          laminieren, immer wieder aufhängen. Er passt, solange das Portal eingeschaltet ist.
+        </p>
+        <div className="zeile">
+          <button
+            className="knopf knopf--neben"
+            onClick={() =>
+              void tue('Aushang erzeugt – zum Öffnen und Drucken den Link nutzen.', async () => {
+                setzeAushang((await api.sende<{ link: string }>('/api/admin/portal/aushang', {})).link);
+              })
+            }
+          >
+            Aushang erzeugen
+          </button>
+          {aushang && (
+            <a href={aushang} target="_blank" rel="noreferrer">
+              Aushang öffnen
+            </a>
+          )}
         </div>
       </div>
 

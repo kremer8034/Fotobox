@@ -6,6 +6,18 @@ ihn auf der Box verstehst.
 
 ## 1.0.9
 
+- **Kurzanleitung ohne Eingaben:** In der Veranstaltung unter „Übergabe“
+  genügt „Kurzanleitung erzeugen“. Die Betreuer-PIN setzt die Fotobox selbst
+  ein – so, wie sie unter „Aussehen & PIN“ gesetzt ist. (Eine vor dieser
+  Version gesetzte PIN bitte einmal neu setzen.) Die Notfall-Telefonnummer
+  gilt jetzt für alle Veranstaltungen und muss nur einmal eingetragen werden.
+- **Kurzanleitung aufs Handy des Betreuers:** Ganz unten in der
+  Handy-Galerie steht klein „Für Betreuer: Kurzanleitung“. Bewusst in Kauf
+  genommen: Wer die Galerie sieht, könnte sie auch laden – und damit die
+  Betreuer-PIN sehen.
+- **Aushang unter „WLAN & Portal“:** Der Aushang für die Gäste hat keinen
+  Bezug zur Veranstaltung mehr – einmal drucken, er passt für jede Feier. Der
+  kleine Rückfall-Code führt immer zur gerade laufenden Galerie.
 - **Drei Hochzeitsschriften ab Werk:** Great Vibes, Parisienne und Pinyon
   Script – geschwungene Schreibschriften, mit Umlauten und ß. Sie stehen im
   Vorlagen-Editor unter „Schriftart“ bereit, ohne dass man sie hochladen muss,
