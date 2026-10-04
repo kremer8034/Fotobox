@@ -30,11 +30,13 @@ export interface Uebergabeergebnis {
 }
 
 /**
- * Was nicht zum Gastgeber geht: der Zwischenspeicher und der Probelauf
- * (Testfotos vom Aufbau). Vom Gast geloeschte Fotos gibt es gar nicht mehr;
- * vom Betreuer aus der Galerie genommene gehen bewusst mit.
+ * Was nicht zum Gastgeber geht: der Zwischenspeicher, der Probelauf
+ * (Testfotos vom Aufbau) und die Druckdateien - die sind nur das Layout aus
+ * 03_layouts als PDF verpackt, der Gastgeber haette jedes Bild doppelt. Vom
+ * Gast geloeschte Fotos gibt es gar nicht mehr; vom Betreuer aus der Galerie
+ * genommene gehen bewusst mit.
  */
-const AUSGELASSEN = ['.cache', '_probelauf'];
+const AUSGELASSEN = ['.cache', '_probelauf', '04_druck'];
 
 function ausgelassen(name: string, istOrdner: boolean): boolean {
   return istOrdner && AUSGELASSEN.includes(name);

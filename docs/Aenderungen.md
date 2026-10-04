@@ -4,6 +4,13 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.10
+
+- **Übergabe ohne Druckdateien:** Der Ordner `04_druck` geht nicht mehr mit
+  an den Gastgeber. Die Druckdateien sind nur die Layouts als PDF verpackt –
+  dieselben Bilder liegen schon in `03_layouts`. Auf der Box bleiben sie
+  erhalten.
+
 ## 1.0.9
 
 - **Kurzanleitung ohne Eingaben:** In der Veranstaltung unter „Übergabe“

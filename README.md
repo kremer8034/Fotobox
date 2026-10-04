@@ -8,7 +8,7 @@ der Hand. Jede Veranstaltung landet sauber in einem eigenen Ordner.
 **Die Box braucht kein Internet.** Galerie fürs Handy und Foto per E-Mail sind
 je Veranstaltung zuschaltbar und standardmäßig aus.
 
-**Aktuelle Version: 1.0.9.** Die Setup-Datei liegt auf der
+**Aktuelle Version: 1.0.10.** Die Setup-Datei liegt auf der
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
 
@@ -207,7 +207,7 @@ Fotobox-Daten/
       01_originale/             unveränderte Kameradateien
       02_bearbeitet/            Fotos mit Filter
       03_layouts/               fertige Layouts, der Inhalt der Galerie
-      04_druck/                 Druckdateien 152,4 × 101,6 mm
+      04_druck/                 Druckdateien 152,4 × 101,6 mm (bleiben bei der Übergabe auf der Box)
       _probelauf/               Testfotos (gehen nicht in die Übergabe)
       .cache/                   Vorschaubilder, Testdrucke, Unterlagen
       auslagen.csv

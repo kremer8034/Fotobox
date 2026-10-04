@@ -78,8 +78,11 @@ describe('Uebergabe an den Gastgeber', () => {
     expect(readdirSync(join(kopie, '01_originale'))).toHaveLength(1);
     expect(readdirSync(join(kopie, '03_layouts'))).toHaveLength(1);
 
-    // Der Cache gehoert nicht zur Uebergabe.
+    // Der Cache gehoert nicht zur Uebergabe - und die Druckdateien auch nicht:
+    // Sie sind nur die Layouts als PDF.
     expect(existsSync(join(kopie, '.cache'))).toBe(false);
+    expect(readdirSync(join(event.ordner, '04_druck')).length).toBeGreaterThan(0);
+    expect(existsSync(join(kopie, '04_druck'))).toBe(false);
     // Und die Markerdatei raeumt sich selbst wieder weg.
     expect(readdirSync(kopie).some((n) => n.endsWith('.chk'))).toBe(false);
   });
@@ -114,7 +117,7 @@ describe('Uebergabe an den Gastgeber', () => {
 
     const kopie = join(ziel, readdirSync(ziel)[0]!);
     expect(existsSync(join(kopie, '_probelauf'))).toBe(false);
-    for (const ordner of ['01_originale', '03_layouts', '04_druck']) {
+    for (const ordner of ['01_originale', '03_layouts']) {
       const namen = readdirSync(join(kopie, ordner));
       expect(namen.some((n) => n.startsWith(sitzung.id)), ordner).toBe(false);
       expect(namen.length, ordner).toBeGreaterThan(0);
