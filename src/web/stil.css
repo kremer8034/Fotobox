@@ -2414,3 +2414,297 @@ html.handy-ansicht body {
   outline: 2px solid var(--akzent);
   outline-offset: 2px;
 }
+
+/* ------------------------------------------------------------------ Diashow
+ * Ein Foto nach dem anderen: unscharf und abgedunkelt fuellt es den ganzen
+ * Schirm, scharf und vollstaendig liegt es darueber - Layouts im Querformat
+ * 3:2 lassen auf 16:9 sonst schwarze Streifen. Jedes Bild zoomt langsam heran.
+ */
+.diashow {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+  z-index: 30;
+}
+
+.diashow__bild {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diashow__bild--jetzt {
+  animation: diashow-ein 1.2s ease-out both;
+}
+
+.diashow__hg {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) brightness(0.45) saturate(1.2);
+}
+
+.diashow__bild img {
+  position: relative;
+  max-width: 88%;
+  max-height: 80%;
+  object-fit: contain;
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.6);
+}
+
+.diashow__bild--jetzt img {
+  animation: diashow-zoom var(--diashow-dauer, 8s) linear both;
+}
+
+@keyframes diashow-ein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes diashow-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.diashow__neu {
+  position: absolute;
+  top: 5vh;
+  right: 4vw;
+  padding: 1.2vh 2.4vw;
+  border-radius: 999px;
+  background: var(--akzent);
+  color: var(--akzent-schrift);
+  font-weight: 800;
+  font-size: 2.6vh;
+  box-shadow: 0 1vh 3vh rgba(0, 0, 0, 0.5);
+  animation: diashow-ein 0.6s 0.8s ease-out both;
+}
+
+.diashow__titel {
+  position: absolute;
+  top: 3vh;
+  left: 3vw;
+  padding: 1vh 1.8vw;
+  border-radius: 1.2vh;
+  background: rgba(16, 18, 22, 0.72);
+  font-size: 3vh;
+  font-weight: 700;
+  color: #fff;
+}
+
+.diashow__hinweis {
+  position: absolute;
+  bottom: 4vh;
+  right: 4vw;
+  padding: 1.2vh 2vw;
+  border-radius: 1.2vh;
+  background: rgba(16, 18, 22, 0.72);
+  font-size: 2.4vh;
+  color: #fff;
+}
+
+.diashow__leer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 3.4vh;
+  color: var(--schrift-leise);
+  padding: 5vw;
+}
+
+.diashow__leer-titel {
+  font-size: 6vh;
+  font-weight: 800;
+  color: var(--schrift);
+  margin-bottom: 2vh;
+}
+
+.diashow__vollbild {
+  position: fixed;
+  bottom: 2vh;
+  left: 2vw;
+  z-index: 40;
+}
+
+html.diashow-seite,
+html.diashow-seite body {
+  background: #000;
+}
+
+.diashow-rahmen--ruhig,
+.diashow-rahmen--ruhig * {
+  cursor: none;
+}
+
+/* Am Startbildschirm: Ein Band unten laedt zum Mitmachen ein. */
+.diashow--kiosk .diashow__einladung {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 6vh 4vw 5vh;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2vw;
+  color: #fff;
+  font-size: 4.2vh;
+  font-weight: 800;
+  text-align: center;
+}
+
+.diashow__finger {
+  width: 7vh;
+  height: 7vh;
+  border-radius: 50%;
+  background: var(--akzent);
+  box-shadow: 0 0 0 0 var(--akzent-schimmer);
+  animation: diashow-puls 1.6s ease-out infinite;
+  flex: none;
+}
+
+@keyframes diashow-puls {
+  0% {
+    box-shadow: 0 0 0 0 var(--akzent-schimmer);
+    transform: scale(0.92);
+  }
+  60% {
+    box-shadow: 0 0 0 3vh rgba(0, 0, 0, 0);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    transform: scale(0.92);
+  }
+}
+
+/* ---------------------------------------------------------------- Gaestebuch */
+.gaestebuch {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: var(--grund);
+  display: flex;
+  flex-direction: column;
+  padding: var(--rand-sicher);
+  gap: var(--abstand);
+}
+
+.gaestebuch__kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand);
+}
+
+.gaestebuch__foto {
+  height: calc(22 * var(--mm));
+  border-radius: var(--radius-klein);
+  box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+.gaestebuch__titel {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.gaestebuch__unter {
+  margin: 0.2rem 0 0;
+  color: var(--schrift-leise);
+  font-size: 0.85rem;
+}
+
+.gaestebuch__flaeche {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Papier mit feinen Linien - wer mit dem Finger schreibt, schreibt so gerader.
+   Die Linien gehoeren nur zur Anzeige, nicht ins gespeicherte Bild. */
+.gaestebuch__papier {
+  aspect-ratio: 3 / 2;
+  height: 100%;
+  max-width: 100%;
+  border-radius: var(--radius);
+  background-color: #fdfaf3;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(16.666% - 1px),
+    rgba(120, 140, 180, 0.22) calc(16.666% - 1px),
+    rgba(120, 140, 180, 0.22) 16.666%
+  );
+  box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.5);
+  touch-action: none;
+  position: relative;
+}
+
+.gaestebuch__papier canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.gaestebuch__platzhalter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(60, 70, 90, 0.35);
+  font-size: 1.3rem;
+  font-style: italic;
+  pointer-events: none;
+}
+
+.gaestebuch__leiste {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand);
+}
+
+.gaestebuch__farben {
+  display: flex;
+  gap: calc(2.5 * var(--mm));
+  margin-right: auto;
+}
+
+.gaestebuch__farbe {
+  width: var(--ziel-min);
+  height: var(--ziel-min);
+  border-radius: 50%;
+  border: 3px solid var(--kante);
+  cursor: pointer;
+}
+
+.gaestebuch__farbe--gewaehlt {
+  border-color: #fff;
+  box-shadow: 0 0 0 4px var(--akzent);
+}
+
+/* Am Startbildschirm etwas kleiner und hoeher: unten liegt das Einladungsband. */
+.diashow--kiosk .diashow__bild img {
+  max-height: 74%;
+  margin-bottom: 12vh;
+}

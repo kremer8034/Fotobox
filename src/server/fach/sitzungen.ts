@@ -11,6 +11,7 @@ import { eventpfade } from './pfade.js';
 import { holeFilter } from './filter.js';
 import { holeVorlage } from './vorlagen.js';
 import { FOTO_FRISCH_MS } from './email.js';
+import { grussDateienVon } from './gaestebuch.js';
 import { fotoEbenen, type Ausgabe, type Veranstaltung, type Vorlage } from '../../shared/typen.js';
 
 /**
@@ -411,8 +412,8 @@ export function darfKioskLoeschen(eventId: string, ausgabeId: string, jetztMs = 
 /**
  * Der Gast hat sein Foto am Ergebnis geloescht: Es ist danach fuer niemanden
  * mehr da - nicht in der Galerie, nicht im Servicemenue, nicht bei der
- * Uebergabe. Original, bearbeitete Fassung, Layout, Druckdatei und alle
- * Zwischenbilder werden von der Platte geloescht, die Eintraege aus der
+ * Uebergabe. Original, bearbeitete Fassung, Layout, Druckdatei, ein Gruss im
+ * Gaestebuch und alle Zwischenbilder werden von der Platte geloescht, die Eintraege aus der
  * Datenbank. Die Sitzung selbst bleibt als Durchgang stehen.
  * (Eine Kopie auf der SD-Karte der Kamera liegt ausserhalb der Software.)
  */
@@ -425,6 +426,8 @@ export async function loescheAusgabeEndgueltig(ausgabeId: string, eventOrdner: s
   const fotos = db
     .prepare('SELECT pfad_original, pfad_bearbeitet FROM fotos WHERE sitzung_id = ?')
     .all(ausgabe.sitzung_id) as { pfad_original: string; pfad_bearbeitet: string | null }[];
+  // Ein Gruss im Gaestebuch gehoert zum Foto - wer es loescht, loescht ihn mit.
+  const gruesse = grussDateienVon(ausgabeId);
 
   db.transaction(() => {
     db.prepare('DELETE FROM ausgaben WHERE id = ?').run(ausgabeId);
@@ -432,7 +435,11 @@ export async function loescheAusgabeEndgueltig(ausgabeId: string, eventOrdner: s
   })();
   vergiss(ausgabe.sitzung_id);
 
-  const dateien: string[] = [ausgabe.pfad_layout, ...fotos.flatMap((f) => [f.pfad_original, f.pfad_bearbeitet ?? ''])];
+  const dateien: string[] = [
+    ausgabe.pfad_layout,
+    ...fotos.flatMap((f) => [f.pfad_original, f.pfad_bearbeitet ?? '']),
+    ...gruesse,
+  ];
   if (ausgabe.pfad_druck_pdf) dateien.push(ausgabe.pfad_druck_pdf, seitenbildPfad(ausgabe.pfad_druck_pdf));
   // Abgeleitete Galerie- und Kioskfassungen: .cache/bilder/<ausgabe>_<fassung>.jpg
   const bilder = join(eventpfade(eventOrdner).cache, 'bilder');

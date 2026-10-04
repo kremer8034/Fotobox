@@ -131,6 +131,8 @@ export interface KioskStart {
     hintergrund?: string | null;
     /** Abdunkeln des Hintergrundbilds in Prozent. */
     abdunkeln?: number;
+    /** Diashow am Startbildschirm im Leerlauf; null = aus. */
+    diashow?: { nachSekunden: number; wechselSekunden: number } | null;
   };
   zeiten?: Zeiten;
   toene?: Toene;
@@ -143,6 +145,8 @@ export interface KioskStart {
     druckLimitErreicht: boolean;
     /** Blatt bis zum Druck-Limit; null ohne Limit. */
     druckRest?: number | null;
+    /** Knopf "Ins Gästebuch schreiben" auf der Ergebnisseite. */
+    gaestebuchAktiv?: boolean;
   };
   vorlagen?: { id: string; name: string; fotos: number; canvas: { breiteMm: number; hoeheMm: number } }[];
   filter?: { id: string; name: string }[];

@@ -5,6 +5,7 @@ import { Aufnahme } from './Aufnahme.js';
 import { Ergebnis } from './Ergebnis.js';
 import { Galerie } from './Galerie.js';
 import { WlanAnleitung } from './WlanAnleitung.js';
+import { KioskDiashow } from '../diashow/Diashow.js';
 import { PinAbfrage, Schloss, Servicemenue } from './Sperre.js';
 import { Stoerungshinweis } from './Stoerung.js';
 import { schimmerAus, schriftAuf } from './farbe.js';
@@ -181,6 +182,24 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       window.removeEventListener('contextmenu', beiMenue);
     };
   }, []);
+
+  /*
+   * Diashow im Leerlauf: Steht der Startbildschirm eine Weile unberuehrt,
+   * laufen dort die Fotos der Feier. Nicht bei einer Stoerung - deren Hinweis
+   * soll der Betreuer sehen - und nicht ohne Verbindung.
+   */
+  const [diashowAn, setzeDiashowAn] = useState(false);
+  const [startBeruehrt, setzeStartBeruehrt] = useState(0);
+  const diashow = start?.darstellung?.diashow ?? null;
+  const darfDiashow = schirm.art === 'start' && Boolean(start?.bereit) && diashow !== null && !stoerungstext && !getrennt;
+  useZeitgeber(
+    () => setzeDiashowAn(true),
+    darfDiashow && !diashowAn && diashow ? diashow.nachSekunden * 1000 : null,
+    [schirm.art, startBeruehrt, diashowAn, darfDiashow],
+  );
+  useEffect(() => {
+    if (!darfDiashow) setzeDiashowAn(false);
+  }, [darfDiashow]);
 
   const schloss = <Schloss beiOeffnen={() => setzeSchirm({ art: 'pin' })} />;
 
@@ -426,7 +445,8 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Startbildschirm - ruhig und immer gleich, kein Attract-Modus. Auf Wunsch
+    // Startbildschirm - ruhig und immer gleich; erst im Leerlauf (auf Wunsch)
+    // die Diashow darueber. Auf Wunsch
     // mit einem Hintergrundbild der Veranstaltung, randlos ueber die ganze
     // Flaeche und so weit abgedunkelt, dass Schrift und Knoepfe lesbar bleiben.
     const hintergrund = start.darstellung?.hintergrund;
@@ -435,6 +455,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       <>
         {schloss}
         <div
+          onPointerDown={() => setzeStartBeruehrt((n) => n + 1)}
           className={hintergrund ? 'seite kiosk kiosk--hintergrund' : 'seite kiosk'}
           style={
             hintergrund
@@ -484,6 +505,17 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
                 <div>Alle Fotos aufs Handy</div>
               </div>
             )
+          )}
+
+          {diashowAn && diashow && (
+            <KioskDiashow
+              wechselSekunden={diashow.wechselSekunden}
+              titel={start.darstellung?.titel}
+              beiEnde={() => {
+                setzeDiashowAn(false);
+                setzeStartBeruehrt((n) => n + 1);
+              }}
+            />
           )}
         </div>
       </>

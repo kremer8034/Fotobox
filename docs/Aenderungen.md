@@ -4,6 +4,22 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.2.0
+
+- **Diashow:** Steht die Box eine Weile unberührt, laufen am Startbildschirm
+  die Fotos der Feier – mit der Einladung „Tippt auf den Bildschirm und macht
+  euer eigenes Foto!“. Ein Tipp holt den Start zurück. Neue Fotos kommen
+  sofort an die Reihe („Gerade eben entstanden“). Einstellbar unter
+  Veranstaltung → Ausgabe → Diashow.
+- **Diashow auf Beamer oder Fernseher:** am HDMI-Anschluss der Box per Knopf
+  „Auf zweitem Bildschirm zeigen“ im Vollbild – oder auf jedem Fernseher mit
+  Browser im WLAN. Mit Captive Portal genügt `192.168.254.1/diashow`.
+- **Digitales Gästebuch:** Nach dem Foto können Gäste mit dem Finger einen
+  Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
+  und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
+  erscheint er nie. Standardmäßig aus; einschalten unter Veranstaltung →
+  Ausgabe → Gästebuch.
+
 ## 1.1.0
 
 - **Übergabe nur mit den Fotos:** Der Gastgeber bekommt die Ordner

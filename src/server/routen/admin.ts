@@ -13,7 +13,7 @@ import {
   PIN_EINGABE,
 } from '../fach/einstellungen-pruefung.js';
 import sharp from 'sharp';
-import { portalNetzEingerichtet } from '../portal/adresse.js';
+import { PORTAL_ADRESSE, portalNetzEingerichtet } from '../portal/adresse.js';
 import { gleichePortalAb, holePortal } from '../portal/steuerung.js';
 
 /** Zustand der Portal-Dienste in diesem Augenblick - die Diagnose fragt mehrmals. */
@@ -64,6 +64,8 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { erzeugeGaestebuchPdf, gruesseVon } from '../fach/gaestebuch.js';
+import { oeffneDiashowFenster, schliesseDiashowFenster } from '../fach/kiosk-browser.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
 import {
@@ -920,6 +922,11 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const event = holeEvent(anfrage.params.id);
       if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
       try {
+        // Das Gaestebuch kommt als fertiges PDF mit - frisch erzeugt, damit
+        // auch der letzte Gruss des Abends darin steht.
+        await erzeugeGaestebuchPdf(event).catch((fehler: Error) =>
+          protokolliere('warnung', 'gaestebuch', `Gästebuch-PDF nicht erzeugt: ${fehler.message}`),
+        );
         const ergebnis = await uebergebeAufDatentraeger(event, koerper.ziel);
         protokolliere(
           ergebnis.geprueft ? 'info' : 'warnung',
@@ -932,6 +939,68 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       }
     },
   );
+
+  // ------------------------------------------------------- Gaestebuch
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    return { anzahl: gruesseVon(event.id).length };
+  });
+
+  /** Das Gaestebuch als PDF - jedes Mal frisch, mit allen Gruessen bis jetzt. */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch.pdf', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    const ergebnis = await erzeugeGaestebuchPdf(event);
+    if (!ergebnis) return antwort.code(404).send({ fehler: 'Im Gästebuch steht noch kein Gruß.' });
+    return antwort
+      .type('application/pdf')
+      .header('Cache-Control', 'no-store')
+      .header('Content-Disposition', 'inline; filename="Gaestebuch.pdf"')
+      .send(createReadStream(ergebnis.pfad));
+  });
+
+  // --------------------------------------------------------- Diashow
+  /**
+   * Wo die Diashow zu sehen ist: am zweiten Bildschirm der Box und - mit
+   * Galerie im WLAN - auf jedem Fernseher oder Beamer mit eigenem Browser.
+   * Laeuft das Captive Portal, genuegt dort die kurze Adresse.
+   */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/diashow', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    const galerie = event.einstellungen.galerieAktiv ? galerieAdresse(event.galerieToken, konfig.portOeffentlich) : null;
+    const kurz = portalZustand()?.portal && event.einstellungen.galerieAktiv ? `http://${PORTAL_ADRESSE}/diashow` : null;
+    return { wlan: kurz ?? (galerie ? `${galerie}/diashow` : null), kurz: kurz !== null };
+  });
+
+  /** Diashow auf dem zweiten Bildschirm oeffnen oder schliessen. */
+  app.post<{ Body: unknown }>('/api/admin/diashow/fenster', async (anfrage, antwort) => {
+    const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
+    if (process.platform !== 'win32' || !konfig.echteHardware) {
+      protokolliere('info', 'diashow', `Diashow-Fenster ${an ? 'öffnen' : 'schließen'} (Entwicklungsbetrieb - nur protokolliert).`);
+      return { ok: true, simuliert: true };
+    }
+    try {
+      if (!an) {
+        await schliesseDiashowFenster();
+        return { ok: true };
+      }
+      const ergebnis = await oeffneDiashowFenster(`http://localhost:${konfig.portLokal}/diashow`);
+      if (ergebnis === 'kein-zweiter-bildschirm') {
+        return antwort.code(409).send({
+          fehler: 'Windows meldet keinen zweiten Bildschirm. Beamer oder Fernseher per HDMI anschließen und unter „Anzeige“ auf „Erweitern“ stellen.',
+        });
+      }
+      if (ergebnis === 'kein-browser') {
+        return antwort.code(409).send({ fehler: 'Weder Chrome noch Edge gefunden.' });
+      }
+      protokolliere('info', 'diashow', 'Diashow auf dem zweiten Bildschirm geöffnet.');
+      return { ok: true };
+    } catch (fehler) {
+      return antwort.code(500).send({ fehler: `Hat nicht geklappt: ${(fehler as Error).message}` });
+    }
+  });
 
   // ------------------------------------------------------ Unterlagen
   /**

@@ -79,6 +79,8 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
     return {
       veranstaltung: event.name,
       datum: event.datum,
+      // Fuer die Diashow auf Fernseher und Beamer (/g/<token>/diashow).
+      diashowWechselSekunden: event.einstellungen.diashowWechselSekunden,
       bilder: eintraege.map((e) => ({ id: e.ausgabeId, erstellt: e.erstellt })),
     };
   });

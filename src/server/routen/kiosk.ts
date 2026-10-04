@@ -26,6 +26,7 @@ import {
   zahlDerFotos,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
+import { speichereGruss, UngueltigerGruss } from '../fach/gaestebuch.js';
 import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin, verwirfAuftraegeVon } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
 import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
@@ -112,6 +113,14 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Einstellungen antippt, bekommt die Galerie von selbst. Statt eines
         // QR-Codes steht dann eine kurze Anleitung mit dem Netznamen da.
         portalWlan: portalWlanName(),
+        // Diashow im Leerlauf - nur, wenn es auch Fotos zu zeigen gibt; das
+        // entscheidet der Kiosk, sobald er die Galerie geladen hat.
+        diashow: event.einstellungen.diashowAufStart
+          ? {
+              nachSekunden: event.einstellungen.diashowNachSekunden,
+              wechselSekunden: event.einstellungen.diashowWechselSekunden,
+            }
+          : null,
       },
       zeiten: event.einstellungen.zeiten,
       toene: event.einstellungen.toene,
@@ -124,6 +133,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         druckLimitErreicht: druckLimitErreicht(event.id),
         // Blatt bis zum Druck-Limit, null ohne Limit - die Mengenwahl bietet nie mehr an.
         druckRest: druckRest(event.id),
+        gaestebuchAktiv: event.einstellungen.gaestebuchAktiv,
       },
       vorlagen: freigegeben.map((v) => ({
         id: v.id,
@@ -518,6 +528,43 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(502).send({ fehler: 'Versand hat nicht geklappt.' });
     }
   });
+
+  /**
+   * Gaestebuch: der handgeschriebene Gruss zum gerade fertigen Foto. Wie beim
+   * E-Mail-Versand von der Ergebnisseite nur fuer das frische Foto - an
+   * fremde, aeltere Bilder schreibt am Touchscreen niemand etwas dazu.
+   */
+  app.post<{ Body: unknown }>(
+    '/api/kiosk/gaestebuch',
+    { bodyLimit: 5 * 1024 * 1024 },
+    async (anfrage, antwort) => {
+      const koerper = z
+        .object({
+          ausgabeId: z.string().max(64),
+          // Die Schreibflaeche liefert ein PNG als data:-Adresse.
+          bild: z.string().max(4 * 1024 * 1024).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/),
+        })
+        .parse(anfrage.body);
+      const event = holeAktivesEvent();
+      if (!event || !event.einstellungen.gaestebuchAktiv) {
+        return antwort.code(403).send({ fehler: 'Das Gästebuch ist bei dieser Feier ausgeschaltet.' });
+      }
+      const ausgabe = holeAusgabe(koerper.ausgabeId);
+      if (!ausgabe || !darfKioskVerschicken(event.id, ausgabe.id, 'ergebnis')) {
+        return antwort.code(404).send({ fehler: 'Zu diesem Foto lässt sich nichts mehr schreiben.' });
+      }
+      const png = Buffer.from(koerper.bild.slice(koerper.bild.indexOf(',') + 1), 'base64');
+      try {
+        await speichereGruss(event, ausgabe, png);
+      } catch (fehler) {
+        if (fehler instanceof UngueltigerGruss) return antwort.code(400).send({ fehler: fehler.message });
+        throw fehler;
+      }
+      betrieb.letzteBeruehrung = Date.now();
+      protokolliere('info', 'gaestebuch', `Gruß zu Foto ${ausgabe.id.slice(0, 8)} gespeichert.`);
+      return { ok: true };
+    },
+  );
 
   /**
    * Galerie am Touchscreen: die fertigen Layouts der laufenden Veranstaltung.

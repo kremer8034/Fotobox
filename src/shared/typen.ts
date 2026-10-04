@@ -365,6 +365,19 @@ export interface EventEinstellungen {
   /** Freigegebene Vorlagen und Filter, in Anzeigereihenfolge. */
   vorlagen: string[];
   filter: string[];
+
+  /**
+   * Diashow am Startbildschirm: Steht die Box eine Weile unberuehrt, laufen
+   * dort die Fotos der Feier - das lockt die naechsten Gaeste an.
+   */
+  diashowAufStart: boolean;
+  /** Nach so vielen Sekunden ohne Beruehrung beginnt sie. */
+  diashowNachSekunden: number;
+  /** So lange steht jedes Bild - auch in der Diashow fuer Beamer und Fernseher. */
+  diashowWechselSekunden: number;
+
+  /** Gaestebuch: Nach dem Foto schreiben Gaeste mit dem Finger einen Gruss. */
+  gaestebuchAktiv: boolean;
 }
 
 export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
@@ -393,6 +406,10 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   emailLoeschfristTage: 30,
   vorlagen: [],
   filter: [FILTER_OHNE, 'schwarzweiss', 'sepia', 'warm', 'pop'],
+  diashowAufStart: true,
+  diashowNachSekunden: 60,
+  diashowWechselSekunden: 7,
+  gaestebuchAktiv: false,
 };
 
 export interface Veranstaltung {

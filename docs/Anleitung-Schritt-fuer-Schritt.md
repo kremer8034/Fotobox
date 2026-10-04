@@ -321,6 +321,8 @@ Weiter unten:
   Handgriffe des Alltags, nicht die Verwaltung.
 - Bei **Ausgabe** einstellen, ob gedruckt werden darf und wie viele Kopien
   höchstens.
+- Ebenfalls bei **Ausgabe**: **Diashow** und **Gästebuch** (siehe unten
+  „Diashow auf Beamer oder Fernseher“ und „Das Gästebuch“).
 
 ## Schritt 20: Der Startbereit-Check
 
@@ -483,6 +485,46 @@ Die Handy-Galerie ist nur erreichbar, solange die Veranstaltung läuft. Nach dem
 Abschließen zeigt der alte Link nichts mehr — auch nicht, wenn ein Gast ihn auf
 der nächsten Feier wieder aufruft.
 
+## Diashow auf Beamer oder Fernseher
+
+Die Fotos der Feier laufen als Diashow – neue Fotos kommen sofort an die
+Reihe. Gezeigt wird nur, was auch in der Galerie steht: keine Testfotos aus
+dem Probelauf und nichts, was aus der Galerie genommen wurde.
+
+**Am Startbildschirm** läuft sie von selbst, wenn eine Weile niemand die Box
+benutzt (Vorgabe: nach 60 Sekunden). Ein Tipp auf den Bildschirm holt den Start
+zurück. Abschalten oder die Zeiten ändern: Veranstaltung → **Ausgabe** →
+**Diashow**.
+
+**Beamer oder Fernseher am HDMI-Anschluss der Box:**
+1. Kabel anstecken. In Windows mit **Windows-Taste + P** „**Erweitern**“
+   wählen – nicht „Duplizieren“, sonst zeigt der Beamer den Touchscreen.
+2. In der Verwaltung: Veranstaltung → **Ausgabe** → **„Auf zweitem Bildschirm
+   zeigen“**. Die Diashow öffnet sich dort im Vollbild.
+3. Am Ende **„Diashow beenden“** – oder einfach das Kabel abziehen.
+
+**Fernseher oder Beamer mit eigenem Browser im WLAN** (nur mit „Galerie im
+WLAN“): Das Gerät mit dem WLAN der Box verbinden und im Browser die Adresse
+öffnen, die bei **Diashow** in der Verwaltung steht. Mit Captive Portal ist das
+einfach `192.168.254.1/diashow`.
+
+## Das Gästebuch
+
+Ist es bei **Ausgabe** eingeschaltet, steht nach dem Foto der Knopf **„Ins
+Gästebuch schreiben“**. Die Gäste schreiben oder malen mit dem Finger einen
+Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
+
+- Den Gruß bekommt **nur der Gastgeber**. Er erscheint weder in der Galerie
+  noch in der Diashow – das steht auch auf der Schreibseite.
+- Je Foto gibt es einen Gruß; neu geschrieben ersetzt er den alten.
+- Löscht die Gruppe ihr Foto, ist auch der Gruß weg.
+- Wer zwei Minuten nichts schreibt, kommt ohne Speichern zurück.
+
+Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
+→ **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick
+(Ordner `05_gaestebuch`): ein Deckblatt, danach je Seite zwei Fotos mit ihrem
+Gruß – zum Ausdrucken und Abheften.
+
 ## Wenn etwas ausfällt
 
 Die Box ist dafür gebaut, allein beim Gastgeber zu stehen. Das meiste regelt
@@ -531,7 +573,8 @@ ist. Erst dann meldet sie Vollzug.
 
 Auf dem Stick landen nur die Fotos: die Ordner `01_originale` (die
 unveränderten Kamerabilder), `02_bearbeitet` (mit Filter) und `03_layouts`
-(die fertigen Bilder, wie sie gedruckt wurden). Druckdateien, Testfotos und
+(die fertigen Bilder, wie sie gedruckt wurden) – und, wenn Gäste ins Gästebuch
+geschrieben haben, `05_gaestebuch` mit dem Gästebuch als PDF. Druckdateien, Testfotos und
 die Unterlagen der Box – Auslagen und Einstellungen – bleiben auf der Box.
 
 **Danach von der Box löschen:** Die Fotos gehören jetzt dem Gastgeber, nicht

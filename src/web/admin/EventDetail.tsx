@@ -31,6 +31,10 @@ interface EventVoll {
     emailLoeschfristTage: number;
     vorlagen: string[];
     filter: string[];
+    diashowAufStart: boolean;
+    diashowNachSekunden: number;
+    diashowWechselSekunden: number;
+    gaestebuchAktiv: boolean;
   };
   auslagen: {
     sitzungen: number;
@@ -454,6 +458,16 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
         </div>
       )}
 
+      {reiter === 'ausgabe' && (
+        <DiashowGaestebuchKarte
+          eventId={id}
+          einstellungen={e}
+          galerieAktiv={e.galerieAktiv}
+          beiAenderung={(teil) => speichere(teil)}
+          zeige={zeige}
+        />
+      )}
+
       {reiter === 'aussehen' && (
         <HintergrundKarte
           datei={e.hintergrundDatei}
@@ -603,7 +617,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             <h2>Übergabe an den Gastgeber</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
               Kopiert die Fotos der Veranstaltung: Originale, bearbeitete Fotos und die fertigen
-              Layouts. Druckdateien, Testfotos aus dem Probelauf und die Unterlagen der Box
+              Layouts – und, wenn Gäste etwas geschrieben haben, das Gästebuch als PDF. Druckdateien, Testfotos aus dem Probelauf und die Unterlagen der Box
               (Auslagen, Einstellungen) bleiben auf der Box. Erst wenn eine Markerdatei drüben ankommt
               und die Dateizahl stimmt, gilt die Kopie als vollständig.
             </p>
@@ -1342,5 +1356,134 @@ function MailHinweis() {
       Noch kein Mailserver eingetragen (Verwaltung → Gerät → E-Mail). Solange erscheint der Knopf „Per E-Mail
       schicken“ auf der Ergebnisseite nicht.
     </p>
+  );
+}
+
+/**
+ * Diashow und Gaestebuch - beides fuer die Feier selbst: Die Diashow laeuft am
+ * Startbildschirm im Leerlauf und auf Wunsch auf einem Beamer oder Fernseher,
+ * das Gaestebuch sammelt handgeschriebene Gruesse fuer den Gastgeber.
+ */
+function DiashowGaestebuchKarte({
+  eventId,
+  einstellungen: e,
+  galerieAktiv,
+  beiAenderung,
+  zeige,
+}: {
+  eventId: string;
+  einstellungen: EventVoll['einstellungen'];
+  galerieAktiv: boolean;
+  beiAenderung: (teil: Record<string, unknown>) => Promise<void>;
+  zeige: (text: string) => void;
+}) {
+  const [wlan, setzeWlan] = useState<{ wlan: string | null; kurz: boolean } | null>(null);
+  const [gruesse, setzeGruesse] = useState<number | null>(null);
+
+  useEffect(() => {
+    let aktiv = true;
+    api
+      .hole<{ wlan: string | null; kurz: boolean }>(`/api/admin/events/${eventId}/diashow`)
+      .then((d) => aktiv && setzeWlan(d))
+      .catch(() => undefined);
+    api
+      .hole<{ anzahl: number }>(`/api/admin/events/${eventId}/gaestebuch`)
+      .then((d) => aktiv && setzeGruesse(d.anzahl))
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, [eventId, galerieAktiv]);
+
+  async function fenster(an: boolean) {
+    try {
+      const antwort = await api.sende<{ simuliert?: boolean }>('/api/admin/diashow/fenster', { an });
+      zeige(
+        antwort.simuliert
+          ? 'Im Entwicklungsbetrieb wird kein Fenster geöffnet.'
+          : an
+            ? 'Die Diashow läuft auf dem zweiten Bildschirm.'
+            : 'Diashow beendet.',
+      );
+    } catch (u) {
+      zeige(u instanceof Error ? u.message : 'Hat nicht geklappt.');
+    }
+  }
+
+  const leise = { fontSize: '0.82rem', color: 'var(--schrift-leise)' } as const;
+  return (
+    <div className="karte">
+      <h2>Diashow</h2>
+      <p style={{ ...leise, marginTop: 0 }}>
+        Die Fotos der Feier als Diashow – neue Fotos kommen sofort an die Reihe. Gezeigt wird nur, was auch in
+        der Galerie steht: kein Probelauf und nichts, was aus der Galerie genommen wurde.
+      </p>
+      <div className="zeile">
+        <Schalter
+          an={e.diashowAufStart}
+          name="Am Startbildschirm, wenn niemand die Box benutzt"
+          beiWechsel={(an) => void beiAenderung({ diashowAufStart: an })}
+        />
+      </div>
+      <div className="zeile">
+        <ZahlFeld
+          name="Beginnt nach (Sekunden)"
+          klein
+          wert={e.diashowNachSekunden}
+          grenzen={[15, 600]}
+          beiSpeichern={(n) => beiAenderung({ diashowNachSekunden: n })}
+        />
+        <ZahlFeld
+          name="Jedes Bild steht (Sekunden)"
+          klein
+          wert={e.diashowWechselSekunden}
+          grenzen={[3, 30]}
+          beiSpeichern={(n) => beiAenderung({ diashowWechselSekunden: n })}
+        />
+      </div>
+      <p style={{ ...leise, marginBottom: '0.4rem' }}>
+        <strong>Beamer oder Fernseher am HDMI-Anschluss der Box:</strong> anschließen, in Windows unter „Anzeige“
+        auf „Erweitern“ stellen, dann hier öffnen.
+      </p>
+      <div className="zeile">
+        <button className="knopf knopf--neben" onClick={() => void fenster(true)}>
+          Auf zweitem Bildschirm zeigen
+        </button>
+        <button className="knopf knopf--neben" onClick={() => void fenster(false)}>
+          Diashow beenden
+        </button>
+        <a className="knopf knopf--neben" href="/diashow" target="_blank" rel="noreferrer">
+          Vorschau
+        </a>
+      </div>
+      <p style={{ ...leise, marginBottom: 0 }}>
+        <strong>Fernseher oder Beamer mit eigenem Browser im WLAN:</strong>{' '}
+        {wlan?.wlan ? (
+          <>
+            dort <code>{wlan.wlan}</code> öffnen{wlan.kurz ? ' – das Gerät dafür mit dem Fotobox-WLAN verbinden' : ''}.
+          </>
+        ) : (
+          'geht, sobald oben „Galerie im WLAN“ an ist.'
+        )}
+      </p>
+
+      <h2 style={{ marginTop: '1.4rem' }}>Gästebuch</h2>
+      <p style={{ ...leise, marginTop: 0 }}>
+        Nach dem Foto können Gäste mit dem Finger einen Gruß schreiben. Den bekommt nur der Gastgeber: als
+        Gästebuch-PDF mit Foto und Gruß bei der Übergabe. In Galerie und Diashow erscheinen die Grüße nie.
+      </p>
+      <div className="zeile">
+        <Schalter
+          an={e.gaestebuchAktiv}
+          name="Knopf „Ins Gästebuch schreiben“ nach dem Foto"
+          beiWechsel={(an) => void beiAenderung({ gaestebuchAktiv: an })}
+        />
+        {gruesse !== null && gruesse > 0 && (
+          <a className="knopf knopf--neben" href={`/api/admin/events/${eventId}/gaestebuch.pdf`} target="_blank" rel="noreferrer">
+            Gästebuch ansehen ({gruesse} {gruesse === 1 ? 'Gruß' : 'Grüße'})
+          </a>
+        )}
+      </div>
+    </div>
   );
 }

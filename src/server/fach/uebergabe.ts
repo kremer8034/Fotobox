@@ -27,7 +27,8 @@ export interface Uebergabeergebnis {
 
 /**
  * Der Gastgeber bekommt nur die Fotos: 01_originale, 02_bearbeitet und
- * 03_layouts. Nicht mit gehen der Zwischenspeicher, der Probelauf (Testfotos
+ * 03_layouts - dazu 05_gaestebuch, wenn Gaeste etwas geschrieben haben (die
+ * Verwaltung erzeugt das Gaestebuch-PDF vorher frisch). Nicht mit gehen der Zwischenspeicher, der Probelauf (Testfotos
  * vom Aufbau), die Druckdateien (nur die Layouts als PDF - jedes Bild doppelt)
  * und die Unterlagen der Box: event.json und auslagen.csv bleiben fuer die
  * eigene Abrechnung auf der Box; eine galerie.html aus aelteren Versionen

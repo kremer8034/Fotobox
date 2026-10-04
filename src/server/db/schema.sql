@@ -85,6 +85,19 @@ CREATE TABLE IF NOT EXISTS ausgaben (
 );
 CREATE INDEX IF NOT EXISTS idx_ausgaben_sitzung ON ausgaben(sitzung_id);
 
+-- Gaestebuch: ein handgeschriebener Gruss je Foto, als PNG im Ordner
+-- 05_gaestebuch. Loescht der Gast sein Foto, geht der Gruss mit.
+CREATE TABLE IF NOT EXISTS gaestebuch (
+  id          TEXT PRIMARY KEY,
+  event_id    TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  ausgabe_id  TEXT NOT NULL REFERENCES ausgaben(id) ON DELETE CASCADE,
+  pfad        TEXT NOT NULL,
+  ist_test    INTEGER NOT NULL DEFAULT 0,
+  erstellt    TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gaestebuch_ausgabe ON gaestebuch(ausgabe_id);
+CREATE INDEX IF NOT EXISTS idx_gaestebuch_event ON gaestebuch(event_id);
+
 CREATE TABLE IF NOT EXISTS druckauftraege (
   id          TEXT PRIMARY KEY,
   event_id    TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
