@@ -2115,6 +2115,16 @@ html.handy-ansicht body {
   text-align: left;
 }
 
+/* Handy-Galerie: der Weg zum Speichern und Teilen, je Geraet. */
+.handy__weg ol {
+  margin: 0.35rem 0 0;
+  padding-left: 1.3rem;
+}
+
+.handy__weg li + li {
+  margin-top: 0.2rem;
+}
+
 /* Verwaltung: Rueckfrage im Fluss der Seite, etwa vor dem Zuruecksetzen der Kalibrierung. */
 .warnkasten {
   margin-top: 0.8rem;

@@ -18,6 +18,11 @@ ihn auf der Box verstehst.
 - **Captive Portal mit echtem Handy getestet:** Nach dem Scan des WLAN-Codes
   öffnet Android von selbst das Fenster „In Fotobox anmelden“ mit der
   Galerie.
+- **Kein Teilen-Knopf mehr in der Handy-Galerie:** Teilen direkt aus einer
+  Webseite erlaubt das Handy nur auf verschlüsselten Seiten – die Galerie
+  läuft offline im WLAN der Fotobox. Stattdessen steht unter jedem Foto der
+  Weg, der auf dem Gerät funktioniert. Die Seite erkennt selbst, ob es ein
+  Android-Handy oder ein iPhone/iPad ist.
 - **Speichern-Hinweis passend zum Handy:** Im Anmeldefenster von Android tut
   Gedrückthalten nichts, „Aufs Handy laden“ klappt dagegen. Android-Handys
   bekommen deshalb „Foto antippen → Aufs Handy laden“, iPhones weiterhin

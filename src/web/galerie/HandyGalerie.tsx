@@ -40,6 +40,24 @@ const GERAET: Geraet = (() => {
   return 'anderes';
 })();
 
+/** Der Weg nach dem Oeffnen eines Fotos - je Geraet der, der dort funktioniert. */
+const SPEICHER_WEG: Record<Geraet, string[]> = {
+  android: [
+    'Auf „Aufs Handy laden“ tippen.',
+    'Das Foto liegt jetzt in deiner Galerie-App.',
+    'Von dort teilen – etwa per WhatsApp.',
+  ],
+  iphone: [
+    'Das Foto oben gedrückt halten.',
+    '„Zu Fotos hinzufügen“ wählen.',
+    'In der Fotos-App teilen – etwa per WhatsApp.',
+  ],
+  anderes: [
+    'Auf „Aufs Handy laden“ tippen.',
+    'Das Foto aus den Downloads öffnen und von dort teilen.',
+  ],
+};
+
 const SPEICHER_TIPP: Record<Geraet, string> = {
   android: 'Tipp: Foto antippen → „Aufs Handy laden“. Danach liegt es in deiner Galerie-App.',
   iphone: 'Tipp: Foto gedrückt halten → „Zu Fotos hinzufügen“ oder „Teilen“.',
@@ -73,9 +91,6 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   const [getrennt, setzeGetrennt] = useState(false);
   const [gross, setzeGross] = useState<string | null>(() => fotoAusAdresse());
   const [grossFehlt, setzeGrossFehlt] = useState(false);
-  const [teilHilfe, setzeTeilHilfe] = useState(false);
-  // Fuer jedes Foto neu: Die Hilfe zum Teilen erscheint erst auf Knopfdruck.
-  useEffect(() => setzeTeilHilfe(false), [gross]);
 
   useEffect(() => {
     const laden = async () => {
@@ -194,32 +209,6 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   // Vom Gastgeber herausgenommen, waehrend es hier offen war.
   const nichtMehrDa = grossFehlt || (gross !== null && !galerie.bilder.some((b) => b.id === gross));
 
-  /**
-   * Das Teilen-Menue des Handys (WhatsApp, Facebook, OneDrive ...). Mit einer
-   * Datei geht das nur auf verschluesselten Seiten (https) - die Galerie laeuft
-   * offline im WLAN der Box ueber http. Dann erklaert der Knopf den Weg ueber
-   * langes Druecken auf das Bild, der auch ohne https das Teilen-Menue oeffnet.
-   */
-  async function teilen(id: string) {
-    const kannTeilen = typeof navigator.share === 'function' && window.isSecureContext;
-    if (!kannTeilen) {
-      setzeTeilHilfe(true);
-      return;
-    }
-    try {
-      const antwort = await fetch(`/medien/download/${token}/${id}.jpg`);
-      const datei = new File([await antwort.blob()], `Fotobox-${id.slice(0, 8)}.jpg`, { type: 'image/jpeg' });
-      if (navigator.canShare && !navigator.canShare({ files: [datei] })) {
-        setzeTeilHilfe(true);
-        return;
-      }
-      await navigator.share({ files: [datei], title: galerie?.veranstaltung ?? 'Fotobox' });
-    } catch (fehler) {
-      // Abgebrochen ist kein Fehler.
-      if ((fehler as Error)?.name !== 'AbortError') setzeTeilHilfe(true);
-    }
-  }
-
   if (gross) {
     return (
       <div className="handy">
@@ -244,31 +233,17 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
             >
               Aufs Handy laden
             </a>
-            <button className="knopf handy__laden" onClick={() => void teilen(gross)}>
-              Teilen (WhatsApp, OneDrive …)
-            </button>
-            {teilHilfe ? (
-              <p className="handy__tipp handy__tipp--hervor">
-                Direkt aus der Seite teilen lässt dein Handy hier nicht zu – die Galerie läuft ohne Internet im
-                WLAN der Fotobox. So geht es:{' '}
-                {GERAET === 'iphone' ? (
-                  <>
-                    <strong>das Foto oben gedrückt halten</strong> und „Teilen“ wählen.
-                  </>
-                ) : (
-                  <>
-                    erst <strong>„Aufs Handy laden“</strong> tippen, dann das Foto in deiner Galerie-App öffnen und
-                    dort teilen.
-                  </>
-                )}
-              </p>
-            ) : (
-              <p className="handy__tipp">
-                {GERAET === 'iphone'
-                  ? 'Am iPhone geht es auch so: Bild gedrückt halten und „Zu Fotos hinzufügen“ wählen.'
-                  : 'Nach dem Laden liegt das Foto in deiner Galerie-App – von dort kannst du es auch teilen.'}
-              </p>
-            )}
+            {/* Kein Teilen-Knopf: Teilen direkt aus einer Webseite erlaubt das Handy
+                nur auf verschluesselten Seiten - die Galerie laeuft offline im WLAN
+                der Box. Stattdessen der Weg, der auf diesem Geraet funktioniert. */}
+            <div className="handy__tipp handy__tipp--hervor handy__weg">
+              <strong>Speichern und teilen</strong>
+              <ol>
+                {SPEICHER_WEG[GERAET].map((schritt) => (
+                  <li key={schritt}>{schritt}</li>
+                ))}
+              </ol>
+            </div>
           </>
         )}
 
