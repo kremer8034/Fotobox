@@ -22,8 +22,10 @@ ihn auf der Box verstehst.
   dem sich das Anmeldefenster aber nicht geöffnet hat oder der es geschlossen
   hat, kommt über „Schon im WLAN? Galerie hier öffnen“ auf dem Aushang direkt
   in die Galerie – per Code oder durch Eintippen von 192.168.254.1 im
-  Browser. Dieselbe Adresse steht klein in der Anleitung am Startbildschirm
-  und in der Galerie.
+  Browser. Am Startbildschirm und in der Galerie zeigt „Schon im WLAN
+  verbunden? Hier tippen“ denselben Code groß in der Bildschirmmitte – erst
+  auf Tipp, damit niemand ihn für den Hauptweg hält. Das Fenster schließt
+  sich nach 45 Sekunden von selbst.
 - **Drei Hochzeitsschriften ab Werk:** Great Vibes, Parisienne und Pinyon
   Script – geschwungene Schreibschriften, mit Umlauten und ß. Sie stehen im
   Vorlagen-Editor unter „Schriftart“ bereit, ohne dass man sie hochladen muss,

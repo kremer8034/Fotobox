@@ -1386,15 +1386,70 @@ button {
   color: var(--schrift);
 }
 
+/* "Schon im WLAN verbunden?" - gross genug fuer den Finger, ohne zu draengeln. */
 .wlan-hilfe__rueckweg {
-  margin-top: calc(1.5 * var(--mm));
-  font-size: 0.62rem;
+  margin-top: calc(2 * var(--mm));
+  min-height: calc(9 * var(--mm));
+  padding: 0 calc(3 * var(--mm));
+  border: 1px solid var(--kante);
+  border-radius: 999px;
+  background: var(--flaeche-hell);
   color: var(--schrift-leise);
+  font: inherit;
+  font-size: 0.66rem;
+  cursor: pointer;
 }
 
 .wlan-hilfe__rueckweg strong {
+  color: var(--akzent);
+}
+
+/* Der Rueckweg-Code als Fenster in der Bildschirmmitte. */
+.rueckweg {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.rueckweg__karte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(3 * var(--mm));
+  padding: calc(7 * var(--mm));
+  max-width: calc(130 * var(--mm));
+  background: var(--flaeche);
+  border: 1px solid var(--kante);
+  border-top: 4px solid var(--akzent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.rueckweg__titel {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.rueckweg__code {
+  width: calc(60 * var(--mm));
+  height: calc(60 * var(--mm));
+  padding: calc(2.5 * var(--mm));
+  background: #fff;
+  border-radius: var(--radius-klein);
+}
+
+.rueckweg__text {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--schrift-leise);
+}
+
+.rueckweg__text strong {
   color: var(--schrift);
-  letter-spacing: 0.02em;
 }
 
 /* In der Galerie nebeneinander statt untereinander - die Leiste ist flach. */
