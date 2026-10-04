@@ -407,23 +407,42 @@ fünf Versuche je Minute, 200 Mails je Feier und Tag.
 ## Galerie öffnet sich beim WLAN-Beitritt (Test)
 
 Normalerweise scannen die Gäste zwei Codes: erst das WLAN, dann die Galerie.
-Mit dem **Captive Portal** genügt einer – nach dem WLAN-Beitritt öffnet das
-Handy die Galerie von selbst, wie die Anmeldeseite im Hotel. Das Handy bleibt
-dabei über seine mobilen Daten online.
+Mit dem **Captive Portal** geht es ohne Code: Das WLAN der Fotobox ist offen,
+die Gäste tippen es in ihren WLAN-Einstellungen an, und die Galerie öffnet
+sich von selbst – wie die Anmeldeseite im Hotel. Das Handy bleibt dabei über
+seine mobilen Daten online.
+
+Warum ohne QR-Code: Per Kamera verbunden, wartet Android auf einen zweiten
+Tipp („Im Netzwerk anmelden“), und das iPhone zeigt das Fenster erst, wenn
+man die Kamera verlässt. In den WLAN-Einstellungen angetippt, öffnet es sich
+bei beiden von selbst.
+
+Gut zu wissen: Ein offenes WLAN kann jeder in Funkreichweite (etwa 20 bis
+50 Meter) antippen und dann auch die Fotos sehen. Ins Internet kommt darüber
+niemand – durch die Fotobox geht kein Internet.
 
 Die Funktion ist ein **Test** und standardmäßig aus. Ausgeschaltet läuft die
 Box genau wie bisher.
 
 **Einrichten (einmal, an der Box):**
 
-1. Verwaltung → Menüpunkt **„WLAN & Portal“**: unter „WLAN des Vonets“
-   Name und Passwort eintragen, **Speichern**.
-2. Im Browser der Box `http://192.168.254.254` öffnen (Benutzer und Passwort
-   meist `admin`) und dort unter **„DHCP Server“** **„Disable“** wählen. Ab
-   jetzt verteilt die Fotobox die Adressen.
-3. Zurück auf „WLAN & Portal“, unter Selbstdiagnose: **„Netzwerk für das
-   Portal einrichten“**. Windows
-   fragt nach Administratorrechten – zustimmen.
+1. Verwaltung → **„WLAN & Portal“** → unter Selbstdiagnose **„Netzwerk für
+   das Portal einrichten“**. Windows fragt nach Administratorrechten –
+   zustimmen. Die Box hat jetzt am Kabel die feste Adresse 192.168.254.1.
+2. Im Browser der Box `http://192.168.254.254` öffnen (die Einstellungen des
+   Vonets; Benutzer und Passwort meist `admin`):
+   - **LAN Settings → Basic Settings:** Connection Type **STATIC**, IP
+     `192.168.254.254`, Maske `255.255.255.0`, Gateway und DNS
+     `192.168.254.1`; **DHCP Server: Disable**. Ab jetzt verteilt die
+     Fotobox die Adressen.
+   - **WiFi Repeater → WiFi Security:** Security Mode **Disable** (offenes
+     WLAN). Unter **Basic Settings** einen gut erkennbaren Namen eintragen,
+     etwa „Fotobox-Fotos“.
+   - **Apply**, dann den Vonets neu starten. Er ist danach unter
+     `http://192.168.254.254` erreichbar.
+3. Zurück auf **„WLAN & Portal“**: unter „WLAN des Vonets“ genau denselben
+   Namen eintragen, **Speichern**. Er steht in der Anleitung auf
+   Startbildschirm, Galerie und Aushang.
 4. **„Erneut prüfen“**: Alle Zeilen der Selbstdiagnose sollten grün sein. Was
    noch fehlt, steht dort mit dem nächsten Handgriff. Meldet sie, dass ein
    Dienst den **Anschluss 80** hält (etwa „World Wide Web Publishing
@@ -432,16 +451,19 @@ Box genau wie bisher.
 5. Ganz oben den Schalter **„Galerie öffnet sich beim WLAN-Beitritt“** auf
    **An** stellen.
 
-**Ausprobieren:** Veranstaltung mit Galerie starten, mit dem eigenen Handy
-nur den WLAN-Code scannen. Die Galerie sollte sich nach einigen Sekunden von
-selbst öffnen. Ein Foto gedrückt halten → Sichern oder Teilen. Am besten mit
-einem iPhone und einem Android-Handy testen.
+**Ausprobieren:** Veranstaltung mit Galerie starten. Am Handy die
+WLAN-Einstellungen öffnen und das Fotobox-WLAN antippen – die Galerie sollte
+sich nach einigen Sekunden von selbst öffnen. Am Android-Handy dann „Aufs
+Handy laden“, am iPhone das Foto gedrückt halten → „Zu Fotos hinzufügen“.
+Tipp für den Test zu Hause: Beim eigenen Heim-WLAN vorher „Automatisch
+verbinden“ ausschalten, sonst springt das Handy dorthin zurück.
 
 **Abschalten:** Den Schalter oben auf **Aus** stellen – die Box läuft sofort
 wieder wie bisher.
 
-**Ganz zurück wie vorher:** Schalter aus, dann **„Zurücksetzen (wie vorher)“** und
-im Vonets unter „DHCP Server“ wieder **„Enable“** wählen.
+**Ganz zurück wie vorher:** Schalter aus, dann **„Zurücksetzen (wie vorher)“**.
+Im Vonets unter „DHCP Server“ wieder **„Enable“** wählen und unter „WiFi
+Security“ wieder ein Passwort setzen.
 
 ## Ein Foto aus der Galerie nehmen
 

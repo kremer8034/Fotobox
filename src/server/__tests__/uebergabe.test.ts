@@ -155,7 +155,7 @@ describe('Unterlagen', () => {
     expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 
-  it('mit Captive Portal: WLAN-Code als Hauptcode, eine Seite - auch ohne WLAN-Daten nie leer', async () => {
+  it('mit Captive Portal: Anleitung statt WLAN-Code, nur der Galerie-Code als Rueckfall, eine Seite', async () => {
     for (const wlan of [{ wlanName: 'Fotobox', wlanPasswort: 'geheim123' }, {}]) {
       const pfad = await schreibeAushang(event, {
         betreuerPin: '1234',
@@ -166,8 +166,9 @@ describe('Unterlagen', () => {
       });
       const inhalt = readFileSync(pfad, 'latin1');
       expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
-      // Mindestens ein QR-Code ist als Bild eingebettet.
-      expect(inhalt).toMatch(/\/Subtype \/Image/);
+      // Offenes WLAN: kein WLAN-Code (Kamera-Umweg) - genau ein QR-Code, der
+      // Galerie-Code. (Jeder Code ist ein Bild mit Maske - gezaehlt wird die Maske.)
+      expect(inhalt.match(/\/SMask/g)).toHaveLength(1);
     }
   });
 });

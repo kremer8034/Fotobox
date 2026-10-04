@@ -166,19 +166,24 @@ QR-Code. Die Seite ist schreibgeschützt; zum Speichern hält man das Foto
 gedrückt und wählt „Sichern“ oder „Teilen“.
 
 **Captive Portal (Test, ab 1.0.8):** Normalerweise sind es zwei Scans, erst
-das WLAN, dann die Galerie. Mit dem Portal reicht einer. Nach dem WLAN-Beitritt
-öffnet das Handy die Galerie von selbst, wie die Anmeldeseite im Hotel. Das
-Handy bleibt dabei über seine mobilen Daten online.
+das WLAN, dann die Galerie. Mit dem Portal geht es ohne Code: Das WLAN der
+Fotobox ist offen, die Gäste tippen es in ihren WLAN-Einstellungen an, und die
+Galerie öffnet sich von selbst, wie die Anmeldeseite im Hotel. Das Handy bleibt
+dabei über seine mobilen Daten online.
 
 - Eigener Menüpunkt **„WLAN & Portal“** mit Schalter An/Aus. **Standardmäßig
   aus**; dann läuft die Box genau wie bisher.
+- Startbildschirm, Galerie am Touchscreen und Aushang zeigen statt eines
+  QR-Codes eine kurze Anleitung mit dem Namen des WLANs.
 - Die **Selbstdiagnose** prüft Kabel, Adresse, Vonets, einen zweiten
   Adressverteiler, Firewall und freie Anschlüsse und nennt jeweils den nächsten
   Handgriff.
 - „Netzwerk für das Portal einrichten“ stellt den Netzwerkanschluss mit einer
   Windows-Rückfrage um. „Zurücksetzen (wie vorher)“ macht es rückgängig.
-- Am Vonets muss nur dessen DHCP-Server aus sein. Adressen und Namensauflösung
-  übernimmt dann die Box selbst.
+- Am Vonets: DHCP-Server aus, WLAN ohne Passwort. Adressen und
+  Namensauflösung übernimmt dann die Box selbst.
+- Offenes WLAN heißt: Wer in Funkreichweite ist, kann die Galerie öffnen. Ins
+  Internet kommt darüber niemand.
 
 ## Wo die Daten liegen
 

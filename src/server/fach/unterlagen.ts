@@ -207,31 +207,24 @@ function zeichneAushang(
   d.font('Helvetica-Bold').fontSize(32).fillColor('#ffffff')
     .text('Eure Fotos aufs Handy', rand, 60, { width: innen, align: 'center', lineBreak: false });
   d.font('Helvetica').fontSize(13).fillColor(FARBE.kopfLeise)
-    .text('Handykamera öffnen und auf den Code halten – fertig.', rand, 104, { width: innen, align: 'center', lineBreak: false });
+    .text(
+      angaben.portal ? 'Mit dem WLAN der Fotobox verbinden – die Fotos öffnen sich von selbst.' : 'Handykamera öffnen und auf den Code halten – fertig.',
+      rand, 104, { width: innen, align: 'center', lineBreak: false },
+    );
   d.font('Helvetica-Bold').fontSize(12).fillColor('#ffffff')
     .text(`${event.name} · ${datum(event)}`, rand, 132, { width: innen, align: 'center', height: 16, ellipsis: true });
+
+  if (angaben.portal) {
+    zeichnePortalAnleitung(d, angaben.wlanName, galerieQr, rand, innen, hoehe);
+    zeichneAushangFuss(d, rand, innen, hoehe);
+    return;
+  }
 
   const codes: { titel: string; text: string; zusatz?: string; qr: Buffer }[] = [];
   const wlanZeile = angaben.wlanName
     ? `WLAN: ${angaben.wlanName}${angaben.wlanPasswort ? `\nPasswort: ${angaben.wlanPasswort}` : ''}`
     : undefined;
-  if (angaben.portal && wlanQr) {
-    // Ein Scan genuegt: Das Handy tritt dem WLAN bei, und die Galerie oeffnet
-    // sich von selbst. Der Galerie-Code bleibt als Rueckfall darunter.
-    codes.push({
-      titel: 'Scannen – fertig',
-      text: 'Handy mit dem WLAN verbinden. Die Galerie mit allen Fotos öffnet sich von selbst.',
-      zusatz: wlanZeile,
-      qr: wlanQr,
-    });
-    if (galerieQr) {
-      codes.push({
-        titel: 'Falls sich nichts öffnet',
-        text: 'Diesen Code scannen, während das Handy im WLAN der Fotobox ist.',
-        qr: galerieQr,
-      });
-    }
-  } else if (wlanQr) {
+  if (wlanQr) {
     codes.push({
       titel: 'Ins WLAN',
       text: 'Verbindet das Handy mit dem WLAN der Fotobox.',
@@ -239,7 +232,7 @@ function zeichneAushang(
       qr: wlanQr,
     });
   }
-  if (galerieQr && !(angaben.portal && wlanQr)) {
+  if (galerieQr) {
     codes.push({
       titel: 'Galerie öffnen',
       text: 'Zeigt alle Fotos des Abends. Antippen, speichern, teilen.',
@@ -249,10 +242,7 @@ function zeichneAushang(
   }
 
   // Je Code eine Karte, uebereinander - bei einem einzigen Code groesser.
-  // Mit Captive Portal ist der WLAN-Code der eine Code; der Rueckfall darunter
-  // bleibt bewusst klein, damit niemand ihn fuer den Hauptweg haelt.
-  const mitPortal = Boolean(angaben.portal && wlanQr);
-  const groesseVon = (i: number) => (mitPortal ? (i === 0 ? 240 : 120) : codes.length === 1 ? 230 : 180);
+  const groesseVon = (_i: number) => (codes.length === 1 ? 230 : 180);
   const lueckeY = 22;
   const gesamt = codes.reduce((summe, _c, i) => summe + groesseVon(i) + 44, 0) + (codes.length - 1) * lueckeY;
   let y = 172 + Math.max(36, (hoehe - 172 - 90 - gesamt) / 2);
@@ -269,14 +259,14 @@ function zeichneAushang(
     const tx = qrX + qrGroesse + 28;
     const tb = innen - (tx - rand) - 22;
     const ty = y + kartenHoehe / 2 - 58;
-    const schritte = codes.length > 1 && !mitPortal;
+    const schritte = codes.length > 1;
     if (schritte) {
       d.circle(tx + 15, ty + 15, 15).fill(FARBE.akzent);
       d.font('Helvetica-Bold').fontSize(15).fillColor('#ffffff')
         .text(String(i + 1), tx, ty + 7, { width: 30, align: 'center', lineBreak: false });
     }
-    d.font('Helvetica-Bold').fontSize(mitPortal && i > 0 ? 15 : 22).fillColor(FARBE.text)
-      .text(c.titel, tx, ty + (schritte ? 42 : mitPortal && i > 0 ? 34 : 20), { width: tb });
+    d.font('Helvetica-Bold').fontSize(22).fillColor(FARBE.text)
+      .text(c.titel, tx, ty + (schritte ? 42 : 20), { width: tb });
     d.font('Helvetica').fontSize(12).fillColor(FARBE.text).text(c.text, tx, d.y + 6, { width: tb });
     if (c.zusatz) {
       d.font('Helvetica-Bold').fontSize(11).fillColor(FARBE.leise).text(c.zusatz, tx, d.y + 8, { width: tb });
@@ -284,7 +274,10 @@ function zeichneAushang(
     y += kartenHoehe + lueckeY;
   });
 
-  // Fuss
+  zeichneAushangFuss(d, rand, innen, hoehe);
+}
+
+function zeichneAushangFuss(d: PDFKit.PDFDocument, rand: number, innen: number, hoehe: number): void {
   const fussY = hoehe - 46 - 40;
   d.roundedRect(rand, fussY, innen, 40, 10).fill(FARBE.flaeche);
   d.font('Helvetica').fontSize(10).fillColor(FARBE.leise)
@@ -293,6 +286,103 @@ function zeichneAushang(
       align: 'center',
       lineBreak: false,
     });
+}
+
+/** Das WLAN-Symbol: Punkt und drei Boegen, gezeichnet statt als Schrift - jede Schrift kennt es anders. */
+function zeichneWlanSymbol(d: PDFKit.PDFDocument, mx: number, my: number, r: number, farbe: string): void {
+  // Boegen von 225 bis 315 Grad (nach oben offen wie ein Faecher).
+  const bogen = (radius: number) => {
+    const a1 = (225 * Math.PI) / 180;
+    const a2 = (315 * Math.PI) / 180;
+    d.moveTo(mx + radius * Math.cos(a1), my + radius * Math.sin(a1))
+      .bezierCurveTo(
+        ...bogenStuetzen(mx, my, radius, a1, a2),
+        mx + radius * Math.cos(a2),
+        my + radius * Math.sin(a2),
+      )
+      .lineWidth(r * 0.13)
+      .lineCap('round')
+      .stroke(farbe);
+  };
+  bogen(r * 0.38);
+  bogen(r * 0.66);
+  bogen(r * 0.94);
+  d.circle(mx, my - r * 0.06, r * 0.1).fill(farbe);
+}
+
+/** Stuetzpunkte einer Bezierkurve, die einen Kreisbogen von a1 bis a2 nachbildet. */
+function bogenStuetzen(mx: number, my: number, r: number, a1: number, a2: number): [number, number, number, number] {
+  const k = (4 / 3) * Math.tan((a2 - a1) / 4);
+  return [
+    mx + r * (Math.cos(a1) - k * Math.sin(a1)),
+    my + r * (Math.sin(a1) + k * Math.cos(a1)),
+    mx + r * (Math.cos(a2) + k * Math.sin(a2)),
+    my + r * (Math.sin(a2) - k * Math.cos(a2)),
+  ];
+}
+
+/**
+ * Aushang mit Captive Portal: Das WLAN der Fotobox ist offen - in den
+ * WLAN-Einstellungen antippen, und die Galerie oeffnet sich von selbst. Ein
+ * WLAN-QR-Code fehlt bewusst: Per Kamera verbunden, wartet Android auf einen
+ * zweiten Tipp, und das iPhone zeigt das Fenster erst nach dem Schliessen der
+ * Kamera. Ausgewaehlt in den Einstellungen, oeffnet es sich bei beiden.
+ */
+function zeichnePortalAnleitung(
+  d: PDFKit.PDFDocument,
+  wlanName: string | undefined,
+  galerieQr: Buffer | null,
+  rand: number,
+  innen: number,
+  hoehe: number,
+): void {
+  const name = wlanName?.trim();
+  const schritte = [
+    { titel: 'WLAN-Einstellungen öffnen', text: 'Am Handy unter Einstellungen › WLAN.' },
+    { titel: name ? `„${name}“ antippen` : 'Das WLAN der Fotobox antippen', text: 'Offenes Netz – ohne Passwort.' },
+    { titel: 'Die Fotos öffnen sich von selbst', text: 'Foto antippen und aufs Handy laden oder teilen.' },
+  ];
+
+  const hauptHoehe = 310;
+  const rueckHoehe = galerieQr ? 140 : 0;
+  const luecke = 22;
+  let y = 172 + Math.max(30, (hoehe - 172 - 90 - hauptHoehe - (galerieQr ? rueckHoehe + luecke : 0)) / 2);
+
+  // Hauptkarte: Symbol links, drei Schritte rechts.
+  d.roundedRect(rand, y, innen, hauptHoehe, 12).lineWidth(1).fillAndStroke('#ffffff', '#e1e4e9');
+  d.rect(rand, y + 18, 4, hauptHoehe - 36).fill(FARBE.akzent);
+  const kreisR = 70;
+  const kx = rand + 40 + kreisR;
+  const ky = y + hauptHoehe / 2;
+  d.circle(kx, ky, kreisR).fill(FARBE.dunkel);
+  zeichneWlanSymbol(d, kx, ky + kreisR * 0.38, kreisR * 0.95, FARBE.akzent);
+
+  const tx = kx + kreisR + 36;
+  const tb = rand + innen - 28 - tx;
+  let ty = y + 30;
+  d.font('Helvetica-Bold').fontSize(24).fillColor(FARBE.text).text('So kommt ihr an eure Fotos', tx, ty, { width: tb });
+  ty = d.y + 18;
+  schritte.forEach((schritt, i) => {
+    d.circle(tx + 14, ty + 13, 14).fill(FARBE.akzent);
+    d.font('Helvetica-Bold').fontSize(14).fillColor('#ffffff')
+      .text(String(i + 1), tx, ty + 6, { width: 28, align: 'center', lineBreak: false });
+    d.font('Helvetica-Bold').fontSize(15).fillColor(FARBE.text).text(schritt.titel, tx + 40, ty + 2, { width: tb - 40 });
+    d.font('Helvetica').fontSize(11).fillColor(FARBE.leise).text(schritt.text, tx + 40, d.y + 3, { width: tb - 40 });
+    ty = d.y + 16;
+  });
+  y += hauptHoehe + luecke;
+
+  // Rueckfall klein darunter - bewusst nicht als Hauptweg.
+  if (galerieQr) {
+    d.roundedRect(rand, y, innen, rueckHoehe, 12).lineWidth(1).fillAndStroke('#ffffff', '#e1e4e9');
+    const qr = rueckHoehe - 40;
+    d.image(galerieQr, rand + 22, y + 20, { width: qr });
+    const rx = rand + 22 + qr + 26;
+    const rb = rand + innen - 22 - rx;
+    d.font('Helvetica-Bold').fontSize(15).fillColor(FARBE.text).text('Falls sich nichts öffnet', rx, y + 36, { width: rb });
+    d.font('Helvetica').fontSize(12).fillColor(FARBE.text)
+      .text('Mit dem WLAN verbunden bleiben und diesen Code scannen.', rx, d.y + 6, { width: rb });
+  }
 }
 
 interface Karte {

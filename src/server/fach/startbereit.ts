@@ -187,7 +187,9 @@ export async function startbereitPruefung(
           ? `Unter ${z.fremderDhcp} verteilt noch ein anderes Gerät Adressen (vermutlich der Vonets) – dort den DHCP-Server ausschalten.`
           : z && !z.dhcp
             ? `Der Adressdienst läuft nicht. ${z.fehler.join(' ')}`
-            : null;
+            : !geraet.wlan?.name?.trim()
+              ? 'Unter „WLAN & Portal“ fehlt der WLAN-Name – ohne ihn steht in der Anleitung nur „das WLAN der Fotobox“.'
+              : null;
       punkte.push({
         schluessel: 'portal',
         titel: 'Galerie öffnet sich beim WLAN-Beitritt (Test)',

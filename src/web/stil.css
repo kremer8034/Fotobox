@@ -1294,6 +1294,114 @@ button {
   display: block;
 }
 
+/*
+ * Anleitung "Eure Fotos aufs Handy" (Captive Portal) statt QR-Code: WLAN-Symbol
+ * im Akzentkreis, darunter drei nummerierte Schritte. Auf dem Startbildschirm
+ * als Karte unten links, in der Galerie als Leiste neben "Zurueck".
+ */
+.wlan-hilfe {
+  display: flex;
+  align-items: center;
+  gap: calc(4 * var(--mm));
+  padding: calc(3.5 * var(--mm)) calc(5 * var(--mm)) calc(3.5 * var(--mm)) calc(3.5 * var(--mm));
+  background: rgba(16, 18, 22, 0.82);
+  border: 1px solid var(--kante);
+  border-left: 4px solid var(--akzent);
+  border-radius: var(--radius);
+  box-shadow: 0 calc(1.5 * var(--mm)) calc(6 * var(--mm)) rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--schrift);
+  text-align: left;
+}
+
+.wlan-hilfe--karte {
+  position: fixed;
+  bottom: var(--rand-sicher);
+  left: var(--rand-sicher);
+  max-width: calc(115 * var(--mm));
+}
+
+.wlan-hilfe--leiste {
+  flex: 1;
+  min-width: 0;
+  padding-top: calc(2.5 * var(--mm));
+  padding-bottom: calc(2.5 * var(--mm));
+}
+
+.wlan-hilfe__symbol {
+  flex: none;
+  width: calc(15 * var(--mm));
+  height: calc(15 * var(--mm));
+  border-radius: 50%;
+  background: var(--akzent);
+  color: var(--akzent-schrift);
+  display: grid;
+  place-items: center;
+}
+
+.wlan-hilfe__symbol svg {
+  width: 62%;
+  height: 62%;
+}
+
+.wlan-hilfe__titel {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: calc(1 * var(--mm));
+}
+
+.wlan-hilfe__schritte {
+  list-style: none;
+  counter-reset: schritt;
+  margin: 0;
+  padding: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--schrift-leise);
+}
+
+.wlan-hilfe__schritte li {
+  counter-increment: schritt;
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--mm));
+}
+
+.wlan-hilfe__schritte li::before {
+  content: counter(schritt);
+  flex: none;
+  width: 1.35em;
+  height: 1.35em;
+  border-radius: 50%;
+  background: var(--flaeche-hell);
+  color: var(--akzent);
+  font-weight: 700;
+  font-size: 0.85em;
+  display: grid;
+  place-items: center;
+}
+
+.wlan-hilfe__schritte strong {
+  color: var(--schrift);
+}
+
+/* In der Galerie nebeneinander statt untereinander - die Leiste ist flach. */
+.wlan-hilfe--leiste .wlan-hilfe__symbol {
+  width: calc(11 * var(--mm));
+  height: calc(11 * var(--mm));
+}
+
+.wlan-hilfe--leiste .wlan-hilfe__schritte {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: calc(5 * var(--mm));
+}
+
+.reihe--verteilt {
+  justify-content: space-between;
+}
+
 /* ------------------------------------------------------------------ Admin */
 
 /*

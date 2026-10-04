@@ -6,6 +6,15 @@ ihn auf der Box verstehst.
 
 ## 1.0.9
 
+- **Captive Portal ohne QR-Code:** Das WLAN der Fotobox ist im
+  Portal-Betrieb offen. Startbildschirm, Galerie am Touchscreen und Aushang
+  zeigen statt eines Codes eine kurze Anleitung: „WLAN-Einstellungen öffnen –
+  „Fotobox-Fotos“ antippen – die Fotos öffnen sich von selbst“. In den
+  WLAN-Einstellungen angetippt, öffnen Android und iPhone das Fenster
+  zuverlässig von selbst; per Kamera verbunden, war bei Android ein zweiter
+  Tipp nötig, und das iPhone wartete, bis die Kamera geschlossen war.
+  Unter „WLAN & Portal“ steht deshalb nur noch der WLAN-Name. Auf dem
+  Aushang bleibt der kleine Galerie-Code „Falls sich nichts öffnet“.
 - **Captive Portal mit echtem Handy getestet:** Nach dem Scan des WLAN-Codes
   öffnet Android von selbst das Fenster „In Fotobox anmelden“ mit der
   Galerie.

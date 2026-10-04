@@ -52,9 +52,9 @@ export function PortalSeite() {
       <div className="karte">
         <h2>Galerie öffnet sich beim WLAN-Beitritt (Test)</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-          Ist das Portal an, genügt den Gästen <strong>ein Scan</strong>: Das Handy tritt dem WLAN des Vonets bei,
-          und die Galerie öffnet sich von selbst – wie die Anmeldeseite im Hotel. Das Handy bleibt dabei über
-          seine mobilen Daten online.
+          Ist das Portal an, geht es <strong>ohne Code</strong>: Gäste tippen das WLAN der Fotobox in ihren
+          WLAN-Einstellungen an, und die Galerie öffnet sich von selbst – wie die Anmeldeseite im Hotel. Das Handy
+          bleibt dabei über seine mobilen Daten online.
         </p>
         <div className="kippschalter-zeile">
           <button
@@ -76,7 +76,7 @@ export function PortalSeite() {
             <strong>{an ? 'An' : 'Aus'}</strong>
             <span style={{ color: 'var(--schrift-leise)' }}>
               {an
-                ? ' – Aushang und Startbildschirm zeigen den WLAN-Code als Hauptcode.'
+                ? ' – Startbildschirm, Galerie und Aushang zeigen die Anleitung „WLAN antippen – Fotos öffnen sich“.'
                 : gesperrt
                   ? ' – die Box läuft wie bisher. Einschalten geht, sobald die Selbstdiagnose unten grün ist.'
                   : ' – die Box läuft wie bisher.'}
@@ -88,21 +88,25 @@ export function PortalSeite() {
       <div className="karte">
         <h2>WLAN des Vonets</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-          Name und Passwort landen im WLAN-QR-Code auf Aushang und Startbildschirm.
+          Für das Portal ist das WLAN <strong>offen – ohne Passwort</strong>: Gäste tippen es in ihren
+          WLAN-Einstellungen an, und die Galerie öffnet sich von selbst. Am Vonets dafür unter „WiFi Repeater →
+          WiFi Security“ den „Security Mode“ auf „Disable“ stellen. Der Name hier muss genau dem Namen am Vonets
+          entsprechen – er steht in der Anleitung auf Startbildschirm und Aushang. Ein gut erkennbarer Name hilft,
+          etwa „Fotobox-Fotos“.
         </p>
         <div className="zeile">
           <div className="feld">
             <label>WLAN-Name</label>
             <input value={wlan.name} maxLength={32} onChange={(e) => setzeWlan({ ...wlan, name: e.target.value })} />
           </div>
-          <div className="feld">
-            <label>WLAN-Passwort</label>
-            <input value={wlan.passwort} maxLength={63} onChange={(e) => setzeWlan({ ...wlan, passwort: e.target.value })} />
-          </div>
           <button
             className="knopf knopf--neben"
             disabled={!wlan.name.trim()}
-            onClick={() => void tue('WLAN gespeichert.', () => api.aendere('/api/admin/geraet', { wlan }))}
+            onClick={() =>
+              void tue('WLAN-Name gespeichert.', () =>
+                api.aendere('/api/admin/geraet', { wlan: { name: wlan.name.trim(), passwort: '' } }),
+              )
+            }
           >
             Speichern
           </button>

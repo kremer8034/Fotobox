@@ -43,7 +43,7 @@ import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { pruefePin, PinDrossel } from '../fach/pin.js';
 import { filterVorschau, vorlagenVorschau } from '../bild/vorschau.js';
 import { anzahlFotos, BETREUER_HINWEISE, fotoEbenen, STOERUNGSTEXTE, type Vorlage } from '../../shared/typen.js';
-import { galerieUrl, wlanQrText } from '../netzwerk.js';
+import { galerieUrl } from '../netzwerk.js';
 import { protokolliere, type Betrieb } from '../betrieb.js';
 import type { Konfig } from '../konfig.js';
 
@@ -108,9 +108,10 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         galerieUrl: event.einstellungen.galerieAktiv
           ? galerieUrl(event.galerieToken, konfig.portOeffentlich)
           : null,
-        // Laeuft das Captive Portal, genuegt der WLAN-Code: Die Galerie
-        // oeffnet sich beim Beitritt von selbst.
-        wlanQrText: portalWlanQr(),
+        // Laeuft das Captive Portal, ist das WLAN offen: Wer es in den
+        // Einstellungen antippt, bekommt die Galerie von selbst. Statt eines
+        // QR-Codes steht dann eine kurze Anleitung mit dem Netznamen da.
+        portalWlan: portalWlanName(),
       },
       zeiten: event.einstellungen.zeiten,
       toene: event.einstellungen.toene,
@@ -821,9 +822,12 @@ function seitenverhaeltnisse(vorlage: Vorlage): Record<number, number> {
   return ergebnis;
 }
 
-/** Der WLAN-QR-Code fuer den Startbildschirm - nur, solange das Captive Portal laeuft. */
-function portalWlanQr(): string | null {
-  const wlan = leseGeraet().wlan;
-  if (!wlan || !holePortal()?.zustand().portal) return null;
-  return wlanQrText(wlan.name, wlan.passwort);
+/**
+ * Der Name des offenen Fotobox-WLANs fuer die Anleitung am Startbildschirm -
+ * nur, solange das Captive Portal laeuft. Ohne eingetragenen Namen steht
+ * dort "das WLAN der Fotobox".
+ */
+function portalWlanName(): string | null {
+  if (!holePortal()?.zustand().portal) return null;
+  return leseGeraet().wlan?.name?.trim() || '';
 }
