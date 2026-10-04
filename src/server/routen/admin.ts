@@ -14,7 +14,10 @@ import {
 } from '../fach/einstellungen-pruefung.js';
 import sharp from 'sharp';
 import { portalNetzEingerichtet } from '../portal/adresse.js';
-import { holePortal } from '../portal/steuerung.js';
+import { gleichePortalAb, holePortal } from '../portal/steuerung.js';
+
+/** Zustand der Portal-Dienste in diesem Augenblick - die Diagnose fragt mehrmals. */
+const portalZustand = () => holePortal()?.zustand() ?? null;
 import { leseRohdiagnose, portalDiagnose, richteNetzEin, setzeNetzZurueck, waehleAdapter } from '../portal/diagnose.js';
 import { leseGeraet, leseMailPasswort, schreibeGeraet, schreibeMailPasswort, begrenzeKalibrierung } from '../db/geraet.js';
 import {
@@ -244,6 +247,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     }
 
     schreibeGeraet(aenderung);
+    if (koerper.portalAktiv !== undefined) await gleichePortalAb();
     if (koerper.mail === null) schreibeMailPasswort(null);
     else if (koerper.mailPasswort) schreibeMailPasswort(koerper.mailPasswort);
     betrieb.ladeTreiberNeu();
@@ -267,7 +271,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   /** Selbstdiagnose: Was ist eingestellt, was fehlt, was laeuft? */
   app.get('/api/admin/portal', async (_anfrage, antwort) => {
     try {
-      return { diagnose: await portalDiagnose(holePortal()?.zustand() ?? null, leseGeraet().portalAktiv) };
+      return { diagnose: await portalDiagnose(portalZustand, leseGeraet().portalAktiv) };
     } catch (fehler) {
       return antwort.code(500).send({ fehler: `Die Selbstdiagnose ging nicht: ${(fehler as Error).message}` });
     }
@@ -282,7 +286,8 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       protokolliere('info', 'portal', `Netz für das Portal eingerichtet (Anschluss „${adapter.name}“).`);
       // Windows braucht einen Moment, bis die neue Adresse benutzbar ist.
       await new Promise((r) => setTimeout(r, 3000));
-      return { diagnose: await portalDiagnose(holePortal()?.zustand() ?? null, leseGeraet().portalAktiv) };
+      await gleichePortalAb();
+      return { diagnose: await portalDiagnose(portalZustand, leseGeraet().portalAktiv) };
     } catch (fehler) {
       return antwort.code(500).send({ fehler: (fehler as Error).message });
     }
@@ -298,7 +303,8 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       await setzeNetzZurueck(adapter);
       protokolliere('info', 'portal', `Netz zurückgesetzt (Anschluss „${adapter.name}“).`);
       await new Promise((r) => setTimeout(r, 3000));
-      return { diagnose: await portalDiagnose(holePortal()?.zustand() ?? null, false) };
+      await gleichePortalAb();
+      return { diagnose: await portalDiagnose(portalZustand, false) };
     } catch (fehler) {
       return antwort.code(500).send({ fehler: (fehler as Error).message });
     }

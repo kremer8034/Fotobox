@@ -8,7 +8,7 @@ der Hand. Jede Veranstaltung landet sauber in einem eigenen Ordner.
 **Die Box braucht kein Internet.** Galerie fürs Handy und Foto per E-Mail sind
 je Veranstaltung zuschaltbar und standardmäßig aus.
 
-**Aktuelle Version: 1.0.8.** Die Setup-Datei liegt auf der
+**Aktuelle Version: 1.0.9.** Die Setup-Datei liegt auf der
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
 

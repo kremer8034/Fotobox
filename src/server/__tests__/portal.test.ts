@@ -322,6 +322,26 @@ describe('Selbstdiagnose', () => {
     expect(eigenes.bereit).toBe(true);
   });
 
+  it('die Fotobox selbst auf Anschluss 80 ist kein fremder Dienst', async () => {
+    const { deuteRohdiagnose } = await import('../portal/diagnose.js');
+    const json = (prozess: number) => JSON.stringify({ adapter: [], firewall: true, port80: 'node', port80Prozess: prozess });
+    expect(deuteRohdiagnose(json(4242), 4242).port80).toBeNull();
+    expect(deuteRohdiagnose(json(777), 4242).port80).toBe('node');
+  });
+
+  it('startet ein eigener Dienst waehrend der Diagnose, zaehlt sein Anschluss nicht als belegt', async () => {
+    const { ohneEigene } = await import('../portal/diagnose.js');
+    const belegt = [
+      { port: 53, ergebnis: 'bind EADDRINUSE' as const },
+      { port: 80, ergebnis: 'listen EADDRINUSE' as const },
+      { port: 67, ergebnis: true as const },
+    ];
+    const zustand = { dhcp: true, dns: true, portal: true, geraete: 1, fremderDhcp: null, fehler: [] };
+    expect(ohneEigene(belegt, zustand)).toEqual([]);
+    expect(ohneEigene(belegt, null)).toHaveLength(3);
+    expect(ohneEigene(belegt, { ...zustand, portal: false }).map((a) => a.port)).toEqual([80]);
+  });
+
   it('ausserhalb von Windows: nur ein Hinweis, nichts einschaltbar', async () => {
     const { bewerte } = await import('../portal/diagnose.js');
     const d = bewerte({ windows: false, adapter: [], firewall: false, port80: null }, { vonets: null, anschluesse: [], zustand: null, schalter: false });

@@ -31,7 +31,7 @@ export interface Rohdiagnose {
   adapter: Netzadapter[];
   /** Firewall-Freigaben fuer das Portal vorhanden? */
   firewall: boolean;
-  /** Wer haelt Anschluss 80 fuer alle Adressen besetzt? null = niemand. */
+  /** Wer haelt Anschluss 80 fuer alle Adressen besetzt? null = niemand (oder die Fotobox selbst). */
   port80: string | null;
 }
 
@@ -77,7 +77,7 @@ if ($l80) {
     if (-not $p80) { $p80 = "Prozess $($l80.OwningProcess)" }
   }
 }
-[pscustomobject]@{ adapter = $liste; firewall = ($fw -ge 3); port80 = $p80 } | ConvertTo-Json -Compress -Depth 4
+[pscustomobject]@{ adapter = $liste; firewall = ($fw -ge 3); port80 = $p80; port80Prozess = $(if ($l80) { $l80.OwningProcess } else { $null }) } | ConvertTo-Json -Compress -Depth 4
 `;
 
 /** Liest den Zustand der Netzwerkanschluesse aus Windows. */
@@ -97,8 +97,8 @@ export async function leseRohdiagnose(): Promise<Rohdiagnose> {
 }
 
 /** Die JSON-Ausgabe von PowerShell deuten - auch, wenn sie Einzelwerte statt Listen liefert. */
-export function deuteRohdiagnose(json: string): Rohdiagnose {
-  const roh = JSON.parse(json.trim()) as { adapter?: unknown; firewall?: unknown; port80?: unknown };
+export function deuteRohdiagnose(json: string, eigenerProzess = process.pid): Rohdiagnose {
+  const roh = JSON.parse(json.trim()) as { adapter?: unknown; firewall?: unknown; port80?: unknown; port80Prozess?: unknown };
   const liste = Array.isArray(roh.adapter) ? roh.adapter : roh.adapter ? [roh.adapter] : [];
   const adapter = liste.map((a) => {
     const e = a as Record<string, unknown>;
@@ -114,7 +114,9 @@ export function deuteRohdiagnose(json: string): Rohdiagnose {
       dhcpServer: server && server !== '255.255.255.255' ? server : null,
     };
   });
-  const port80 = typeof roh.port80 === 'string' && roh.port80.trim() ? roh.port80.trim() : null;
+  // Haelt die Fotobox selbst Anschluss 80, laeuft dort gerade ihr eigenes Portal - kein Fremder.
+  const eigenes = Number(roh.port80Prozess) === eigenerProzess;
+  const port80 = !eigenes && typeof roh.port80 === 'string' && roh.port80.trim() ? roh.port80.trim() : null;
   return { windows: true, adapter, firewall: roh.firewall === true, port80 };
 }
 
@@ -276,18 +278,35 @@ export function bewerte(roh: Rohdiagnose, zusatz: Zusatzbefunde): PortalDiagnose
 }
 
 /** Komplette Diagnose: Windows lesen, Vonets und Anschluesse pruefen, bewerten. */
-export async function portalDiagnose(zustand: PortalZustand | null, schalter: boolean): Promise<PortalDiagnose> {
+/**
+ * Komplette Diagnose: Windows lesen, Vonets und Anschluesse pruefen, bewerten.
+ *
+ * Der Zustand der eigenen Dienste wird erst nach dem Lesen von Windows (das
+ * dauert Sekunden) abgefragt und am Ende noch einmal: Startete die Box in der
+ * Zwischenzeit selbst Namensdienst oder Portal, belegen die ihre Anschluesse
+ * zu Recht. Vorher hielt die Diagnose das fuer einen fremden Dienst.
+ */
+export async function portalDiagnose(zustandJetzt: () => PortalZustand | null, schalter: boolean): Promise<PortalDiagnose> {
   const roh = await leseRohdiagnose();
   const adapter = roh.windows ? waehleAdapter(roh.adapter) : null;
   const anschluesse: Zusatzbefunde['anschluesse'] = [];
   if (adapter?.adressen.includes(PORTAL_ADRESSE)) {
     // Nur pruefen, was nicht schon laeuft - ein laufender Dienst belegt seinen
     // Anschluss ja gerade selbst.
-    if (!zustand?.dhcp) anschluesse.push({ port: 67, ergebnis: await anschlussFrei(PORTAL_ADRESSE, 67, 'udp') });
-    if (!zustand?.dns) anschluesse.push({ port: 53, ergebnis: await anschlussFrei(PORTAL_ADRESSE, 53, 'udp') });
-    if (!zustand?.portal) anschluesse.push({ port: 80, ergebnis: await anschlussFrei(PORTAL_ADRESSE, 80, 'tcp') });
+    const vorher = zustandJetzt();
+    if (!vorher?.dhcp) anschluesse.push({ port: 67, ergebnis: await anschlussFrei(PORTAL_ADRESSE, 67, 'udp') });
+    if (!vorher?.dns) anschluesse.push({ port: 53, ergebnis: await anschlussFrei(PORTAL_ADRESSE, 53, 'udp') });
+    if (!vorher?.portal) anschluesse.push({ port: 80, ergebnis: await anschlussFrei(PORTAL_ADRESSE, 80, 'tcp') });
   }
-  return bewerte(roh, { vonets: await vonetsErreichbar(adapter), anschluesse, zustand, schalter });
+  const vonets = await vonetsErreichbar(adapter);
+  const zustand = zustandJetzt();
+  return bewerte(roh, { vonets, anschluesse: ohneEigene(anschluesse, zustand), zustand, schalter });
+}
+
+/** Anschluesse, die inzwischen ein eigener Dienst belegt, sind nicht "belegt". */
+export function ohneEigene(anschluesse: Zusatzbefunde['anschluesse'], zustand: PortalZustand | null): Zusatzbefunde['anschluesse'] {
+  const eigen: Record<number, boolean | undefined> = { 67: zustand?.dhcp, 53: zustand?.dns, 80: zustand?.portal };
+  return anschluesse.filter((a) => !eigen[a.port]);
 }
 
 // ------------------------------------------------------------ Einrichten

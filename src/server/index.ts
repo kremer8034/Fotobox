@@ -175,7 +175,23 @@ const portal = new Portalsteuerung(
   },
   (text) => protokolliere('info', 'portal', text),
 );
-setzePortal(portal);
+
+/**
+ * Die Pruefung laeuft alle fuenf Sekunden - und auf Zuruf aus der Verwaltung.
+ * Nie zwei gleichzeitig: Brauchte eine laenger als der Takt (PowerShell auf
+ * dem N100), startete die naechste dieselben Dienste ein zweites Mal.
+ */
+let galerieKette: Promise<void> = Promise.resolve();
+let galerieWartend = 0;
+function pruefeGalerieNacheinander(): Promise<void> {
+  galerieWartend += 1;
+  const lauf = galerieKette.then(pruefeGalerie).finally(() => {
+    galerieWartend -= 1;
+  });
+  galerieKette = lauf.catch(() => undefined);
+  return lauf;
+}
+setzePortal(portal, pruefeGalerieNacheinander);
 
 async function pruefePortal(galerieAktiv: boolean): Promise<void> {
   await portal.abgleichen(
@@ -183,8 +199,10 @@ async function pruefePortal(galerieAktiv: boolean): Promise<void> {
   );
 }
 
-await pruefeGalerie();
-const galerieUhr = setInterval(() => void pruefeGalerie().catch(() => undefined), 5000);
+await pruefeGalerieNacheinander();
+const galerieUhr = setInterval(() => {
+  if (galerieWartend === 0) void pruefeGalerieNacheinander().catch(() => undefined);
+}, 5000);
 
 /**
  * Datenschutz: E-Mail-Adressen nach der zugesagten Frist loeschen - beim Start

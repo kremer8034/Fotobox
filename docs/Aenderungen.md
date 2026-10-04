@@ -4,6 +4,22 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.9
+
+- **Captive Portal mit echtem Handy getestet:** Nach dem Scan des WLAN-Codes
+  öffnet Android von selbst das Fenster „In Fotobox anmelden“ mit der
+  Galerie.
+- **Speichern-Hinweis passend zum Handy:** Im Anmeldefenster von Android tut
+  Gedrückthalten nichts, „Aufs Handy laden“ klappt dagegen. Android-Handys
+  bekommen deshalb „Foto antippen → Aufs Handy laden“, iPhones weiterhin
+  „Foto gedrückt halten → Zu Fotos hinzufügen“.
+- **Selbstdiagnose ohne Fehlalarm:** Direkt nach dem Einschalten meldete sie
+  die Anschlüsse 53 und 80 als „belegt“ – belegt hatte sie die Fotobox
+  selbst, weil sie Namensdienst und Portal gerade startete. Jetzt erkennt die
+  Diagnose ihre eigenen Dienste, und das Umlegen des Schalters startet sie
+  sofort statt erst nach ein paar Sekunden.
+- **README neu geschrieben.**
+
 ## 1.0.8
 
 - **Galerie öffnet sich beim WLAN-Beitritt (Test):** Neuer Menüpunkt
