@@ -1,0 +1,10 @@
+Mitgelieferte Schreibschriften fuer Hochzeiten
+
+Great Vibes, Parisienne und Pinyon Script stehen unter der SIL Open Font
+License 1.1 (siehe OFL-*.txt): frei nutzbar, auch fuer Drucke und
+kommerziell, und frei weiterzugeben zusammen mit der Lizenz.
+
+Die Fotobox kopiert sie beim ersten Start in Fotobox-Daten/schriften. Dort
+stehen sie wie selbst hinzugefuegte Schriften im Vorlagen-Editor zur Wahl.
+Wird eine davon geloescht, bleibt sie geloescht (Vermerk in
+.mitgeliefert.json).

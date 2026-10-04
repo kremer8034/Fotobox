@@ -6,6 +6,10 @@ ihn auf der Box verstehst.
 
 ## 1.0.9
 
+- **Drei Hochzeitsschriften ab Werk:** Great Vibes, Parisienne und Pinyon
+  Script – geschwungene Schreibschriften, mit Umlauten und ß. Sie stehen im
+  Vorlagen-Editor unter „Schriftart“ bereit, ohne dass man sie hochladen muss,
+  und gelten auch für den Ausdruck. Frei lizenziert (SIL Open Font License).
 - **Captive Portal ohne QR-Code:** Das WLAN der Fotobox ist im
   Portal-Betrieb offen. Startbildschirm, Galerie am Touchscreen und Aushang
   zeigen statt eines Codes eine kurze Anleitung: „WLAN-Einstellungen öffnen –
