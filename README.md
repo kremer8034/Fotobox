@@ -8,7 +8,7 @@ der Hand. Jede Veranstaltung landet sauber in einem eigenen Ordner.
 **Die Box braucht kein Internet.** Galerie fürs Handy und Foto per E-Mail sind
 je Veranstaltung zuschaltbar und standardmäßig aus.
 
-**Aktuelle Version: 1.0.8.** Die Setup-Datei liegt auf der
+**Aktuelle Version: 1.0.9.** Die Setup-Datei liegt auf der
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
 
@@ -61,8 +61,10 @@ Papier“), nicht als Fehlercode.
 - **Duplizieren** und **Voreinstellungen**: Die nächste Feier entsteht aus der
   letzten in einer Minute.
 - **Auslagenersatz** als Übersicht und CSV.
-- **Unterlagen** auf Knopfdruck: Kurzanleitung mit Betreuer-PIN für die Box und
-  QR-Aushang für die Gäste (je A4).
+- **Kurzanleitung** mit Betreuer-PIN auf Knopfdruck – ohne Eingaben, die PIN
+  setzt die Box selbst ein. Der Betreuer lädt sie auch über einen kleinen
+  Link in der Handy-Galerie. Der **Aushang** für die Gäste gilt für jede Feier
+  und liegt unter „WLAN & Portal“.
 - **Übergabe** an den Gastgeber: ganzer Ordner auf einen USB-Stick, mit
   Prüfmarker und einer `galerie.html` zum Doppelklicken, ohne Server und ohne
   Internet.
@@ -155,7 +157,7 @@ Einmalig, Schritt für Schritt in
 1. **Veranstaltung anlegen**: leer, aus einer Voreinstellung oder als Duplikat.
    Vorlagen und Filter freigeben.
 2. **Betreuer-PIN** setzen. Die bekommt der Gastgeber.
-3. **Unterlagen** erzeugen: Kurzanleitung in die Box, QR-Aushang außen dran.
+3. **Kurzanleitung** erzeugen und in die Box legen; der Aushang hängt ohnehin.
 4. **Startbereit-Check**, dann auf *aktiv* schalten.
 5. Optional **Probelauf** für den Aufbau-Test.
 
@@ -166,19 +168,26 @@ QR-Code. Die Seite ist schreibgeschützt; zum Speichern hält man das Foto
 gedrückt und wählt „Sichern“ oder „Teilen“.
 
 **Captive Portal (Test, ab 1.0.8):** Normalerweise sind es zwei Scans, erst
-das WLAN, dann die Galerie. Mit dem Portal reicht einer. Nach dem WLAN-Beitritt
-öffnet das Handy die Galerie von selbst, wie die Anmeldeseite im Hotel. Das
-Handy bleibt dabei über seine mobilen Daten online.
+das WLAN, dann die Galerie. Mit dem Portal geht es ohne Code: Das WLAN der
+Fotobox ist offen, die Gäste tippen es in ihren WLAN-Einstellungen an, und die
+Galerie öffnet sich von selbst, wie die Anmeldeseite im Hotel. Das Handy bleibt
+dabei über seine mobilen Daten online.
 
 - Eigener Menüpunkt **„WLAN & Portal“** mit Schalter An/Aus. **Standardmäßig
   aus**; dann läuft die Box genau wie bisher.
+- Mit drei Hochzeits-Schreibschriften ab Werk (Great Vibes, Parisienne,
+  Pinyon Script) im Vorlagen-Editor.
+- Startbildschirm, Galerie am Touchscreen und Aushang zeigen statt eines
+  QR-Codes eine kurze Anleitung mit dem Namen des WLANs.
 - Die **Selbstdiagnose** prüft Kabel, Adresse, Vonets, einen zweiten
   Adressverteiler, Firewall und freie Anschlüsse und nennt jeweils den nächsten
   Handgriff.
 - „Netzwerk für das Portal einrichten“ stellt den Netzwerkanschluss mit einer
   Windows-Rückfrage um. „Zurücksetzen (wie vorher)“ macht es rückgängig.
-- Am Vonets muss nur dessen DHCP-Server aus sein. Adressen und Namensauflösung
-  übernimmt dann die Box selbst.
+- Am Vonets: DHCP-Server aus, WLAN ohne Passwort. Adressen und
+  Namensauflösung übernimmt dann die Box selbst.
+- Offenes WLAN heißt: Wer in Funkreichweite ist, kann die Galerie öffnen. Ins
+  Internet kommt darüber niemand.
 
 ## Wo die Daten liegen
 

@@ -98,9 +98,25 @@ export class Portalsteuerung {
 
 /** Die eine Steuerung des laufenden Servers - fuer Verwaltung und Startbereit-Check. */
 let instanz: Portalsteuerung | null = null;
+/** Bringt die Dienste sofort auf den Sollzustand (statt erst beim naechsten 5-Sekunden-Takt). */
+let abgleich: () => Promise<void> = async () => undefined;
 
-export function setzePortal(p: Portalsteuerung): void {
+export function setzePortal(p: Portalsteuerung, sofort?: () => Promise<void>): void {
   instanz = p;
+  if (sofort) abgleich = sofort;
+}
+
+/**
+ * Nach dem Umlegen des Schalters oder dem Einrichten des Netzes: Dienste
+ * gleich starten oder stoppen. So zeigt die Selbstdiagnose danach schon den
+ * neuen Stand - vorher pruefte sie mitten in den Start hinein.
+ */
+export async function gleichePortalAb(): Promise<void> {
+  try {
+    await abgleich();
+  } catch {
+    // Startfehler stehen im Zustand der Steuerung und damit in der Diagnose.
+  }
 }
 
 export function holePortal(): Portalsteuerung | null {

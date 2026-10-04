@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { findeEventNachGalerieToken, findeEventNachStatusToken } from '../fach/events.js';
 import { galerieEintraege, holeAusgabe } from '../fach/sitzungen.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
+import { erzeugeKurzanleitung } from '../fach/unterlagen.js';
 import { eventpfade } from '../fach/pfade.js';
 import { abgeleitet, FASSUNGEN } from '../bild/abgeleitet.js';
 import type { Betrieb } from '../betrieb.js';
@@ -51,6 +52,24 @@ function freigegebenesLayout(event: Veranstaltung, ausgabeId: string): { id: str
 }
 
 export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): void {
+  /**
+   * Die Kurzanleitung fuer den Betreuer - versteckt unten in der
+   * Handy-Galerie, damit er sie am Ende aufs eigene Handy laden kann. So
+   * gewollt: Wer die Galerie sieht, koennte sie auch laden (und damit die
+   * Betreuer-PIN sehen). Die Besitzer-PIN steht nie darauf.
+   */
+  app.get<{ Params: { token: string } }>('/medien/kurzanleitung/:token.pdf', async (anfrage, antwort) => {
+    const event = galerieEvent(anfrage.params.token);
+    if (!event) return antwort.code(404).send();
+    const ergebnis = await erzeugeKurzanleitung(event);
+    if ('fehler' in ergebnis) return antwort.code(404).send({ fehler: 'Die Kurzanleitung gibt es gerade nicht.' });
+    return antwort
+      .type('application/pdf')
+      .header('Cache-Control', 'no-store')
+      .header('Content-Disposition', 'attachment; filename="Fotobox-Kurzanleitung.pdf"')
+      .send(createReadStream(ergebnis.pfad));
+  });
+
   app.get<{ Params: { token: string } }>('/api/galerie/:token', async (anfrage, antwort) => {
     const event = galerieEvent(anfrage.params.token);
     if (!event) {

@@ -25,6 +25,46 @@ interface StatusDaten {
 const NACHLADEN_MS = 30_000;
 
 /**
+ * Welcher Weg zum Speichern funktioniert, haengt am Handy - besonders, wenn
+ * sich die Galerie als Anmeldefenster (Captive Portal) oeffnet: Android
+ * kennt dort kein Gedrueckthalten, laedt aber herunter; am iPhone ist es eher
+ * umgekehrt. (Am echten Android-Handy getestet: Gedrueckthalten tut nichts,
+ * „Aufs Handy laden“ klappt.)
+ */
+type Geraet = 'android' | 'iphone' | 'anderes';
+const GERAET: Geraet = (() => {
+  const kennung = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  if (/Android/i.test(kennung)) return 'android';
+  // iPads melden sich als Mac - aber mit Touchscreen.
+  if (/iPhone|iPad|iPod/i.test(kennung) || (/Macintosh/i.test(kennung) && navigator.maxTouchPoints > 1)) return 'iphone';
+  return 'anderes';
+})();
+
+/** Der Weg nach dem Oeffnen eines Fotos - je Geraet der, der dort funktioniert. */
+const SPEICHER_WEG: Record<Geraet, string[]> = {
+  android: [
+    'Auf „Aufs Handy laden“ tippen.',
+    'Das Foto liegt jetzt in deiner Galerie-App.',
+    'Von dort teilen – etwa per WhatsApp.',
+  ],
+  iphone: [
+    'Das Foto oben gedrückt halten.',
+    '„Zu Fotos hinzufügen“ wählen.',
+    'In der Fotos-App teilen – etwa per WhatsApp.',
+  ],
+  anderes: [
+    'Auf „Aufs Handy laden“ tippen.',
+    'Das Foto aus den Downloads öffnen und von dort teilen.',
+  ],
+};
+
+const SPEICHER_TIPP: Record<Geraet, string> = {
+  android: 'Tipp: Foto antippen → „Aufs Handy laden“. Danach liegt es in deiner Galerie-App.',
+  iphone: 'Tipp: Foto gedrückt halten → „Zu Fotos hinzufügen“ oder „Teilen“.',
+  anderes: 'Tipp: Foto antippen → „Aufs Handy laden“.',
+};
+
+/**
  * Handy-Ansicht im WLAN.
  *
  * Zwei Betriebsarten unter demselben Bauteil:
@@ -51,9 +91,6 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   const [getrennt, setzeGetrennt] = useState(false);
   const [gross, setzeGross] = useState<string | null>(() => fotoAusAdresse());
   const [grossFehlt, setzeGrossFehlt] = useState(false);
-  const [teilHilfe, setzeTeilHilfe] = useState(false);
-  // Fuer jedes Foto neu: Die Hilfe zum Teilen erscheint erst auf Knopfdruck.
-  useEffect(() => setzeTeilHilfe(false), [gross]);
 
   useEffect(() => {
     const laden = async () => {
@@ -172,32 +209,6 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
   // Vom Gastgeber herausgenommen, waehrend es hier offen war.
   const nichtMehrDa = grossFehlt || (gross !== null && !galerie.bilder.some((b) => b.id === gross));
 
-  /**
-   * Das Teilen-Menue des Handys (WhatsApp, Facebook, OneDrive ...). Mit einer
-   * Datei geht das nur auf verschluesselten Seiten (https) - die Galerie laeuft
-   * offline im WLAN der Box ueber http. Dann erklaert der Knopf den Weg ueber
-   * langes Druecken auf das Bild, der auch ohne https das Teilen-Menue oeffnet.
-   */
-  async function teilen(id: string) {
-    const kannTeilen = typeof navigator.share === 'function' && window.isSecureContext;
-    if (!kannTeilen) {
-      setzeTeilHilfe(true);
-      return;
-    }
-    try {
-      const antwort = await fetch(`/medien/download/${token}/${id}.jpg`);
-      const datei = new File([await antwort.blob()], `Fotobox-${id.slice(0, 8)}.jpg`, { type: 'image/jpeg' });
-      if (navigator.canShare && !navigator.canShare({ files: [datei] })) {
-        setzeTeilHilfe(true);
-        return;
-      }
-      await navigator.share({ files: [datei], title: galerie?.veranstaltung ?? 'Fotobox' });
-    } catch (fehler) {
-      // Abgebrochen ist kein Fehler.
-      if ((fehler as Error)?.name !== 'AbortError') setzeTeilHilfe(true);
-    }
-  }
-
   if (gross) {
     return (
       <div className="handy">
@@ -222,20 +233,17 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
             >
               Aufs Handy laden
             </a>
-            <button className="knopf handy__laden" onClick={() => void teilen(gross)}>
-              Teilen (WhatsApp, OneDrive …)
-            </button>
-            {teilHilfe ? (
-              <p className="handy__tipp handy__tipp--hervor">
-                Direkt aus der Seite teilen lässt dein Handy hier nicht zu – die Galerie läuft ohne Internet im
-                WLAN der Fotobox. So geht es: <strong>das Foto oben gedrückt halten</strong> und „Teilen“ bzw.
-                „Bild teilen“ wählen. Oder erst aufs Handy laden und aus der Fotos-App teilen.
-              </p>
-            ) : (
-              <p className="handy__tipp">
-                Am iPhone geht es auch so: Bild gedrückt halten und „Zu Fotos hinzufügen" wählen.
-              </p>
-            )}
+            {/* Kein Teilen-Knopf: Teilen direkt aus einer Webseite erlaubt das Handy
+                nur auf verschluesselten Seiten - die Galerie laeuft offline im WLAN
+                der Box. Stattdessen der Weg, der auf diesem Geraet funktioniert. */}
+            <div className="handy__tipp handy__tipp--hervor handy__weg">
+              <strong>Speichern und teilen</strong>
+              <ol>
+                {SPEICHER_WEG[GERAET].map((schritt) => (
+                  <li key={schritt}>{schritt}</li>
+                ))}
+              </ol>
+            </div>
           </>
         )}
 
@@ -252,11 +260,7 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
           ? 'Noch keine Fotos — die ersten kommen bestimmt gleich.'
           : `${mehrzahl(galerie.bilder.length, 'Foto', 'Fotos')} — tippe eines an, um es zu laden.`}
       </p>
-      {/* Oeffnet sich die Galerie als Anmeldefenster (Captive Portal), gehen
-          Download-Knoepfe dort oft nicht - Gedrueckthalten fast immer. */}
-      {galerie.bilder.length > 0 && (
-        <p className="handy__tipp handy__tipp--hervor">Tipp: Foto gedrückt halten → „Sichern“ oder „Teilen“.</p>
-      )}
+      {galerie.bilder.length > 0 && <p className="handy__tipp handy__tipp--hervor">{SPEICHER_TIPP[GERAET]}</p>}
       <div className="handy__raster">
         {galerie.bilder.map((bild) => (
           <button key={bild.id} className="handy__kachel" onClick={() => oeffne(bild.id)}>
@@ -271,6 +275,12 @@ export function HandyGalerie({ token, nurStatus }: { token: string; nurStatus?: 
           </button>
         ))}
       </div>
+      {/* Fuer den Betreuer, bewusst unauffaellig unten rechts: die Kurzanleitung
+          mit der Betreuer-PIN aufs eigene Handy. Gewollt in Kauf genommen: Wer
+          die Galerie sieht, koennte sie auch laden. */}
+      <a className="handy__betreuer" href={`/medien/kurzanleitung/${token}.pdf`} download>
+        Für Betreuer: Kurzanleitung
+      </a>
     </div>
   );
 }

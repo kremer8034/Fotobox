@@ -250,6 +250,25 @@ export function findeEventNachStatusToken(token: string): Veranstaltung | null {
 }
 
 /**
+ * Die Betreuer-PIN lesbar merken - fuer die Kurzanleitung, die sie gross
+ * zeigt. Vorher war sie nur als Hash gespeichert, und wer den Zettel spaeter
+ * erzeugte, musste sie jedes Mal neu eintippen. Bewusst nur fuer die
+ * Betreuer-PIN (die steht ohnehin auf Papier in der Box), nie fuer die
+ * Besitzer-PIN. Sie bleibt in der Datenbank: nicht im Veranstaltungs-Objekt,
+ * nicht in event.json, nicht bei der Uebergabe.
+ */
+export function merkeBetreuerPin(id: string, pin: string | null): void {
+  holeDb().prepare('UPDATE events SET betreuer_pin = ? WHERE id = ?').run(pin, id);
+}
+
+export function leseBetreuerPin(id: string): string | null {
+  const zeile = holeDb().prepare('SELECT betreuer_pin FROM events WHERE id = ?').get(id) as
+    | { betreuer_pin: string | null }
+    | undefined;
+  return zeile?.betreuer_pin ?? null;
+}
+
+/**
  * Kopie der Konfiguration in den Event-Ordner. Damit bleibt der Ordner auch
  * dann verstaendlich, wenn er nur noch als Datenhaufen beim Gastgeber liegt.
  */

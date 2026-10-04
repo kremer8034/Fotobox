@@ -111,13 +111,11 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [pruefung, setzePruefung] = useState<{ bestanden: boolean; punkte: Pruefpunkt[] } | null>(null);
   const [meldung, setzeMeldung] = useState<string | null>(null);
   const [pin, setzePin] = useState('');
-  const [zettelPin, setzeZettelPin] = useState('');
-  const [zettel, setzeZettel] = useState<{ kurzanleitung: string; aushang: string | null } | null>(null);
+  const [zettel, setzeZettel] = useState<string | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
   const [dialogOffen, setzeDialogOffen] = useState(false);
-  const [telefon, setzeTelefon] = useState('');
-  const [wlanName, setzeWlanName] = useState('');
-  const [wlanPasswort, setzeWlanPasswort] = useState('');
+  // Das Notfall-Telefon gilt fuer alle Veranstaltungen - einmal eintragen, danach steht es schon da.
+  const [telefon, setzeTelefon] = useState<string | null>(null);
 
   const lade = useCallback(async () => {
     setzeEvent(await api.hole<EventVoll>(`/api/admin/events/${id}`));
@@ -128,6 +126,13 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   useEffect(() => {
     void lade();
   }, [lade]);
+
+  useEffect(() => {
+    void api
+      .hole<{ notfallTelefon?: string }>('/api/admin/geraet')
+      .then((g) => setzeTelefon((t) => t ?? g.notfallTelefon ?? ''))
+      .catch(() => setzeTelefon((t) => t ?? ''));
+  }, []);
 
   if (!event) return <p>Einen Moment…</p>;
   const e = event.einstellungen;
@@ -560,67 +565,36 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
       {reiter === 'unterlagen' && (
         <>
           <div className="karte">
-            <h2>Unterlagen für die Veranstaltung</h2>
+            <h2>Kurzanleitung für den Gastgeber</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-              Zwei Zettel mit unterschiedlichen Lesern: Die Kurzanleitung mit der Betreuer-PIN kommt
-              in die Box, der QR-Aushang wird außen angeklebt. Auf dem Aushang steht bewusst keine
-              PIN.
+              Der Zettel mit der Betreuer-PIN, der in die Box kommt. Die PIN setzt die Fotobox selbst ein –
+              so, wie sie unter „Aussehen &amp; PIN“ gesetzt ist. Der Betreuer kann ihn am Ende auch über einen
+              unauffälligen Link unten in der Handy-Galerie aufs eigene Handy laden. Den Aushang für die Gäste
+              gibt es unter „WLAN &amp; Portal“ – er gilt für jede Feier.
             </p>
             <div className="zeile">
               <div className="feld feld--klein">
-                <label>Betreuer-PIN (kommt auf den Zettel)</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={8}
-                  value={zettelPin}
-                  onChange={(ev) => setzeZettelPin(ev.target.value.replace(/\D/g, ''))}
-                  placeholder="dieselbe wie gesetzt"
-                />
-              </div>
-              <div className="feld feld--klein">
-                <label>Telefon für den Notfall</label>
-                <input value={telefon} onChange={(ev) => setzeTelefon(ev.target.value)} />
-              </div>
-              <div className="feld feld--klein">
-                <label>WLAN-Name (für den QR-Code)</label>
-                <input
-                  value={wlanName}
-                  placeholder="leer = wie unter WLAN & Portal"
-                  onChange={(ev) => setzeWlanName(ev.target.value)}
-                />
-              </div>
-              <div className="feld feld--klein">
-                <label>WLAN-Passwort</label>
-                <input
-                  value={wlanPasswort}
-                  placeholder="leer = wie unter WLAN & Portal"
-                  onChange={(ev) => setzeWlanPasswort(ev.target.value)}
-                />
+                <label>Telefon für den Notfall (für alle Veranstaltungen)</label>
+                <input value={telefon ?? ''} maxLength={40} onChange={(ev) => setzeTelefon(ev.target.value)} />
               </div>
               <button
                 className="knopf knopf--neben"
-                disabled={!/^\d{4,8}$/.test(zettelPin)}
+                disabled={!event.betreuerPinGesetzt || telefon === null}
                 onClick={() => void unterlagen()}
               >
-                Zettel erzeugen
+                Kurzanleitung erzeugen
               </button>
             </div>
+            {!event.betreuerPinGesetzt && (
+              <p style={{ fontSize: '0.85rem', marginBottom: 0 }}>
+                Erst unter „Aussehen &amp; PIN“ eine Betreuer-PIN setzen.
+              </p>
+            )}
             {zettel && (
               <p style={{ marginBottom: 0 }}>
-                <a href={zettel.kurzanleitung} target="_blank" rel="noreferrer">
+                <a href={zettel} target="_blank" rel="noreferrer">
                   Kurzanleitung öffnen
                 </a>
-                {zettel.aushang ? (
-                  <>
-                    {' · '}
-                    <a href={zettel.aushang} target="_blank" rel="noreferrer">
-                      QR-Aushang öffnen
-                    </a>
-                  </>
-                ) : (
-                  ' · Einen QR-Aushang gibt es nur bei eingeschalteter Galerie.'
-                )}
               </p>
             )}
           </div>
@@ -795,12 +769,11 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
 
   function unterlagen() {
     return versuche(async () => {
-      const antwort = await api.sende<{ links: { kurzanleitung: string; aushang: string | null } }>(
-        `/api/admin/events/${id}/unterlagen`,
-        { betreuerPin: zettelPin, telefon, wlanName, wlanPasswort },
-      );
-      setzeZettel(antwort.links);
-      zeige('Zettel erzeugt - zum Öffnen und Drucken die Links unten nutzen.');
+      const antwort = await api.sende<{ link: string }>(`/api/admin/events/${id}/unterlagen`, {
+        telefon: telefon ?? undefined,
+      });
+      setzeZettel(antwort.link);
+      zeige('Kurzanleitung erzeugt – zum Öffnen und Drucken den Link unten nutzen.');
     });
   }
 
@@ -852,7 +825,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
       await api.aendere(`/api/admin/events/${id}`, { betreuerPin: pin });
       setzePin('');
       await lade();
-      zeige('Betreuer-PIN gesetzt. Für die Kurzanleitung unter „Übergabe“ noch einmal eintragen.');
+      zeige('Betreuer-PIN gesetzt – sie kommt automatisch auf die Kurzanleitung unter „Übergabe“.');
     });
   }
 }

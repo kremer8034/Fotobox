@@ -514,6 +514,8 @@ export interface Geraeteeinstellungen {
   portalAktiv: boolean;
   /** WLAN des Reise-Routers - fuer den WLAN-QR-Code auf Aushang und Startbildschirm. */
   wlan: WlanZugang | null;
+  /** Telefonnummer fuer den Notfall - steht auf jeder Kurzanleitung. */
+  notfallTelefon: string;
 }
 
 export interface WlanZugang {

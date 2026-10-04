@@ -34,6 +34,7 @@ export function PortalSeite() {
   const [diagnose, setzeDiagnose] = useState<PortalDiagnose | null>(null);
   const [arbeitet, setzeArbeitet] = useState<string | null>(null);
   const [meldung, setzeMeldung] = useState<string | null>(null);
+  const [aushang, setzeAushang] = useState<string | null>(null);
 
   useEffect(() => {
     void lade().then((g) => g?.wlan && setzeWlan(g.wlan));
@@ -52,9 +53,9 @@ export function PortalSeite() {
       <div className="karte">
         <h2>Galerie öffnet sich beim WLAN-Beitritt (Test)</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-          Ist das Portal an, genügt den Gästen <strong>ein Scan</strong>: Das Handy tritt dem WLAN des Vonets bei,
-          und die Galerie öffnet sich von selbst – wie die Anmeldeseite im Hotel. Das Handy bleibt dabei über
-          seine mobilen Daten online.
+          Ist das Portal an, geht es <strong>ohne Code</strong>: Gäste tippen das WLAN der Fotobox in ihren
+          WLAN-Einstellungen an, und die Galerie öffnet sich von selbst – wie die Anmeldeseite im Hotel. Das Handy
+          bleibt dabei über seine mobilen Daten online.
         </p>
         <div className="kippschalter-zeile">
           <button
@@ -76,7 +77,7 @@ export function PortalSeite() {
             <strong>{an ? 'An' : 'Aus'}</strong>
             <span style={{ color: 'var(--schrift-leise)' }}>
               {an
-                ? ' – Aushang und Startbildschirm zeigen den WLAN-Code als Hauptcode.'
+                ? ' – Startbildschirm, Galerie und Aushang zeigen die Anleitung „WLAN antippen – Fotos öffnen sich“.'
                 : gesperrt
                   ? ' – die Box läuft wie bisher. Einschalten geht, sobald die Selbstdiagnose unten grün ist.'
                   : ' – die Box läuft wie bisher.'}
@@ -88,24 +89,55 @@ export function PortalSeite() {
       <div className="karte">
         <h2>WLAN des Vonets</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-          Name und Passwort landen im WLAN-QR-Code auf Aushang und Startbildschirm.
+          Für das Portal ist das WLAN <strong>offen – ohne Passwort</strong>: Gäste tippen es in ihren
+          WLAN-Einstellungen an, und die Galerie öffnet sich von selbst. Am Vonets dafür unter „WiFi Repeater →
+          WiFi Security“ den „Security Mode“ auf „Disable“ stellen. Der Name hier muss genau dem Namen am Vonets
+          entsprechen – er steht in der Anleitung auf Startbildschirm und Aushang. Ein gut erkennbarer Name hilft,
+          etwa „Fotobox-Fotos“.
         </p>
         <div className="zeile">
           <div className="feld">
             <label>WLAN-Name</label>
             <input value={wlan.name} maxLength={32} onChange={(e) => setzeWlan({ ...wlan, name: e.target.value })} />
           </div>
-          <div className="feld">
-            <label>WLAN-Passwort</label>
-            <input value={wlan.passwort} maxLength={63} onChange={(e) => setzeWlan({ ...wlan, passwort: e.target.value })} />
-          </div>
           <button
             className="knopf knopf--neben"
             disabled={!wlan.name.trim()}
-            onClick={() => void tue('WLAN gespeichert.', () => api.aendere('/api/admin/geraet', { wlan }))}
+            onClick={() =>
+              void tue('WLAN-Name gespeichert.', () =>
+                api.aendere('/api/admin/geraet', { wlan: { name: wlan.name.trim(), passwort: '' } }),
+              )
+            }
           >
             Speichern
           </button>
+        </div>
+      </div>
+
+      <div className="karte">
+        <h2>Aushang für die Gäste</h2>
+        <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
+          Ein Blatt A4 für jede Feier: „WLAN-Einstellungen öffnen – {wlan.name.trim() ? `„${wlan.name.trim()}“` : 'das WLAN'}{' '}
+          antippen – die Fotos öffnen sich von selbst“. Dazu klein ein Code für den Fall, dass sich nichts öffnet –
+          er führt immer zur gerade laufenden Galerie. Keine Veranstaltung, keine PIN darauf: einmal drucken,
+          laminieren, immer wieder aufhängen. Er passt, solange das Portal eingeschaltet ist.
+        </p>
+        <div className="zeile">
+          <button
+            className="knopf knopf--neben"
+            onClick={() =>
+              void tue('Aushang erzeugt – zum Öffnen und Drucken den Link nutzen.', async () => {
+                setzeAushang((await api.sende<{ link: string }>('/api/admin/portal/aushang', {})).link);
+              })
+            }
+          >
+            Aushang erzeugen
+          </button>
+          {aushang && (
+            <a href={aushang} target="_blank" rel="noreferrer">
+              Aushang öffnen
+            </a>
+          )}
         </div>
       </div>
 

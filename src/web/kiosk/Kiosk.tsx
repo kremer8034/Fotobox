@@ -4,6 +4,7 @@ import { api, ApiFehler, KEINE_VERBINDUNG, type KioskStart, type SitzungStart, t
 import { Aufnahme } from './Aufnahme.js';
 import { Ergebnis } from './Ergebnis.js';
 import { Galerie } from './Galerie.js';
+import { WlanAnleitung } from './WlanAnleitung.js';
 import { PinAbfrage, Schloss, Servicemenue } from './Sperre.js';
 import { Stoerungshinweis } from './Stoerung.js';
 import { schimmerAus, schriftAuf } from './farbe.js';
@@ -272,6 +273,8 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
           <Galerie
             leerlaufSekunden={start.zeiten?.galerieLeerlauf ?? 60}
             betreuung={Boolean(schirm.betreuung)}
+            // Gaeste sehen auch hier, wie die Fotos aufs Handy kommen.
+            portalWlan={schirm.betreuung ? null : (start.darstellung?.portalWlan ?? null)}
             // Aus dem Servicemenue gekommen: dorthin zurueck, ohne neue PIN.
             beiZurueck={() =>
               setzeSchirm(schirm.betreuung ? { art: 'service', ebene: schirm.betreuung } : { art: 'start' })
@@ -469,16 +472,18 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             )}
           </div>
 
-          {/* Klein in der Ecke, fuer alle, die den Aushang uebersehen. */}
-          {start.darstellung?.qrAufStartseite && start.darstellung.galerieUrl && (
-            <div className="qr-ecke">
-              <img
-                src={`/api/qr?text=${encodeURIComponent(start.darstellung.wlanQrText ?? start.darstellung.galerieUrl)}`}
-                alt=""
-              />
-              {/* Mit Captive Portal ist es der WLAN-Code: beitreten, und die Galerie oeffnet sich. */}
-              <div>{start.darstellung.wlanQrText ? 'Scannen – Fotos öffnen sich' : 'Alle Fotos aufs Handy'}</div>
-            </div>
+          {/* Mit Captive Portal: kurze Anleitung statt Code - WLAN antippen, fertig. */}
+          {typeof start.darstellung?.portalWlan === 'string' ? (
+            <WlanAnleitung name={start.darstellung.portalWlan} form="karte" />
+          ) : (
+            // Klein in der Ecke, fuer alle, die den Aushang uebersehen.
+            start.darstellung?.qrAufStartseite &&
+            start.darstellung.galerieUrl && (
+              <div className="qr-ecke">
+                <img src={`/api/qr?text=${encodeURIComponent(start.darstellung.galerieUrl)}`} alt="" />
+                <div>Alle Fotos aufs Handy</div>
+              </div>
+            )
           )}
         </div>
       </>

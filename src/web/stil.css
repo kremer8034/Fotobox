@@ -1294,6 +1294,180 @@ button {
   display: block;
 }
 
+/*
+ * Anleitung "Eure Fotos aufs Handy" (Captive Portal) statt QR-Code: WLAN-Symbol
+ * im Akzentkreis, darunter drei nummerierte Schritte. Auf dem Startbildschirm
+ * als Karte unten links, in der Galerie als Leiste neben "Zurueck".
+ */
+.wlan-hilfe {
+  display: flex;
+  align-items: center;
+  gap: calc(4 * var(--mm));
+  padding: calc(3.5 * var(--mm)) calc(5 * var(--mm)) calc(3.5 * var(--mm)) calc(3.5 * var(--mm));
+  background: rgba(16, 18, 22, 0.82);
+  border: 1px solid var(--kante);
+  border-left: 4px solid var(--akzent);
+  border-radius: var(--radius);
+  box-shadow: 0 calc(1.5 * var(--mm)) calc(6 * var(--mm)) rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--schrift);
+  text-align: left;
+}
+
+.wlan-hilfe--karte {
+  position: fixed;
+  bottom: var(--rand-sicher);
+  left: var(--rand-sicher);
+  max-width: calc(115 * var(--mm));
+}
+
+.wlan-hilfe--leiste {
+  flex: 1;
+  min-width: 0;
+  padding-top: calc(2.5 * var(--mm));
+  padding-bottom: calc(2.5 * var(--mm));
+}
+
+.wlan-hilfe__symbol {
+  flex: none;
+  width: calc(15 * var(--mm));
+  height: calc(15 * var(--mm));
+  border-radius: 50%;
+  background: var(--akzent);
+  color: var(--akzent-schrift);
+  display: grid;
+  place-items: center;
+}
+
+.wlan-hilfe__symbol svg {
+  width: 62%;
+  height: 62%;
+}
+
+.wlan-hilfe__titel {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: calc(1 * var(--mm));
+}
+
+.wlan-hilfe__schritte {
+  list-style: none;
+  counter-reset: schritt;
+  margin: 0;
+  padding: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--schrift-leise);
+}
+
+.wlan-hilfe__schritte li {
+  counter-increment: schritt;
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--mm));
+}
+
+.wlan-hilfe__schritte li::before {
+  content: counter(schritt);
+  flex: none;
+  width: 1.35em;
+  height: 1.35em;
+  border-radius: 50%;
+  background: var(--flaeche-hell);
+  color: var(--akzent);
+  font-weight: 700;
+  font-size: 0.85em;
+  display: grid;
+  place-items: center;
+}
+
+.wlan-hilfe__schritte strong {
+  color: var(--schrift);
+}
+
+/* "Schon im WLAN verbunden?" - gross genug fuer den Finger, ohne zu draengeln. */
+.wlan-hilfe__rueckweg {
+  margin-top: calc(2 * var(--mm));
+  min-height: calc(9 * var(--mm));
+  padding: 0 calc(3 * var(--mm));
+  border: 1px solid var(--kante);
+  border-radius: 999px;
+  background: var(--flaeche-hell);
+  color: var(--schrift-leise);
+  font: inherit;
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.wlan-hilfe__rueckweg strong {
+  color: var(--akzent);
+}
+
+/* Der Rueckweg-Code als Fenster in der Bildschirmmitte. */
+.rueckweg {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.rueckweg__karte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(3 * var(--mm));
+  padding: calc(7 * var(--mm));
+  max-width: calc(130 * var(--mm));
+  background: var(--flaeche);
+  border: 1px solid var(--kante);
+  border-top: 4px solid var(--akzent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.rueckweg__titel {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.rueckweg__code {
+  width: calc(60 * var(--mm));
+  height: calc(60 * var(--mm));
+  padding: calc(2.5 * var(--mm));
+  background: #fff;
+  border-radius: var(--radius-klein);
+}
+
+.rueckweg__text {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--schrift-leise);
+}
+
+.rueckweg__text strong {
+  color: var(--schrift);
+}
+
+/* In der Galerie nebeneinander statt untereinander - die Leiste ist flach. */
+.wlan-hilfe--leiste .wlan-hilfe__symbol {
+  width: calc(11 * var(--mm));
+  height: calc(11 * var(--mm));
+}
+
+.wlan-hilfe--leiste .wlan-hilfe__schritte {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: calc(5 * var(--mm));
+}
+
+.reihe--verteilt {
+  justify-content: space-between;
+}
+
 /* ------------------------------------------------------------------ Admin */
 
 /*
@@ -2005,6 +2179,27 @@ html.handy-ansicht body {
   border-radius: 0.5rem;
   padding: 0.7rem 0.8rem;
   text-align: left;
+}
+
+/* Handy-Galerie: Link fuer den Betreuer - klein und blass, unten rechts. */
+.handy__betreuer {
+  display: block;
+  margin: 2rem 0 0.5rem;
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--schrift-leise);
+  opacity: 0.55;
+  text-decoration: none;
+}
+
+/* Handy-Galerie: der Weg zum Speichern und Teilen, je Geraet. */
+.handy__weg ol {
+  margin: 0.35rem 0 0;
+  padding-left: 1.3rem;
+}
+
+.handy__weg li + li {
+  margin-top: 0.2rem;
 }
 
 /* Verwaltung: Rueckfrage im Fluss der Seite, etwa vor dem Zuruecksetzen der Kalibrierung. */

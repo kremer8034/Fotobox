@@ -4,6 +4,60 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.0.9
+
+- **Kurzanleitung ohne Eingaben:** In der Veranstaltung unter „Übergabe“
+  genügt „Kurzanleitung erzeugen“. Die Betreuer-PIN setzt die Fotobox selbst
+  ein – so, wie sie unter „Aussehen & PIN“ gesetzt ist. (Eine vor dieser
+  Version gesetzte PIN bitte einmal neu setzen.) Die Notfall-Telefonnummer
+  gilt jetzt für alle Veranstaltungen und muss nur einmal eingetragen werden.
+- **Kurzanleitung aufs Handy des Betreuers:** Ganz unten in der
+  Handy-Galerie steht klein „Für Betreuer: Kurzanleitung“. Bewusst in Kauf
+  genommen: Wer die Galerie sieht, könnte sie auch laden – und damit die
+  Betreuer-PIN sehen.
+- **Aushang unter „WLAN & Portal“:** Der Aushang für die Gäste hat keinen
+  Bezug zur Veranstaltung mehr – einmal drucken, er passt für jede Feier. Der
+  kleine Rückfall-Code führt immer zur gerade laufenden Galerie.
+- **Rückweg zur Galerie, deutlich beschriftet:** Wer schon im WLAN ist, bei
+  dem sich das Anmeldefenster aber nicht geöffnet hat oder der es geschlossen
+  hat, kommt über „Schon im WLAN? Galerie hier öffnen“ auf dem Aushang direkt
+  in die Galerie – per Code oder durch Eintippen von 192.168.254.1 im
+  Browser. Am Startbildschirm und in der Galerie zeigt „Schon im WLAN
+  verbunden? Hier tippen“ denselben Code groß in der Bildschirmmitte – erst
+  auf Tipp, damit niemand ihn für den Hauptweg hält. Das Fenster schließt
+  sich nach 45 Sekunden von selbst.
+- **Drei Hochzeitsschriften ab Werk:** Great Vibes, Parisienne und Pinyon
+  Script – geschwungene Schreibschriften, mit Umlauten und ß. Sie stehen im
+  Vorlagen-Editor unter „Schriftart“ bereit, ohne dass man sie hochladen muss,
+  und gelten auch für den Ausdruck. Frei lizenziert (SIL Open Font License).
+- **Captive Portal ohne QR-Code:** Das WLAN der Fotobox ist im
+  Portal-Betrieb offen. Startbildschirm, Galerie am Touchscreen und Aushang
+  zeigen statt eines Codes eine kurze Anleitung: „WLAN-Einstellungen öffnen –
+  „Fotobox-Fotos“ antippen – die Fotos öffnen sich von selbst“. In den
+  WLAN-Einstellungen angetippt, öffnen Android und iPhone das Fenster
+  zuverlässig von selbst; per Kamera verbunden, war bei Android ein zweiter
+  Tipp nötig, und das iPhone wartete, bis die Kamera geschlossen war.
+  Unter „WLAN & Portal“ steht deshalb nur noch der WLAN-Name. Auf dem
+  Aushang bleibt der kleine Galerie-Code „Falls sich nichts öffnet“.
+- **Captive Portal mit echtem Handy getestet:** Nach dem Scan des WLAN-Codes
+  öffnet Android von selbst das Fenster „In Fotobox anmelden“ mit der
+  Galerie.
+- **Kein Teilen-Knopf mehr in der Handy-Galerie:** Teilen direkt aus einer
+  Webseite erlaubt das Handy nur auf verschlüsselten Seiten – die Galerie
+  läuft offline im WLAN der Fotobox. Stattdessen steht unter jedem Foto der
+  Weg, der auf dem Gerät funktioniert. Die Seite erkennt selbst, ob es ein
+  Android-Handy oder ein iPhone/iPad ist.
+- **Speichern-Hinweis passend zum Handy:** Im Anmeldefenster von Android tut
+  Gedrückthalten nichts, „Aufs Handy laden“ klappt dagegen. Android-Handys
+  bekommen deshalb „Foto antippen → Aufs Handy laden“, iPhones weiterhin
+  „Foto gedrückt halten → Zu Fotos hinzufügen“.
+- **Selbstdiagnose ohne Fehlalarm:** Direkt nach dem Einschalten meldete sie
+  die Anschlüsse 53 und 80 als „belegt“ – belegt hatte sie die Fotobox
+  selbst, weil sie Namensdienst und Portal gerade startete. Jetzt erkennt die
+  Diagnose ihre eigenen Dienste, und das Umlegen des Schalters startet sie
+  sofort statt erst nach ein paar Sekunden.
+- **README neu geschrieben.**
+
 ## 1.0.8
 
 - **Galerie öffnet sich beim WLAN-Beitritt (Test):** Neuer Menüpunkt

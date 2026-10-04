@@ -3,6 +3,7 @@ import { useZeitgeber } from './zeitgeber.js';
 import { api } from '../api.js';
 import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
 import { EmailEingabe } from './Email.js';
+import { WlanAnleitung } from './WlanAnleitung.js';
 
 interface GalerieDaten {
   veranstaltung?: string;
@@ -28,6 +29,7 @@ export function Galerie({
   leerlaufSekunden,
   beiZurueck,
   betreuung = false,
+  portalWlan = null,
 }: {
   leerlaufSekunden: number;
   beiZurueck: () => void;
@@ -37,6 +39,8 @@ export function Galerie({
    * zurueckholen. Ein Gast sieht davon nichts.
    */
   betreuung?: boolean;
+  /** Laeuft das Captive Portal: Name des offenen WLANs fuer die Anleitung unten ('' = ohne Namen). */
+  portalWlan?: string | null;
 }) {
   const [daten, setzeDaten] = useState<GalerieDaten | null>(null);
   const [ladefehler, setzeLadefehler] = useState(false);
@@ -166,7 +170,8 @@ export function Galerie({
         </div>
       )}
 
-      <div className="reihe reihe--ende">
+      <div className={`reihe ${portalWlan !== null ? 'reihe--verteilt' : 'reihe--ende'}`}>
+        {portalWlan !== null && <WlanAnleitung name={portalWlan} form="leiste" />}
         <button className="knopf knopf--neben" onClick={beiZurueck}>
           Zurück
         </button>

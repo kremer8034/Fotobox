@@ -46,6 +46,7 @@ export function leseGeraet(): Geraeteeinstellungen {
     mail: lies<MailEinstellungen | null>('mail', null),
     portalAktiv: lies('portalAktiv', false),
     wlan: lies<WlanZugang | null>('wlan', null),
+    notfallTelefon: lies('notfallTelefon', ''),
   };
 }
 

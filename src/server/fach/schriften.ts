@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Eigene Schriften.
@@ -39,9 +40,10 @@ export function schriftenOrdner(datenpfad: string): string {
  * Muss laufen, bevor sharp das erste Mal Text rendert: fontconfig liest seine
  * Konfiguration einmal beim ersten Zugriff und schaut danach nicht mehr hin.
  */
-export function richteSchriftenEin(datenpfad: string): string {
+export function richteSchriftenEin(datenpfad: string, mitgeliefert = MITGELIEFERT): string {
   const ordner = schriftenOrdner(datenpfad);
   mkdirSync(ordner, { recursive: true });
+  legeMitgelieferteAn(ordner, mitgeliefert);
 
   // Unter Windows gibt es kein /etc/fonts; dort bindet fontconfig den
   // Schriftenordner von Windows ueber den Platzhalter WINDOWSFONTDIR ein.
@@ -77,6 +79,37 @@ export function richteSchriftenEin(datenpfad: string): string {
   // fontconfig und damit dieselbe Konfiguration wie unter Linux.
   if (process.platform === 'win32') process.env.PANGOCAIRO_BACKEND ??= 'fc';
   return ordner;
+}
+
+/** Die drei Hochzeits-Schreibschriften (SIL Open Font License), die der Fotobox beiliegen. */
+const MITGELIEFERT = fileURLToPath(new URL('../schriften-mitgeliefert/', import.meta.url));
+
+/**
+ * Mitgelieferte Schriften einmalig in den Schriftenordner legen. Dort sind sie
+ * wie selbst hinzugefuegte: im Editor waehlbar, im Ausdruck dieselben. Ein
+ * Vermerk haelt fest, welche schon einmal kopiert wurden - wer eine loescht,
+ * bekommt sie beim naechsten Start nicht zurueck.
+ */
+function legeMitgelieferteAn(ordner: string, quelle: string): void {
+  try {
+    if (!existsSync(quelle)) return;
+    const vermerk = join(ordner, '.mitgeliefert.json');
+    let schon: string[] = [];
+    try {
+      schon = JSON.parse(readFileSync(vermerk, 'utf8')) as string[];
+    } catch {
+      // Noch nie kopiert.
+    }
+    const neu = readdirSync(quelle).filter((d) => ERLAUBT.has(extname(d).toLowerCase()) && !schon.includes(d));
+    if (neu.length === 0) return;
+    for (const datei of neu) {
+      const ziel = join(ordner, datei);
+      if (!existsSync(ziel)) copyFileSync(join(quelle, datei), ziel);
+    }
+    writeFileSync(vermerk, JSON.stringify([...schon, ...neu]), 'utf8');
+  } catch {
+    // Fehlt eine Schrift, gibt es eben eine weniger - der Start geht vor.
+  }
 }
 
 export function listeSchriften(datenpfad: string): Schriftdatei[] {

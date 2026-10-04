@@ -163,8 +163,9 @@ genau 1 mm zeigen. Tut er das nicht, skaliert irgendwo doch der Treiber.
 5. **Zeiten prüfen** unter *Ablauf, Zeiten & Töne*. Die Vorgaben sind ein guter
    Startpunkt; nach dem ersten Event weißt du, was du ändern willst.
 6. **Betreuer-PIN setzen** — die bekommt der Gastgeber.
-7. **Unterlagen erzeugen**: Die Kurzanleitung kommt in die Box, der QR-Aushang
-   außen dran.
+7. **Kurzanleitung erzeugen** (Veranstaltung → Übergabe): Sie kommt in die
+   Box; die Betreuer-PIN setzt die Fotobox selbst ein. Den Aushang für die
+   Gäste gibt es einmal für alle Feiern unter **„WLAN & Portal“**.
 8. **Startbereit-Check** laufen lassen. Erst wenn alles grün ist, auf *aktiv*
    schalten.
 

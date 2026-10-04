@@ -6,13 +6,14 @@ import { oeffneDb, schliesseDb } from '../db/index.js';
 import { schreibeGeraet } from '../db/geraet.js';
 import { legeEingebauteFilterAn } from '../fach/filter.js';
 import { legeStandardvorlagenAn } from '../fach/vorlagen.js';
-import { aktualisiereEvent, erstelleEvent, setzeStatus } from '../fach/events.js';
+import { aktualisiereEvent, erstelleEvent, holeEvent, merkeBetreuerPin, setzeStatus } from '../fach/events.js';
 import { loescheAusgabeEndgueltig, starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
 import { warteAufNeueDatei } from '../fach/aufnahme.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import { schreibeGalerieHtml, uebergebeAufDatentraeger } from '../fach/uebergabe.js';
-import { schreibeAushang, schreibeKurzanleitung } from '../fach/unterlagen.js';
+import { erzeugeKurzanleitung, schreibeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
+import { hashePin } from '../fach/pin.js';
 import { drosselGreift, pruefeAdresse } from '../fach/email.js';
 import { KALIBRIERUNG_VORGABE, type Veranstaltung } from '../../shared/typen.js';
 
@@ -140,35 +141,32 @@ describe('Unterlagen', () => {
     expect(readFileSync(pfad, 'latin1').match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 
-  it('erzeugt den Aushang mit den beiden QR-Codes', async () => {
-    const pfad = await schreibeAushang(event, {
-      betreuerPin: '1234',
-      telefon: '',
-      galerieUrl: 'http://192.168.8.2:8787/g/abc',
-      wlanName: 'Fotobox',
-      wlanPasswort: 'geheim123',
-    });
-    const inhalt = readFileSync(pfad, 'latin1');
-    expect(inhalt.startsWith('%PDF')).toBe(true);
-    // A4 hoch wie die Kurzanleitung, eine Seite - und nirgends die PIN.
-    expect(inhalt).toMatch(/\/MediaBox \[0 0 595\.28 841\.89\]/);
-    expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
+  it('Aushang fuer jede Feier: Anleitung fuers offene WLAN, genau ein QR-Code als Rueckfall, eine Seite', async () => {
+    for (const name of ['Fotobox-Fotos', undefined]) {
+      const pfad = await schreibePortalAushang(datenpfad, name);
+      const inhalt = readFileSync(pfad, 'latin1');
+      expect(inhalt).toMatch(/\/MediaBox \[0 0 595\.28 841\.89\]/);
+      expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
+      // Kein WLAN-Code (Kamera-Umweg) - genau ein QR-Code: der Rueckfall zur Box.
+      // (Jeder Code ist ein Bild mit Maske - gezaehlt wird die Maske.)
+      expect(inhalt.match(/\/SMask/g)).toHaveLength(1);
+    }
   });
 
-  it('mit Captive Portal: WLAN-Code als Hauptcode, eine Seite - auch ohne WLAN-Daten nie leer', async () => {
-    for (const wlan of [{ wlanName: 'Fotobox', wlanPasswort: 'geheim123' }, {}]) {
-      const pfad = await schreibeAushang(event, {
-        betreuerPin: '1234',
-        telefon: '',
-        galerieUrl: 'http://192.168.254.1:8787/g/abc',
-        portal: true,
-        ...wlan,
-      });
-      const inhalt = readFileSync(pfad, 'latin1');
-      expect(inhalt.match(/\/Type \/Page\b/g)).toHaveLength(1);
-      // Mindestens ein QR-Code ist als Bild eingebettet.
-      expect(inhalt).toMatch(/\/Subtype \/Image/);
-    }
+  it('Kurzanleitung ohne Eingaben: nimmt die gemerkte Betreuer-PIN - ohne sie ein klarer Hinweis', async () => {
+    const ohne = await erzeugeKurzanleitung(holeEvent(event.id)!);
+    expect('fehler' in ohne && ohne.fehler).toContain('Betreuer-PIN');
+
+    // Nur der Hash, keine lesbare PIN (gesetzt vor dieser Version): neu setzen lassen.
+    aktualisiereEvent(event.id, { betreuerPinHash: await hashePin('4711') });
+    const alt = await erzeugeKurzanleitung(holeEvent(event.id)!);
+    expect('fehler' in alt && alt.fehler).toContain('neu setzen');
+
+    merkeBetreuerPin(event.id, '4711');
+    const neu = await erzeugeKurzanleitung(holeEvent(event.id)!);
+    expect('pfad' in neu && readFileSync(neu.pfad, 'latin1').startsWith('%PDF')).toBe(true);
+    // Die PIN steht nicht in der Kopie der Veranstaltung im Ordner (geht mit der Uebergabe raus).
+    expect(readFileSync(join(event.ordner, 'event.json'), 'utf8')).not.toContain('4711');
   });
 });
 

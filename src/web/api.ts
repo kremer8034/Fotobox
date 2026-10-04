@@ -125,7 +125,8 @@ export interface KioskStart {
     qrAufStartseite: boolean;
     galerieUrl: string | null;
     /** Laeuft das Captive Portal: der WLAN-Code, der allein zur Galerie fuehrt. */
-    wlanQrText?: string | null;
+    /** Name des offenen Fotobox-WLANs, solange das Captive Portal laeuft ('' = ohne Namen); sonst null. */
+    portalWlan?: string | null;
     /** Adresse des Hintergrundbilds, null = keins. */
     hintergrund?: string | null;
     /** Abdunkeln des Hintergrundbilds in Prozent. */
