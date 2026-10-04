@@ -1,5 +1,7 @@
 # Fotobox
 
+*🇬🇧 Free photo booth software for Windows – [English summary below](#in-english).*
+
 Fotobox-Software für einen Windows-PC mit Touchscreen, einer **Canon EOS 600D**
 und dem Fotodrucker **DNP DS-RX1HS**. Gäste tippen auf „Foto starten“, lächeln
 in die Kamera, wählen einen Filter und halten Sekunden später ihren Ausdruck in
@@ -20,10 +22,44 @@ Instagram-Stories. Die Musik ist eigens erzeugt und frei von Rechten Dritter.
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
 
+Gefällt dir die Fotobox? **Gib dem Projekt einen ⭐ oben rechts** – so finden es
+auch andere, die eine Fotobox bauen.
+
+---
+
+## In English
+
+**Fotobox** is free, open-source photo booth software (MIT license) for a
+Windows PC with a touchscreen, a Canon DSLR and a dye-sublimation printer.
+Guests tap “start”, smile into the camera, pick a filter and hold their print
+seconds later. *The user interface and the documentation are in German.*
+
+- **Real camera, real prints:** tested with the Canon EOS 600D via
+  [digiCamControl](https://digicamcontrol.com/) and the DNP DS-RX1HS printer
+  (4 × 6″, borderless, no print dialog, with print calibration).
+- **Works completely offline.** No cloud, no account, no subscription – the
+  photos stay with you.
+- **Phone gallery without an app:** guests join the box's open Wi-Fi and the
+  gallery opens by itself (built-in captive portal with DHCP and DNS).
+- **Template editor** with image, photo and text layers, custom fonts and
+  placeholders such as names and date; 20+ filters plus your own `.cube` LUTs.
+- **Made for parties:** big touch buttons, plain-language error messages, a
+  hidden service menu with two PIN levels, a print queue that never loses a job,
+  and a hand-over of all photos to a USB stick at the end.
+- **One-click installer** with its own Node.js; updates from within the admin
+  page, never automatically during an event.
+
+Download the setup from the
+[releases page](https://github.com/kremer8034/Fotobox/releases/latest).
+Questions, ideas and bug reports are welcome as
+[issues](https://github.com/kremer8034/Fotobox/issues). If you like the project,
+**please give it a ⭐** – it helps others find it.
+
 ---
 
 ## Inhalt
 
+- [In English](#in-english)
 - [Für Gäste: so läuft ein Foto](#für-gäste-so-läuft-ein-foto)
 - [Für Betreiber: was die Software kann](#für-betreiber-was-die-software-kann)
 - [Hardware](#hardware)
@@ -36,6 +72,7 @@ in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.
 - [Entwicklung](#entwicklung)
 - [Aufbau des Quelltexts](#aufbau-des-quelltexts)
 - [Dokumentation](#dokumentation)
+- [Mitmachen und weitersagen](#mitmachen-und-weitersagen)
 
 ---
 
@@ -172,8 +209,8 @@ Einmalig, Schritt für Schritt in
 ## Galerie aufs Handy, mit einem Scan
 
 Ist die Galerie für eine Veranstaltung an, öffnen Gäste sie im WLAN der Box per
-QR-Code. Die Seite ist schreibgeschützt; zum Speichern hält man das Foto
-gedrückt und wählt „Sichern“ oder „Teilen“.
+QR-Code. Die Seite ist schreibgeschützt; wie man ein Foto speichert und
+teilt, zeigt sie passend zum Handy an (iPhone oder Android).
 
 **Captive Portal (Test, ab 1.0.8):** Normalerweise sind es zwei Scans, erst
 das WLAN, dann die Galerie. Mit dem Portal geht es ohne Code: Das WLAN der
@@ -344,4 +381,15 @@ austauschbares Stück und kein Umbau der ganzen Software.
 | [Installation und Updates](docs/Installation-und-Updates.md) | Setup, Updates, neue Version veröffentlichen |
 | [Änderungen](docs/Aenderungen.md) | Neuerungen je Version |
 
-Lizenz: siehe [LICENSE](LICENSE).
+## Mitmachen und weitersagen
+
+- **Fragen, Ideen, Fehler:** gern als
+  [Issue](https://github.com/kremer8034/Fotobox/issues) – auch ohne
+  Programmierkenntnisse, eine kurze Beschreibung genügt.
+- **Ein ⭐ für das Projekt** oben rechts auf dieser Seite hilft anderen, es zu
+  finden.
+- **Du nutzt die Fotobox auf deiner Feier oder für deine Vermietung?** Erzähl
+  davon – ein Foto der Box im Einsatz freut uns besonders.
+
+Lizenz: MIT, siehe [LICENSE](LICENSE). Die Software ist kostenlos, auch für
+gewerbliche Fotobox-Vermietungen.
