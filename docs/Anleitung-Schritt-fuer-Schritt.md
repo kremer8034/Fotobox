@@ -488,13 +488,14 @@ der nächsten Feier wieder aufruft.
 ## Diashow auf Beamer oder Fernseher
 
 Die Fotos der Feier laufen als Diashow – neue Fotos kommen sofort an die
-Reihe. Gezeigt wird nur, was auch in der Galerie steht: keine Testfotos aus
+Reihe. Ab Werk ist sie **aus**; es gibt zwei getrennte Schalter unter
+Veranstaltung → **Ausgabe** → **Diashow**: „Am Startbildschirm …“ und „Für
+Beamer und Fernseher“. Gezeigt wird nur, was auch in der Galerie steht: keine Testfotos aus
 dem Probelauf und nichts, was aus der Galerie genommen wurde.
 
-**Am Startbildschirm** läuft sie von selbst, wenn eine Weile niemand die Box
-benutzt (Vorgabe: nach 60 Sekunden). Ein Tipp auf den Bildschirm holt den Start
-zurück. Abschalten oder die Zeiten ändern: Veranstaltung → **Ausgabe** →
-**Diashow**.
+**Am Startbildschirm** läuft sie – eingeschaltet – von selbst, wenn eine Weile
+niemand die Box benutzt (Vorgabe: nach 60 Sekunden). Ein Tipp auf den
+Bildschirm holt den Start zurück.
 
 **Beamer oder Fernseher am HDMI-Anschluss der Box:**
 1. Kabel anstecken. In Windows mit **Windows-Taste + P** „**Erweitern**“
@@ -510,7 +511,7 @@ einfach `192.168.254.1/diashow`.
 
 ## Das Gästebuch
 
-Ist es bei **Ausgabe** eingeschaltet, steht nach dem Foto der Knopf **„Ins
+Ab Werk ist es **aus**. Ist es bei **Ausgabe** eingeschaltet, steht nach dem Foto der Knopf **„Ins
 Gästebuch schreiben“**. Die Gäste schreiben oder malen mit dem Finger einen
 Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
 

@@ -90,12 +90,12 @@ Questions, ideas and bug reports are welcome as
 4. **Ergebnis:**
    - **Drucken**
    - **Per E-Mail** schicken
-   - **Ins Gästebuch schreiben**: mit dem Finger einen Gruß schreiben oder
+   - **Ins Gästebuch schreiben** (wenn eingeschaltet): mit dem Finger einen Gruß schreiben oder
      malen – nur für den Gastgeber, er erscheint in keiner Galerie
    - **Löschen**: Das Foto ist dann endgültig weg, für niemanden mehr abrufbar.
 5. **Galerie** am Touchscreen: alle Fotos der Feier ansehen, nachdrucken oder
    per E-Mail verschicken.
-6. **Diashow**: Steht die Box eine Weile unberührt, laufen am Startbildschirm
+6. **Diashow** (wenn eingeschaltet): Steht die Box eine Weile unberührt, laufen am Startbildschirm
    die Fotos der Feier und laden die nächsten Gäste ein. Ein Tipp holt den
    Start zurück.
 
@@ -141,7 +141,7 @@ Papier“), nicht als Fehlercode.
   der Auftrag. Nach „Papier gewechselt“ druckt die Box von selbst weiter.
 - **Papiervorrat** direkt aus dem DNP-Drucker, sichtbar im Servicemenü.
 
-**Diashow und Gästebuch**
+**Diashow und Gästebuch** (ab Werk aus, je Veranstaltung einzeln einzuschalten)
 - **Diashow** am Startbildschirm im Leerlauf, auf einem **Beamer oder
   Fernseher am HDMI-Anschluss** (per Knopfdruck in der Verwaltung im Vollbild
   auf dem zweiten Bildschirm) oder auf jedem Fernseher mit Browser im WLAN –

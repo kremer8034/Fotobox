@@ -121,6 +121,9 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
               wechselSekunden: event.einstellungen.diashowWechselSekunden,
             }
           : null,
+        // Diashow-Seite fuer Beamer und Fernseher (/diashow) - nur, wenn eingeschaltet.
+        diashowExtern: event.einstellungen.diashowExtern,
+        diashowWechselSekunden: event.einstellungen.diashowWechselSekunden,
       },
       zeiten: event.einstellungen.zeiten,
       toene: event.einstellungen.toene,

@@ -22,7 +22,7 @@ import {
 import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
 import { EINSTELLUNGEN_EINGABE } from '../fach/einstellungen-pruefung.js';
 import { bauePortal } from '../portal/http.js';
-import { KALIBRIERUNG_VORGABE, type Veranstaltung } from '../../shared/typen.js';
+import { EINSTELLUNGEN_VORGABE, KALIBRIERUNG_VORGABE, type Veranstaltung } from '../../shared/typen.js';
 
 /*
  * Das Gaestebuch: ein handgeschriebener Gruss je Foto, nur fuer den Gastgeber.
@@ -149,6 +149,18 @@ describe('Gaestebuch', () => {
 });
 
 describe('Diashow-Einstellungen', () => {
+  it('sind wie das Gaestebuch ab Werk aus - jede Funktion einzeln einzuschalten', () => {
+    expect(EINSTELLUNGEN_VORGABE.diashowAufStart).toBe(false);
+    expect(EINSTELLUNGEN_VORGABE.diashowExtern).toBe(false);
+    expect(EINSTELLUNGEN_VORGABE.gaestebuchAktiv).toBe(false);
+    // Auch eine Veranstaltung aus der Zeit vor diesen Funktionen hat sie aus.
+    const alt = erstelleEvent({ name: 'Alte Feier', datum: '2026-10-12' }, wurzel.events);
+    expect(alt.einstellungen.diashowAufStart).toBe(false);
+    expect(alt.einstellungen.diashowExtern).toBe(false);
+    expect(alt.einstellungen.gaestebuchAktiv).toBe(false);
+    expect(EINSTELLUNGEN_EINGABE.safeParse({ diashowExtern: true }).success).toBe(true);
+  });
+
   it('haben Grenzen', () => {
     expect(EINSTELLUNGEN_EINGABE.safeParse({ diashowNachSekunden: 60, diashowWechselSekunden: 7 }).success).toBe(true);
     expect(EINSTELLUNGEN_EINGABE.safeParse({ diashowNachSekunden: 5 }).success).toBe(false);

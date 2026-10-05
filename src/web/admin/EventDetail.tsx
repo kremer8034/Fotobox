@@ -32,6 +32,7 @@ interface EventVoll {
     vorlagen: string[];
     filter: string[];
     diashowAufStart: boolean;
+    diashowExtern: boolean;
     diashowNachSekunden: number;
     diashowWechselSekunden: number;
     gaestebuchAktiv: boolean;
@@ -1393,7 +1394,7 @@ function DiashowGaestebuchKarte({
     return () => {
       aktiv = false;
     };
-  }, [eventId, galerieAktiv]);
+  }, [eventId, galerieAktiv, e.diashowExtern]);
 
   async function fenster(an: boolean) {
     try {
@@ -1416,7 +1417,8 @@ function DiashowGaestebuchKarte({
       <h2>Diashow</h2>
       <p style={{ ...leise, marginTop: 0 }}>
         Die Fotos der Feier als Diashow – neue Fotos kommen sofort an die Reihe. Gezeigt wird nur, was auch in
-        der Galerie steht: kein Probelauf und nichts, was aus der Galerie genommen wurde.
+        der Galerie steht: kein Probelauf und nichts, was aus der Galerie genommen wurde. Beides ist
+        standardmäßig aus.
       </p>
       <div className="zeile">
         <Schalter
@@ -1425,47 +1427,63 @@ function DiashowGaestebuchKarte({
           beiWechsel={(an) => void beiAenderung({ diashowAufStart: an })}
         />
       </div>
-      <div className="zeile">
-        <ZahlFeld
-          name="Beginnt nach (Sekunden)"
-          klein
-          wert={e.diashowNachSekunden}
-          grenzen={[15, 600]}
-          beiSpeichern={(n) => beiAenderung({ diashowNachSekunden: n })}
-        />
-        <ZahlFeld
-          name="Jedes Bild steht (Sekunden)"
-          klein
-          wert={e.diashowWechselSekunden}
-          grenzen={[3, 30]}
-          beiSpeichern={(n) => beiAenderung({ diashowWechselSekunden: n })}
+      <div className="zeile" style={{ marginTop: '0.6rem' }}>
+        <Schalter
+          an={e.diashowExtern}
+          name="Für Beamer und Fernseher"
+          beiWechsel={(an) => void beiAenderung({ diashowExtern: an })}
         />
       </div>
-      <p style={{ ...leise, marginBottom: '0.4rem' }}>
-        <strong>Beamer oder Fernseher am HDMI-Anschluss der Box:</strong> anschließen, in Windows unter „Anzeige“
-        auf „Erweitern“ stellen, dann hier öffnen.
-      </p>
-      <div className="zeile">
-        <button className="knopf knopf--neben" onClick={() => void fenster(true)}>
-          Auf zweitem Bildschirm zeigen
-        </button>
-        <button className="knopf knopf--neben" onClick={() => void fenster(false)}>
-          Diashow beenden
-        </button>
-        <a className="knopf knopf--neben" href="/diashow" target="_blank" rel="noreferrer">
-          Vorschau
-        </a>
-      </div>
-      <p style={{ ...leise, marginBottom: 0 }}>
-        <strong>Fernseher oder Beamer mit eigenem Browser im WLAN:</strong>{' '}
-        {wlan?.wlan ? (
-          <>
-            dort <code>{wlan.wlan}</code> öffnen{wlan.kurz ? ' – das Gerät dafür mit dem Fotobox-WLAN verbinden' : ''}.
-          </>
-        ) : (
-          'geht, sobald oben „Galerie im WLAN“ an ist.'
-        )}
-      </p>
+      {(e.diashowAufStart || e.diashowExtern) && (
+        <div className="zeile">
+          {e.diashowAufStart && (
+            <ZahlFeld
+              name="Am Start nach (Sekunden)"
+              klein
+              wert={e.diashowNachSekunden}
+              grenzen={[15, 600]}
+              beiSpeichern={(n) => beiAenderung({ diashowNachSekunden: n })}
+            />
+          )}
+          <ZahlFeld
+            name="Jedes Bild steht (Sekunden)"
+            klein
+            wert={e.diashowWechselSekunden}
+            grenzen={[3, 30]}
+            beiSpeichern={(n) => beiAenderung({ diashowWechselSekunden: n })}
+          />
+        </div>
+      )}
+      {e.diashowExtern && (
+        <>
+          <p style={{ ...leise, marginBottom: '0.4rem' }}>
+            <strong>Beamer oder Fernseher am HDMI-Anschluss der Box:</strong> anschließen, in Windows mit
+            Windows-Taste + P auf „Erweitern“ stellen, dann hier öffnen.
+          </p>
+          <div className="zeile">
+            <button className="knopf knopf--neben" onClick={() => void fenster(true)}>
+              Auf zweitem Bildschirm zeigen
+            </button>
+            <button className="knopf knopf--neben" onClick={() => void fenster(false)}>
+              Diashow beenden
+            </button>
+            <a className="knopf knopf--neben" href="/diashow" target="_blank" rel="noreferrer">
+              Vorschau
+            </a>
+          </div>
+          <p style={{ ...leise, marginBottom: 0 }}>
+            <strong>Fernseher oder Beamer mit eigenem Browser im WLAN:</strong>{' '}
+            {wlan?.wlan ? (
+              <>
+                dort <code>{wlan.wlan}</code> öffnen
+                {wlan.kurz ? ' – das Gerät dafür mit dem Fotobox-WLAN verbinden' : ''}.
+              </>
+            ) : (
+              'geht, sobald oben „Galerie im WLAN“ an ist.'
+            )}
+          </p>
+        </>
+      )}
 
       <h2 style={{ marginTop: '1.4rem' }}>Gästebuch</h2>
       <p style={{ ...leise, marginTop: 0 }}>

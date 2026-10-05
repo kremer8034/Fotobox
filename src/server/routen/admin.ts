@@ -969,6 +969,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/diashow', async (anfrage, antwort) => {
     const event = holeEvent(anfrage.params.id);
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    if (!event.einstellungen.diashowExtern) return { wlan: null, kurz: false };
     const galerie = event.einstellungen.galerieAktiv ? galerieAdresse(event.galerieToken, konfig.portOeffentlich) : null;
     const kurz = portalZustand()?.portal && event.einstellungen.galerieAktiv ? `http://${PORTAL_ADRESSE}/diashow` : null;
     return { wlan: kurz ?? (galerie ? `${galerie}/diashow` : null), kurz: kurz !== null };
@@ -977,6 +978,11 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   /** Diashow auf dem zweiten Bildschirm oeffnen oder schliessen. */
   app.post<{ Body: unknown }>('/api/admin/diashow/fenster', async (anfrage, antwort) => {
     const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
+    if (an && !holeAktivesEvent()?.einstellungen.diashowExtern) {
+      return antwort.code(409).send({
+        fehler: 'Erst bei der laufenden Veranstaltung „Diashow für Beamer und Fernseher“ einschalten.',
+      });
+    }
     if (process.platform !== 'win32' || !konfig.echteHardware) {
       protokolliere('info', 'diashow', `Diashow-Fenster ${an ? 'öffnen' : 'schließen'} (Entwicklungsbetrieb - nur protokolliert).`);
       return { ok: true, simuliert: true };

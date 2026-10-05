@@ -133,6 +133,9 @@ export interface KioskStart {
     abdunkeln?: number;
     /** Diashow am Startbildschirm im Leerlauf; null = aus. */
     diashow?: { nachSekunden: number; wechselSekunden: number } | null;
+    /** Diashow-Seite fuer Beamer und Fernseher eingeschaltet. */
+    diashowExtern?: boolean;
+    diashowWechselSekunden?: number;
   };
   zeiten?: Zeiten;
   toene?: Toene;

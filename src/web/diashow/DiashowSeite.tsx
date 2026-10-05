@@ -23,6 +23,8 @@ export function DiashowSeite({ token }: { token?: string }) {
   const [wechsel, setzeWechsel] = useState(7);
   const [wlan, setzeWlan] = useState<string | null>(null);
   const [fehlt, setzeFehlt] = useState(false);
+  // Fuer diese Feier nicht eingeschaltet: Dann bleibt die Leinwand leer.
+  const [aus, setzeAus] = useState(false);
   const [knopf, setzeKnopf] = useState(true);
 
   const bilder = useDiashowBilder(async (): Promise<DiashowBild[]> => {
@@ -30,11 +32,14 @@ export function DiashowSeite({ token }: { token?: string }) {
       try {
         const daten = await api.hole<{
           veranstaltung: string;
+          diashowExtern?: boolean;
           diashowWechselSekunden?: number;
           bilder: { id: string; erstellt: string }[];
         }>(`/api/galerie/${encodeURIComponent(token)}`);
         setzeFehlt(false);
         setzeTitel(daten.veranstaltung);
+        setzeAus(!daten.diashowExtern);
+        if (!daten.diashowExtern) return [];
         if (daten.diashowWechselSekunden) setzeWechsel(daten.diashowWechselSekunden);
         return daten.bilder.map((b) => ({
           id: b.id,
@@ -46,13 +51,14 @@ export function DiashowSeite({ token }: { token?: string }) {
         return [];
       }
     }
-    const [start, galerie] = await Promise.all([
-      api.hole<KioskStart>('/api/kiosk/start'),
-      api.hole<{ veranstaltung?: string; bilder: { id: string; erstellt: string }[] }>('/api/kiosk/galerie'),
-    ]);
+    const start = await api.hole<KioskStart>('/api/kiosk/start');
     setzeFehlt(!start.veranstaltung);
     setzeTitel(start.veranstaltung?.name ?? '');
-    if (start.darstellung?.diashow?.wechselSekunden) setzeWechsel(start.darstellung.diashow.wechselSekunden);
+    const an = Boolean(start.darstellung?.diashowExtern);
+    setzeAus(Boolean(start.veranstaltung) && !an);
+    if (!an) return [];
+    const galerie = await api.hole<{ bilder: { id: string; erstellt: string }[] }>('/api/kiosk/galerie');
+    if (start.darstellung?.diashowWechselSekunden) setzeWechsel(start.darstellung.diashowWechselSekunden);
     const name = start.darstellung?.portalWlan;
     setzeWlan(typeof name === 'string' ? name : null);
     return galerie.bilder.map((b) => ({ id: b.id, erstellt: b.erstellt, url: `/medien/ausgabe/${b.id}.jpg` }));
@@ -106,6 +112,8 @@ export function DiashowSeite({ token }: { token?: string }) {
               ? 'Einen Moment …'
               : fehlt
                 ? 'Die Diashow startet, sobald die Feier läuft.'
+                : aus
+                  ? 'Die Diashow ist bei dieser Feier nicht eingeschaltet.'
                 : 'Gleich geht es los – die ersten Fotos erscheinen hier von selbst.'}
           </p>
         </div>

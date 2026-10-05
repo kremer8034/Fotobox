@@ -371,6 +371,11 @@ export interface EventEinstellungen {
    * dort die Fotos der Feier - das lockt die naechsten Gaeste an.
    */
   diashowAufStart: boolean;
+  /**
+   * Diashow fuer Beamer und Fernseher: am zweiten Bildschirm der Box und - mit
+   * Galerie im WLAN - auf Geraeten mit eigenem Browser.
+   */
+  diashowExtern: boolean;
   /** Nach so vielen Sekunden ohne Beruehrung beginnt sie. */
   diashowNachSekunden: number;
   /** So lange steht jedes Bild - auch in der Diashow fuer Beamer und Fernseher. */
@@ -406,7 +411,9 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   emailLoeschfristTage: 30,
   vorlagen: [],
   filter: [FILTER_OHNE, 'schwarzweiss', 'sepia', 'warm', 'pop'],
-  diashowAufStart: true,
+  // Neue Funktionen sind aus, bis sie jemand bewusst einschaltet.
+  diashowAufStart: false,
+  diashowExtern: false,
   diashowNachSekunden: 60,
   diashowWechselSekunden: 7,
   gaestebuchAktiv: false,

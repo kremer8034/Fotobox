@@ -6,19 +6,22 @@ ihn auf der Box verstehst.
 
 ## 1.2.0
 
+Alle drei neuen Funktionen sind **ab Werk aus** und werden je Veranstaltung
+einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
+
 - **Diashow:** Steht die Box eine Weile unberührt, laufen am Startbildschirm
   die Fotos der Feier – mit der Einladung „Tippt auf den Bildschirm und macht
   euer eigenes Foto!“. Ein Tipp holt den Start zurück. Neue Fotos kommen
-  sofort an die Reihe („Gerade eben entstanden“). Einstellbar unter
-  Veranstaltung → Ausgabe → Diashow.
+  sofort an die Reihe („Gerade eben entstanden“). Schalter „Am
+  Startbildschirm, wenn niemand die Box benutzt“.
 - **Diashow auf Beamer oder Fernseher:** am HDMI-Anschluss der Box per Knopf
   „Auf zweitem Bildschirm zeigen“ im Vollbild – oder auf jedem Fernseher mit
-  Browser im WLAN. Mit Captive Portal genügt `192.168.254.1/diashow`.
+  Browser im WLAN. Mit Captive Portal genügt `192.168.254.1/diashow`. Eigener
+  Schalter „Für Beamer und Fernseher“.
 - **Digitales Gästebuch:** Nach dem Foto können Gäste mit dem Finger einen
   Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
   und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
-  erscheint er nie. Standardmäßig aus; einschalten unter Veranstaltung →
-  Ausgabe → Gästebuch.
+  erscheint er nie.
 
 ## 1.1.0
 
