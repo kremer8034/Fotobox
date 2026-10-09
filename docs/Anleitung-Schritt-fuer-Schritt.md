@@ -536,12 +536,22 @@ Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
   das Symbol genau dort ab (Antippen geht auch, dann landet es in der Mitte),
   in der gewählten Farbe. Danach lässt es sich weiter verschieben,
   „Rückgängig“ nimmt es wieder weg. Die Auswahl ist für jede Feier dieselbe.
+- **Auch Fotos ohne Gruß** (eigener Schalter unter dem Gästebuch, ab Werk
+  aus): Nicht jede Gruppe schreibt etwas. Mit diesem Schalter kommen auch ihre
+  Fotos ins Gästebuch – als Anhang **„Momente des Abends“** hinter den Grüßen,
+  sechs Fotos je Seite, in der Reihenfolge der Aufnahme. So bleiben die Grüße
+  vorne beisammen, und das Buch wird nicht unnötig dick (300 Fotos sind rund
+  50 Seiten). Hinein kommt nur, was auch in der Galerie steht: kein
+  Probelauf, nichts, was du aus der Galerie genommen hast. Wer nur die Grüße
+  drucken lassen will, lässt den Schalter aus.
 
 Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
 → **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick
 (Ordner `05_gaestebuch`): gestaltet wie ein Erinnerungsalbum – ein Deckblatt
 mit den ersten Fotos, danach je Seite zwei Fotos als eingeklebte Sofortbilder
-mit ihrem Gruß auf einer Briefkarte.
+mit ihrem Gruß auf einer Briefkarte. Im Gästebuch stehen die fertigen
+Layouts, so wie die Gäste sie auch ausgedruckt bekommen haben – im Querformat
+wie im Hochformat.
 
 **Drucken und binden:** Das Gästebuch ist **DIN A4 quer** – das druckt jeder
 Drucker und jeder Copyshop. Links und rechts bleiben je 20 mm frei, oben und

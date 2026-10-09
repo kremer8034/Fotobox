@@ -32,6 +32,11 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   dem Deckblatt der Name der Feier in Schreibschrift und ein Fächer aus den
   ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
   (Lochung, Spirale, Klebebindung – einseitig wie beidseitig gedruckt).
+- **Auch Fotos ohne Gruß im Gästebuch** (eigener Schalter, ab Werk aus): als
+  Anhang „Momente des Abends“ hinter den Grüßen, sechs je Seite, in der
+  Reihenfolge der Aufnahme – nur, was auch in der Galerie steht. Hochformat-
+  Layouts bekommen im PDF einen hohen Rahmen statt eines kleinen Bildes im
+  Querformat.
 - **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
   selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt
   immer nur ein Finger – eine zweite Hand auf dem Glas verschluckt keinen

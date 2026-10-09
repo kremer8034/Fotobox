@@ -385,6 +385,8 @@ export interface EventEinstellungen {
   gaestebuchAktiv: boolean;
   /** Symbole (Herz, Ringe, Torte ...) zum Einfuegen auf der Schreibseite. */
   gaestebuchSymbole: boolean;
+  /** Auch die Fotos ohne Gruss ins Gaestebuch-PDF - als Anhang am Ende. */
+  gaestebuchAlleFotos: boolean;
 }
 
 export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
@@ -420,6 +422,7 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   diashowWechselSekunden: 7,
   gaestebuchAktiv: false,
   gaestebuchSymbole: false,
+  gaestebuchAlleFotos: false,
 };
 
 export interface Veranstaltung {

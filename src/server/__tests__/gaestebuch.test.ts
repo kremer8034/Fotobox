@@ -13,7 +13,9 @@ import { warteAufNeueDatei } from '../fach/aufnahme.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
 import {
+  baueGaestebuchPdf,
   erzeugeGaestebuchPdf,
+  fotosOhneGruss,
   gruesseVon,
   hatGruss,
   speichereGruss,
@@ -33,17 +35,17 @@ import { EINSTELLUNGEN_VORGABE, KALIBRIERUNG_VORGABE, type Veranstaltung } from 
 let wurzel: ReturnType<typeof wurzelpfade>;
 let event: Veranstaltung;
 
-async function fotoMachen(istTest = false): Promise<string> {
-  const sitzung = starteSitzung(event, 'standard-1-quer');
+async function fotoMachen(istTest = false, fuer: Veranstaltung = event): Promise<string> {
+  const sitzung = starteSitzung(fuer, 'standard-1-quer');
   if (istTest) holeDb().prepare('UPDATE sitzungen SET ist_test = 1 WHERE id = ?').run(sitzung.id);
   const s = istTest ? { ...sitzung, istTest: true } : sitzung;
-  const pfade = eventpfade(event.ordner, istTest);
+  const pfade = eventpfade(fuer.ordner, istTest);
   const kamera = new MockKamera();
   await kamera.setzeZielordner(pfade.originale);
   const wartet = warteAufNeueDatei(pfade.originale, { zeitlimitMs: 10_000 });
   await kamera.ausloesen();
-  await verbucheFoto(s, event, await wartet, 1);
-  const ausgabe = await stelleFertig(s, event, null, {
+  await verbucheFoto(s, fuer, await wartet, 1);
+  const ausgabe = await stelleFertig(s, fuer, null, {
     lutOrdner: wurzel.luts,
     vorlagenOrdner: wurzel.vorlagen,
     kalibrierung: KALIBRIERUNG_VORGABE,
@@ -130,6 +132,52 @@ describe('Gaestebuch', () => {
     expect(seiten).toBe(1 + Math.ceil(anzahl / 2));
   });
 
+  it('haengt auf Wunsch die Fotos ohne Gruss an - sechs je Seite, wie die Galerie', async () => {
+    const seitenVon = (pdf: Buffer) => pdf.toString('latin1').match(/\/Type \/Page\b/g)?.length;
+    // Ab Werk aus: nur die Gruesse.
+    expect((await baueGaestebuchPdf(event))?.fotos).toBe(0);
+
+    event = aktualisiereEvent(event.id, { einstellungen: { gaestebuchAlleFotos: true } });
+    for (let i = 0; i < 7; i++) await fotoMachen();
+    // Herausgenommen und Probelauf bleiben draussen - wie in der Galerie.
+    const verborgen = await fotoMachen();
+    holeDb().prepare('UPDATE ausgaben SET verborgen = 1 WHERE id = ?').run(verborgen);
+    const probe = await fotoMachen(true);
+
+    const ohne = fotosOhneGruss(event.id);
+    const ids = ohne.map((f) => f.ausgabeId);
+    expect(ids).not.toContain(verborgen);
+    expect(ids).not.toContain(probe);
+    expect(ids.some((id) => hatGruss(id))).toBe(false);
+    // In der Reihenfolge der Aufnahme.
+    expect([...ohne].sort((a, b) => a.erstellt.localeCompare(b.erstellt))).toEqual(ohne);
+
+    const pdf = await baueGaestebuchPdf(event);
+    expect(pdf?.anzahl).toBe(3);
+    expect(pdf?.fotos).toBe(ohne.length);
+    expect(seitenVon(pdf!.daten)).toBe(1 + Math.ceil(3 / 2) + Math.ceil(ohne.length / 6));
+
+    event = aktualisiereEvent(event.id, { einstellungen: { gaestebuchAlleFotos: false } });
+    expect((await baueGaestebuchPdf(event))?.fotos).toBe(0);
+  });
+
+  it('ein Gaestebuch nur aus Fotos - aber nur, wenn das Gaestebuch selbst an ist', async () => {
+    const roh = erstelleEvent({ name: 'Nur Fotos', datum: '2026-10-13' }, wurzel.events);
+    let nurFotos = aktualisiereEvent(roh.id, {
+      einstellungen: { vorlagen: ['standard-1-quer'], gaestebuchAktiv: true, gaestebuchAlleFotos: true },
+    });
+    // Fotos wie von der Box - aktiv sein muss die Feier dafuer nicht.
+    await fotoMachen(false, nurFotos);
+    await fotoMachen(false, nurFotos);
+
+    const pdf = await baueGaestebuchPdf(nurFotos);
+    expect(pdf?.anzahl).toBe(0);
+    expect(pdf?.fotos).toBe(2);
+
+    nurFotos = aktualisiereEvent(nurFotos.id, { einstellungen: { gaestebuchAktiv: false } });
+    expect(await baueGaestebuchPdf(nurFotos)).toBeNull();
+  });
+
   it('kein PDF ohne Gruss', async () => {
     const leer = erstelleEvent({ name: 'Ohne Grüße', datum: '2026-10-11' }, wurzel.events);
     expect(await erzeugeGaestebuchPdf(leer)).toBeNull();
@@ -154,6 +202,7 @@ describe('Diashow-Einstellungen', () => {
     expect(EINSTELLUNGEN_VORGABE.diashowExtern).toBe(false);
     expect(EINSTELLUNGEN_VORGABE.gaestebuchAktiv).toBe(false);
     expect(EINSTELLUNGEN_VORGABE.gaestebuchSymbole).toBe(false);
+    expect(EINSTELLUNGEN_VORGABE.gaestebuchAlleFotos).toBe(false);
     // Auch eine Veranstaltung aus der Zeit vor diesen Funktionen hat sie aus.
     const alt = erstelleEvent({ name: 'Alte Feier', datum: '2026-10-12' }, wurzel.events);
     expect(alt.einstellungen.diashowAufStart).toBe(false);

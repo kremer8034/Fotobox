@@ -64,7 +64,7 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
-import { baueGaestebuchPdf, erzeugeGaestebuchPdf, gruesseVon } from '../fach/gaestebuch.js';
+import { baueGaestebuchPdf, erzeugeGaestebuchPdf, fotosOhneGruss, gruesseVon, mitAllenFotos } from '../fach/gaestebuch.js';
 import { oeffneDiashowFenster, schliesseDiashowFenster } from '../fach/kiosk-browser.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
@@ -944,17 +944,21 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch', async (anfrage, antwort) => {
     const event = holeEvent(anfrage.params.id);
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
-    return { anzahl: gruesseVon(event.id).length };
+    return {
+      anzahl: gruesseVon(event.id).length,
+      // Fotos ohne Gruss, die als Anhang mit hineinkommen - 0, solange der Schalter aus ist.
+      fotos: mitAllenFotos(event) ? fotosOhneGruss(event.id).length : 0,
+    };
   });
 
-  /** Das Gaestebuch als PDF - jedes Mal frisch, mit allen Gruessen bis jetzt. */
+  /** Das Gaestebuch als PDF - jedes Mal frisch, mit allen Gruessen (und Fotos) bis jetzt. */
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch.pdf', async (anfrage, antwort) => {
     const event = holeEvent(anfrage.params.id);
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
     // Im Speicher gebaut und direkt geschickt - die Datei fuer die Uebergabe
     // bleibt davon unberuehrt.
     const pdf = await baueGaestebuchPdf(event);
-    if (!pdf) return antwort.code(404).send({ fehler: 'Im Gästebuch steht noch kein Gruß.' });
+    if (!pdf) return antwort.code(404).send({ fehler: 'Im Gästebuch steht noch nichts.' });
     return antwort
       .type('application/pdf')
       .header('Cache-Control', 'no-store')

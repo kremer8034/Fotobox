@@ -38,6 +38,7 @@ interface EventVoll {
     diashowWechselSekunden: number;
     gaestebuchAktiv: boolean;
     gaestebuchSymbole: boolean;
+    gaestebuchAlleFotos: boolean;
   };
   auslagen: {
     sitzungen: number;
@@ -1380,7 +1381,7 @@ function DiashowGaestebuchKarte({
   zeige: (text: string) => void;
 }) {
   const [wlan, setzeWlan] = useState<{ wlan: string | null; kurz: boolean } | null>(null);
-  const [gruesse, setzeGruesse] = useState<number | null>(null);
+  const [gaestebuch, setzeGaestebuch] = useState<{ anzahl: number; fotos: number } | null>(null);
 
   useEffect(() => {
     let aktiv = true;
@@ -1389,13 +1390,13 @@ function DiashowGaestebuchKarte({
       .then((d) => aktiv && setzeWlan(d))
       .catch(() => undefined);
     api
-      .hole<{ anzahl: number }>(`/api/admin/events/${eventId}/gaestebuch`)
-      .then((d) => aktiv && setzeGruesse(d.anzahl))
+      .hole<{ anzahl: number; fotos?: number }>(`/api/admin/events/${eventId}/gaestebuch`)
+      .then((d) => aktiv && setzeGaestebuch({ anzahl: d.anzahl, fotos: d.fotos ?? 0 }))
       .catch(() => undefined);
     return () => {
       aktiv = false;
     };
-  }, [eventId, galerieAktiv, e.diashowExtern]);
+  }, [eventId, galerieAktiv, e.diashowExtern, e.gaestebuchAktiv, e.gaestebuchAlleFotos]);
 
   async function fenster(an: boolean) {
     try {
@@ -1502,10 +1503,22 @@ function DiashowGaestebuchKarte({
             beiWechsel={(an) => void beiAenderung({ gaestebuchSymbole: an })}
           />
         )}
-        {gruesse !== null && gruesse > 0 && (
+        {e.gaestebuchAktiv && (
+          <Schalter
+            an={e.gaestebuchAlleFotos}
+            name="Auch Fotos ohne Gruß – als Anhang „Momente des Abends“"
+            beiWechsel={(an) => void beiAenderung({ gaestebuchAlleFotos: an })}
+          />
+        )}
+        {gaestebuch !== null && gaestebuch.anzahl + gaestebuch.fotos > 0 && (
           <PdfKnopf
             href={`/api/admin/events/${eventId}/gaestebuch.pdf`}
-            beschriftung={`Gästebuch ansehen (${gruesse} ${gruesse === 1 ? 'Gruß' : 'Grüße'})`}
+            beschriftung={`Gästebuch ansehen (${[
+              gaestebuch.anzahl > 0 ? `${gaestebuch.anzahl} ${gaestebuch.anzahl === 1 ? 'Gruß' : 'Grüße'}` : '',
+              gaestebuch.fotos > 0 ? `${gaestebuch.fotos} ${gaestebuch.fotos === 1 ? 'Foto' : 'Fotos'} ohne Gruß` : '',
+            ]
+              .filter(Boolean)
+              .join(', ')})`}
           />
         )}
       </div>

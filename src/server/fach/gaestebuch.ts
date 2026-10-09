@@ -112,6 +112,30 @@ export function gruesseVon(eventId: string): Gruss[] {
   }));
 }
 
+/**
+ * Die Fotos einer Veranstaltung ohne Gruss - fuer den Anhang "Momente des
+ * Abends". Dieselbe Auswahl wie die Galerie: kein Probelauf, nichts, was der
+ * Betreuer herausgenommen hat. In der Reihenfolge der Aufnahme.
+ */
+export function fotosOhneGruss(eventId: string): { ausgabeId: string; pfadLayout: string; erstellt: string }[] {
+  return (
+    holeDb()
+      .prepare(
+        `SELECT a.id, a.pfad_layout, a.erstellt
+           FROM ausgaben a JOIN sitzungen s ON s.id = a.sitzung_id
+          WHERE s.event_id = ? AND s.ist_test = 0 AND a.verborgen = 0
+            AND NOT EXISTS (SELECT 1 FROM gaestebuch g WHERE g.ausgabe_id = a.id AND g.ist_test = 0)
+          ORDER BY a.erstellt ASC`,
+      )
+      .all(eventId) as { id: string; pfad_layout: string; erstellt: string }[]
+  ).map((z) => ({ ausgabeId: z.id, pfadLayout: z.pfad_layout, erstellt: z.erstellt }));
+}
+
+/** Kommen die Fotos ohne Gruss mit ins Gaestebuch? Nur, wenn beides eingeschaltet ist. */
+export function mitAllenFotos(event: Veranstaltung): boolean {
+  return event.einstellungen.gaestebuchAktiv && event.einstellungen.gaestebuchAlleFotos;
+}
+
 /** Gibt es zu diesem Foto schon einen Gruss? */
 export function hatGruss(ausgabeId: string): boolean {
   return holeDb().prepare('SELECT 1 FROM gaestebuch WHERE ausgabe_id = ?').get(ausgabeId) !== undefined;
@@ -137,7 +161,9 @@ export function grussDateienVon(ausgabeId: string): string[] {
  *
  * @returns null, wenn es (noch) keinen Gruss gibt
  */
-export async function erzeugeGaestebuchPdf(event: Veranstaltung): Promise<{ pfad: string; anzahl: number } | null> {
+export async function erzeugeGaestebuchPdf(
+  event: Veranstaltung,
+): Promise<{ pfad: string; anzahl: number; fotos: number } | null> {
   const pdf = await baueGaestebuchPdf(event);
   if (!pdf) return null;
   const ordner = eventpfade(event.ordner).gaestebuch;
@@ -153,18 +179,29 @@ export async function erzeugeGaestebuchPdf(event: Veranstaltung): Promise<{ pfad
     await unlink(zwischen).catch(() => undefined);
     await writeFile(pfad, pdf.daten);
   }
-  return { pfad, anzahl: pdf.anzahl };
+  return { pfad, anzahl: pdf.anzahl, fotos: pdf.fotos };
 }
 
 /** Laufende Erzeugungen je Veranstaltung: Wer gleichzeitig fragt, bekommt dasselbe Ergebnis. */
-const inArbeit = new Map<string, Promise<{ daten: Buffer; anzahl: number } | null>>();
+const inArbeit = new Map<string, Promise<GaestebuchPdf | null>>();
+
+interface GaestebuchPdf {
+  daten: Buffer;
+  /** Zahl der Gruesse. */
+  anzahl: number;
+  /** Zahl der Fotos ohne Gruss im Anhang. */
+  fotos: number;
+}
 
 /**
  * Das Gaestebuch als PDF im Speicher: ein Deckblatt, danach je Seite zwei
- * Eintraege - links das Foto, rechts der Gruss. Querformat A4, damit es sich
- * auch ausdrucken und abheften laesst.
+ * Eintraege - Foto und Gruss nebeneinander. Auf Wunsch am Ende die Fotos ohne
+ * Gruss, sechs je Seite. Querformat A4, damit es sich auch ausdrucken und
+ * binden laesst.
+ *
+ * @returns null, wenn nichts hineingehoert
  */
-export function baueGaestebuchPdf(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: number } | null> {
+export function baueGaestebuchPdf(event: Veranstaltung): Promise<GaestebuchPdf | null> {
   const laufend = inArbeit.get(event.id);
   if (laufend) return laufend;
   const neu = baue(event).finally(() => inArbeit.delete(event.id));
@@ -172,10 +209,14 @@ export function baueGaestebuchPdf(event: Veranstaltung): Promise<{ daten: Buffer
   return neu;
 }
 
-async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: number } | null> {
+async function baue(event: Veranstaltung): Promise<GaestebuchPdf | null> {
   const gruesse = gruesseVon(event.id).filter((g) => existsSync(g.pfad));
-  if (gruesse.length === 0) return null;
   const layouts = eventpfade(event.ordner).layouts + sep;
+  // Nur Layouts, die dort liegen, wo Layouts hingehoeren - der Pfad kommt aus
+  // der Datenbank, nicht von aussen, aber sicher ist sicher.
+  const vorhanden = (pfad: string) => pfad.startsWith(layouts) && existsSync(pfad);
+  const ohneGruss = mitAllenFotos(event) ? fotosOhneGruss(event.id).filter((f) => vorhanden(f.pfadLayout)) : [];
+  if (gruesse.length === 0 && ohneGruss.length === 0) return null;
 
   const d = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0, autoFirstPage: false });
   d.info.Title = `Gästebuch – ${event.name}`;
@@ -190,13 +231,22 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   const schrift = existsSync(skript) ? 'Skript' : 'Helvetica-Oblique';
   if (schrift === 'Skript') d.registerFont('Skript', skript);
 
-  // Das Foto zu einem Gruss - verkleinert, sonst wiegt das PDF so viel wie
-  // alle Layouts zusammen. null, wenn es fehlt oder nicht dort liegt, wo
-  // Layouts hingehoeren.
-  const foto = async (g: Gruss): Promise<Buffer | null> =>
-    g.pfadLayout.startsWith(layouts) && existsSync(g.pfadLayout)
-      ? sharp(g.pfadLayout).rotate().resize({ width: 1200, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer()
-      : null;
+  // Das fertige Layout, verkleinert - sonst wiegt das PDF so viel wie alle
+  // Layouts zusammen. Im Anhang sind die Fotos kleiner, also auch die Dateien.
+  // null, wenn es fehlt.
+  const foto = async (pfad: string, kante = 1200): Promise<Foto | null> => {
+    if (!vorhanden(pfad)) return null;
+    try {
+      const { data, info } = await sharp(pfad)
+        .rotate()
+        .resize({ width: kante, height: kante, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toBuffer({ resolveWithObject: true });
+      return { daten: data, breite: info.width, hoehe: info.height };
+    } catch {
+      return null;
+    }
+  };
 
   // ---- Deckblatt -------------------------------------------------------
   d.addPage();
@@ -209,27 +259,32 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   d.font(schrift).fontSize(schrift === 'Skript' ? 44 : 28).fillColor(FARBE.text)
     .text(event.name, BUND + 30, 196, { width: B - 2 * BUND - 60, align: 'center' });
   // Ein Faecher aus den ersten Fotos - wie auf den Tisch gelegt.
-  const titelFotos = (await Promise.all(gruesse.slice(0, 3).map(foto))).filter((f): f is Buffer => f !== null);
+  const titelPfade = [...gruesse.map((g) => g.pfadLayout), ...ohneGruss.map((f) => f.pfadLayout)].slice(0, 3);
+  const titelFotos = (await Promise.all(titelPfade.map((p) => foto(p)))).filter((f): f is Foto => f !== null);
   const faecher = titelFotos.length === 1 ? [0] : titelFotos.length === 2 ? [-6, 6] : [-9, 0, 9];
   titelFotos.forEach((bild, i) => {
     const winkel = faecher[i]!;
     const mitte = B / 2 + winkel * 17;
-    sofortbild(d, bild, mitte, 412, 215, winkel);
+    sofortbild(d, bild, mitte, 412, 215, 240, winkel);
   });
 
   // ---- Eintraege, zwei je Seite ----------------------------------------
-  const zeilen = gruesse.length;
   let seitenNr = 1;
+  const neueSeite = (titel: string, groesse = 22) => {
+    d.addPage();
+    seitenNr += 1;
+    seite(d);
+    d.font(schrift).fontSize(groesse).fillColor(FARBE.gold).text(titel, 0, KOPF + 10, { width: B, align: 'center' });
+    d.font('Helvetica').fontSize(9).fillColor(FARBE.gold).text(`·  ${seitenNr}  ·`, 0, H - KOPF - 22, { width: B, align: 'center' });
+  };
+  const innenLinks = BUND + 22;
+  const innenRechts = B - BUND - 22;
+
+  const zeilen = gruesse.length;
   for (let i = 0; i < zeilen; i++) {
     const g = gruesse[i]!;
     const oben = i % 2 === 0;
-    if (oben) {
-      d.addPage();
-      seitenNr += 1;
-      seite(d);
-      d.font(schrift).fontSize(22).fillColor(FARBE.gold).text(event.name, 0, KOPF + 10, { width: B, align: 'center' });
-      d.font('Helvetica').fontSize(9).fillColor(FARBE.gold).text(`·  ${seitenNr}  ·`, 0, H - KOPF - 22, { width: B, align: 'center' });
-    }
+    if (oben) neueSeite(event.name);
     // Allein auf der letzten Seite: in die Mitte statt nach oben.
     const allein = oben && i === zeilen - 1;
     const mitteY = allein ? H / 2 : oben ? 182 : 404;
@@ -237,23 +292,55 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
     // nacheinander eingeklebt wurde. Alles bleibt innerhalb des Rahmens und
     // damit ausserhalb des Bindungsrands.
     const fotoLinks = i % 2 === 0;
-    const innenLinks = BUND + 22;
-    const innenRechts = B - BUND - 22;
     const fotoX = fotoLinks ? innenLinks + FOTO_BREITE / 2 + 8 : innenRechts - FOTO_BREITE / 2 - 8;
     const kartenX = fotoLinks ? innenRechts - KARTE_BREITE / 2 - 8 : innenLinks + KARTE_BREITE / 2 + 8;
-    const luecke = fotoLinks
-      ? (fotoX + FOTO_BREITE / 2 + kartenX - KARTE_BREITE / 2) / 2
-      : (kartenX + KARTE_BREITE / 2 + fotoX - FOTO_BREITE / 2) / 2;
 
-    const bild = await foto(g);
-    if (bild) sofortbild(d, bild, fotoX, mitteY, FOTO_BREITE, fotoLinks ? -2.5 : 2.5);
+    const bild = await foto(g.pfadLayout);
+    // Ein Hochformat-Layout ist schmaler - das Herz sitzt trotzdem mittig
+    // zwischen Foto und Karte.
+    const halb = (bild ? sofortbild(d, bild, fotoX, mitteY, FOTO_BREITE, FOTO_HOEHE, fotoLinks ? -2.5 : 2.5) : FOTO_BREITE) / 2;
     briefkarte(d, g.pfad, kartenX, mitteY, KARTE_BREITE, KARTE_HOEHE, fotoLinks ? 1.5 : -1.5);
+    const luecke = fotoLinks
+      ? (fotoX + halb + kartenX - KARTE_BREITE / 2) / 2
+      : (kartenX + KARTE_BREITE / 2 + fotoX - halb) / 2;
     herz(d, luecke, mitteY - 4, 9);
+  }
+
+  // ---- Anhang: Momente des Abends, sechs Fotos je Seite -----------------
+  // Dichter als die Grussseiten - bei 300 Fotos sind das 50 Seiten statt 150,
+  // und die Gruesse bleiben vorne beisammen.
+  for (let start = 0; start < ohneGruss.length; start += ANHANG_JE_SEITE) {
+    if (start === 0) neueSeite('Momente des Abends', 30);
+    else neueSeite(event.name);
+    const stapel = ohneGruss.slice(start, start + ANHANG_JE_SEITE);
+    // Bis drei Fotos: eine Reihe in der Mitte, sonst zwei Reihen zu je drei.
+    const reihen = stapel.length <= 3 ? [stapel.length] : [3, stapel.length - 3];
+    const reiheY = reihen.length === 1 ? [H / 2 + 10] : [ANHANG_OBEN, ANHANG_UNTEN];
+    const spalte = (innenRechts - innenLinks) / 3;
+    let n = 0;
+    for (const [r, anzahlInReihe] of reihen.entries()) {
+      const links = (innenLinks + innenRechts) / 2 - (anzahlInReihe * spalte) / 2;
+      for (let k = 0; k < anzahlInReihe; k++, n++) {
+        const bild = await foto(stapel[n]!.pfadLayout, 900);
+        if (!bild) continue;
+        // Wie von Hand eingeklebt: jedes etwas anders gedreht und versetzt.
+        const j = (start + n) % ANHANG_WINKEL.length;
+        sofortbild(
+          d,
+          bild,
+          links + spalte * (k + 0.5) + ANHANG_VERSATZ[j]!,
+          reiheY[r]! + ANHANG_VERSATZ[(j + 2) % ANHANG_VERSATZ.length]! / 2,
+          ANHANG_BREITE,
+          ANHANG_HOEHE,
+          ANHANG_WINKEL[j]!,
+        );
+      }
+    }
   }
 
   d.end();
   await fertig;
-  return { daten: Buffer.concat(teile), anzahl: gruesse.length };
+  return { daten: Buffer.concat(teile), anzahl: gruesse.length, fotos: ohneGruss.length };
 }
 
 /*
@@ -273,6 +360,15 @@ const BUND = 20 * MM;
 /** Rand oben und unten. */
 const KOPF = 10 * MM;
 const FOTO_BREITE = 270;
+const FOTO_HOEHE = 205;
+/** Anhang: sechs Fotos je Seite in zwei Reihen. */
+const ANHANG_JE_SEITE = 6;
+const ANHANG_BREITE = 196;
+const ANHANG_HOEHE = 200;
+const ANHANG_OBEN = 196;
+const ANHANG_UNTEN = 420;
+const ANHANG_WINKEL = [-3, 2, -1.5, 2.5, -2, 1.5, 3, -2.5];
+const ANHANG_VERSATZ = [-5, 3, -2, 4, -3, 2, 5, -4];
 const KARTE_BREITE = 310;
 const KARTE_HOEHE = 190;
 const FARBE = {
@@ -326,10 +422,39 @@ function herz(d: PDFKit.PDFDocument, x: number, y: number, r: number): void {
     .restore();
 }
 
-/** Ein Foto wie ein eingeklebtes Sofortbild: weisser Rand, weicher Schatten, leicht schraeg. */
-function sofortbild(d: PDFKit.PDFDocument, bild: Buffer, mx: number, my: number, breite: number, winkel: number): void {
+interface Foto {
+  daten: Buffer;
+  breite: number;
+  hoehe: number;
+}
+
+/**
+ * Ein Foto wie ein eingeklebtes Sofortbild: weisser Rand, weicher Schatten,
+ * leicht schraeg. Der Rahmen folgt dem Layout - quer oder hoch - und passt in
+ * maxBreite x maxHoehe.
+ *
+ * @returns die Breite des Rahmens
+ */
+function sofortbild(
+  d: PDFKit.PDFDocument,
+  bild: Foto,
+  mx: number,
+  my: number,
+  maxBreite: number,
+  maxHoehe: number,
+  winkel: number,
+): number {
   const rand = 9;
-  const hoehe = (breite - 2 * rand) / 1.5 + 2 * rand + 14;
+  const unten = 14;
+  const verhaeltnis = bild.breite / bild.hoehe;
+  let bildB = maxBreite - 2 * rand;
+  let bildH = bildB / verhaeltnis;
+  if (bildH > maxHoehe - 2 * rand - unten) {
+    bildH = maxHoehe - 2 * rand - unten;
+    bildB = bildH * verhaeltnis;
+  }
+  const breite = bildB + 2 * rand;
+  const hoehe = bildH + 2 * rand + unten;
   const x = mx - breite / 2;
   const y = my - hoehe / 2;
   d.save().rotate(winkel, { origin: [mx, my] });
@@ -341,9 +466,10 @@ function sofortbild(d: PDFKit.PDFDocument, bild: Buffer, mx: number, my: number,
     d.save().fillOpacity(deckung).rect(x + versatz, y + versatz + 2, breite, hoehe).fill('#3a2a10').restore();
   }
   d.rect(x, y, breite, hoehe).fill('#ffffff');
-  d.image(bild, x + rand, y + rand, { fit: [breite - 2 * rand, (breite - 2 * rand) / 1.5], align: 'center', valign: 'center' });
+  d.image(bild.daten, x + rand, y + rand, { width: bildB, height: bildH });
   klebeband(d, mx - 18, y - 5, -6);
   d.restore();
+  return breite;
 }
 
 /** Der Gruss auf einer Briefkarte mit zwei Klebestreifen. */

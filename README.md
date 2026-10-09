@@ -150,7 +150,7 @@ Papier“), nicht als Fehlercode.
 - **Digitales Gästebuch**: Gäste schreiben nach dem Foto mit dem Finger einen
   Gruß. Der Gastgeber bekommt alle Grüße mit dem jeweiligen Foto als
   **Gästebuch-PDF** bei der Übergabe. Löscht ein Gast sein Foto, geht der Gruß
-  mit.
+  mit. Auf Wunsch kommen auch die Fotos ohne Gruß als Anhang dazu.
 
 **Kiosk und Servicemenü**
 - **Kiosk-Sperre**: versteckter Kreis oben rechts, eine Sekunde halten, PIN.
