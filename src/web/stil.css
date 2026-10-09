@@ -1567,6 +1567,15 @@ html.admin .knopf--riesig {
   max-width: 9rem;
 }
 
+/* Eine ganze Frage als Beschriftung, darunter ein kurzes Zahlenfeld. */
+.feld--breit {
+  max-width: 26rem;
+}
+
+.feld--breit .zahl {
+  max-width: 9rem;
+}
+
 .zeile {
   display: flex;
   gap: 1rem;

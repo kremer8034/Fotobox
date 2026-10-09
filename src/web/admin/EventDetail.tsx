@@ -880,6 +880,7 @@ function ZahlFeld({
   schritt = 1,
   komma = false,
   klein = false,
+  breit = false,
   beiSpeichern,
 }: {
   id?: string;
@@ -890,6 +891,8 @@ function ZahlFeld({
   schritt?: number;
   komma?: boolean;
   klein?: boolean;
+  /** Fuer eine Beschriftung als ganze Frage: breit genug, dass sie in eine Zeile passt. */
+  breit?: boolean;
   beiSpeichern: (n: number) => Promise<void> | void;
 }) {
   const [entwurf, setzeEntwurf] = useState(String(wert));
@@ -910,7 +913,7 @@ function ZahlFeld({
   const gueltig = lies(entwurf) !== null;
 
   return (
-    <div className={`feld${klein ? ' feld--klein' : ''}`}>
+    <div className={`feld${klein ? ' feld--klein' : ''}${breit ? ' feld--breit' : ''}`}>
       <label htmlFor={id} title={titel}>
         {name}
       </label>
@@ -1457,6 +1460,19 @@ function DiashowGaestebuchKarte({
           beiWechsel={(an) => void beiAenderung({ diashowAufStart: an })}
         />
       </div>
+      {/* Gleich unter dem Haken, zu dem sie gehoert - die Zeit gilt nur am
+          Startbildschirm; auf dem zweiten Bildschirm laeuft die Diashow immer. */}
+      {e.diashowAufStart && (
+        <div className="zeile">
+          <ZahlFeld
+            name="Startet nach wie vielen Sekunden ohne Berührung?"
+            breit
+            wert={e.diashowNachSekunden}
+            grenzen={[15, 600]}
+            beiSpeichern={(n) => beiAenderung({ diashowNachSekunden: n })}
+          />
+        </div>
+      )}
       <div className="zeile" style={{ marginTop: '0.6rem' }}>
         <Schalter
           an={e.diashowExtern}
@@ -1465,19 +1481,15 @@ function DiashowGaestebuchKarte({
         />
       </div>
       {(e.diashowAufStart || e.diashowExtern) && (
-        <div className="zeile">
-          {e.diashowAufStart && (
-            <ZahlFeld
-              name="Am Start nach (Sekunden)"
-              klein
-              wert={e.diashowNachSekunden}
-              grenzen={[15, 600]}
-              beiSpeichern={(n) => beiAenderung({ diashowNachSekunden: n })}
-            />
-          )}
+        <div className="zeile" style={{ marginTop: '0.9rem' }}>
           <ZahlFeld
-            name="Jedes Bild steht (Sekunden)"
-            klein
+            name={
+              e.diashowAufStart && e.diashowExtern
+                ? 'Für beide Diashows: Wie viele Sekunden bleibt jedes Foto stehen?'
+                : 'Wie viele Sekunden bleibt jedes Foto stehen?'
+            }
+            titel="Gilt für beide Diashows – am Startbildschirm und auf dem zweiten Bildschirm."
+            breit
             wert={e.diashowWechselSekunden}
             grenzen={[3, 30]}
             beiSpeichern={(n) => beiAenderung({ diashowWechselSekunden: n })}

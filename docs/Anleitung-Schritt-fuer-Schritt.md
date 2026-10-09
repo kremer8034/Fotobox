@@ -494,7 +494,10 @@ einem zweiten Bildschirm“ (Beamer, Fernseher oder Monitor). Gezeigt wird nur, 
 dem Probelauf und nichts, was aus der Galerie genommen wurde.
 
 **Am Startbildschirm** läuft sie – eingeschaltet – von selbst, wenn eine Weile
-niemand die Box benutzt (Vorgabe: nach 60 Sekunden). Ein Tipp auf den
+niemand die Box benutzt – nach wie vielen Sekunden, steht im Feld darunter
+(„Startet nach wie vielen Sekunden ohne Berührung?“, Vorgabe 60). Auf dem
+zweiten Bildschirm läuft sie dagegen immer. Wie lange jedes Foto zu sehen ist,
+gilt für beide („Wie viele Sekunden bleibt jedes Foto stehen?“, Vorgabe 7). Ein Tipp auf den
 Bildschirm holt den Start zurück.
 
 **Zweiter Bildschirm am HDMI-Anschluss der Box:**

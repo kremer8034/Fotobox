@@ -71,8 +71,8 @@ export const EINSTELLUNGEN_EINGABE = z
     filter: z.array(z.string().max(64)).max(50),
     diashowAufStart: z.boolean(),
     diashowExtern: z.boolean(),
-    diashowNachSekunden: ganz('Diashow beginnt nach', 15, 600),
-    diashowWechselSekunden: ganz('Jedes Bild steht', 3, 30),
+    diashowNachSekunden: ganz('Diashow startet nach Sekunden ohne Berührung', 15, 600),
+    diashowWechselSekunden: ganz('Sekunden je Foto in der Diashow', 3, 30),
     gaestebuchAktiv: z.boolean(),
     gaestebuchSymbole: z.boolean(),
   })
