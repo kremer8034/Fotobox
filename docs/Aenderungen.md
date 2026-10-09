@@ -25,6 +25,10 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   Symbole zum Einfügen – Herz, Ringe, Sektgläser, Torte, Geschenk,
   Luftballons, Blume, Sterne, Smiley: antippen, mit dem Finger verschieben,
   gezeichnet in der gewählten Tintenfarbe.
+- **Gästebuch-PDF wie ein Erinnerungsalbum:** warmes Papier mit goldenem
+  Rahmen und Eckverzierungen, Fotos als eingeklebte Sofortbilder, Grüße auf
+  liniertem Briefpapier mit Klebestreifen, die Uhrzeit in Schreibschrift. Auf
+  dem Deckblatt ein Fächer aus den ersten Fotos.
 - **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
   selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt
   immer nur ein Finger – eine zweite Hand auf dem Glas verschluckt keinen

@@ -538,8 +538,9 @@ Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
 
 Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
 → **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick
-(Ordner `05_gaestebuch`): ein Deckblatt, danach je Seite zwei Fotos mit ihrem
-Gruß – zum Ausdrucken und Abheften.
+(Ordner `05_gaestebuch`): gestaltet wie ein Erinnerungsalbum – ein Deckblatt
+mit den ersten Fotos, danach je Seite zwei Fotos als eingeklebte Sofortbilder
+mit ihrem Gruß auf Briefpapier. Zum Ausdrucken und Abheften.
 
 ## Wenn etwas ausfällt
 

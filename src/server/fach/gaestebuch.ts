@@ -187,56 +187,64 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   });
 
   const skript = join(MITGELIEFERT, 'GreatVibes-Regular.ttf');
-  const hatSkript = existsSync(skript);
-  if (hatSkript) d.registerFont('Skript', skript);
+  const schrift = existsSync(skript) ? 'Skript' : 'Helvetica-Oblique';
+  if (schrift === 'Skript') d.registerFont('Skript', skript);
 
-  const B = 841.89;
-  const H = 595.28;
+  // Das Foto zu einem Gruss - verkleinert, sonst wiegt das PDF so viel wie
+  // alle Layouts zusammen. null, wenn es fehlt oder nicht dort liegt, wo
+  // Layouts hingehoeren.
+  const foto = async (g: Gruss): Promise<Buffer | null> =>
+    g.pfadLayout.startsWith(layouts) && existsSync(g.pfadLayout)
+      ? sharp(g.pfadLayout).rotate().resize({ width: 1200, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer()
+      : null;
 
-  // Deckblatt
+  // ---- Deckblatt -------------------------------------------------------
   d.addPage();
-  papier(d, B, H);
-  d.font(hatSkript ? 'Skript' : 'Helvetica-Oblique')
-    .fontSize(hatSkript ? 96 : 60)
-    .fillColor(FARBE.gold)
-    .text('Gästebuch', 0, 170, { width: B, align: 'center' });
-  d.font('Helvetica-Bold').fontSize(26).fillColor(FARBE.text).text(event.name, 60, 320, { width: B - 120, align: 'center' });
-  d.font('Helvetica').fontSize(14).fillColor(FARBE.leise)
-    .text(`${datum(event.datum)} · ${gruesse.length} ${gruesse.length === 1 ? 'Gruß' : 'Grüße'}`, 0, 362, {
+  seite(d);
+  d.font(schrift).fontSize(schrift === 'Skript' ? 92 : 56).fillColor(FARBE.gold)
+    .text('Gästebuch', 0, 62, { width: B, align: 'center' });
+  schnoerkel(d, B / 2, 182, 150);
+  d.font('Helvetica-Bold').fontSize(24).fillColor(FARBE.text).text(event.name, 80, 200, { width: B - 160, align: 'center' });
+  d.font('Helvetica').fontSize(13).fillColor(FARBE.leise)
+    .text(`${datum(event.datum)} · ${gruesse.length} ${gruesse.length === 1 ? 'Gruß' : 'Grüße'}`, 0, 236, {
       width: B,
       align: 'center',
     });
+  // Ein Faecher aus den ersten Fotos - wie auf den Tisch gelegt.
+  const titelFotos = (await Promise.all(gruesse.slice(0, 3).map(foto))).filter((f): f is Buffer => f !== null);
+  const faecher = titelFotos.length === 1 ? [0] : titelFotos.length === 2 ? [-6, 6] : [-9, 0, 9];
+  titelFotos.forEach((bild, i) => {
+    const winkel = faecher[i]!;
+    const mitte = B / 2 + winkel * 19;
+    sofortbild(d, bild, mitte, 418, 230, winkel);
+  });
 
-  // Eintraege, zwei je Seite
-  const rand = 40;
-  const luecke = 28;
-  const breite = (B - 2 * rand - luecke) / 2;
-  const hoehe = breite / 1.5;
-  const zeilen = [rand + 4, rand + 4 + hoehe + 34];
-  for (let i = 0; i < gruesse.length; i++) {
+  // ---- Eintraege, zwei je Seite ----------------------------------------
+  const zeilen = gruesse.length;
+  let seitenNr = 1;
+  for (let i = 0; i < zeilen; i++) {
     const g = gruesse[i]!;
-    if (i % 2 === 0) {
+    const oben = i % 2 === 0;
+    if (oben) {
       d.addPage();
-      papier(d, B, H);
+      seitenNr += 1;
+      seite(d);
+      d.font(schrift).fontSize(22).fillColor(FARBE.gold).text(event.name, 0, 34, { width: B, align: 'center' });
+      d.font('Helvetica').fontSize(9).fillColor(FARBE.gold).text(`·  ${seitenNr}  ·`, 0, H - 44, { width: B, align: 'center' });
     }
-    const y = zeilen[i % 2]!;
+    // Allein auf der letzten Seite: in die Mitte statt nach oben.
+    const allein = oben && i === zeilen - 1;
+    const mitteY = allein ? H / 2 + 6 : oben ? 182 : 410;
+    // Foto und Gruss wechseln die Seite - wie in einem Album, in das
+    // nacheinander eingeklebt wurde.
+    const fotoLinks = i % 2 === 0;
+    const fotoX = fotoLinks ? 225 : B - 225;
+    const kartenX = fotoLinks ? B - 245 : 245;
 
-    // Das Foto - verkleinert, sonst wiegt das PDF so viel wie alle Layouts zusammen.
-    if (g.pfadLayout.startsWith(layouts) && existsSync(g.pfadLayout)) {
-      const foto = await sharp(g.pfadLayout).rotate().resize({ width: 1400, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
-      d.save().rect(rand - 4, y - 4, breite + 8, hoehe + 8).fill('#ffffff').restore();
-      d.image(foto, rand, y, { fit: [breite, hoehe], align: 'center', valign: 'center' });
-    }
-
-    // Der Gruss auf einer weissen Karte
-    const x = rand + breite + luecke;
-    d.save().roundedRect(x, y - 4, breite, hoehe + 8, 8).fillAndStroke('#ffffff', '#e4d9c6').restore();
-    d.image(g.pfad, x + 8, y + 4, { fit: [breite - 16, hoehe - 8], align: 'center', valign: 'center' });
-
-    d.font('Helvetica').fontSize(9).fillColor(FARBE.leise).text(`${uhrzeit(g.erstellt)} Uhr`, x, y + hoehe + 10, {
-      width: breite,
-      align: 'right',
-    });
+    const bild = await foto(g);
+    if (bild) sofortbild(d, bild, fotoX, mitteY, 300, fotoLinks ? -2.5 : 2.5);
+    briefkarte(d, g.pfad, kartenX, mitteY, 340, 205, fotoLinks ? 1.5 : -1.5, `um ${uhrzeit(g.erstellt)} Uhr`, schrift);
+    herz(d, B / 2 - (fotoLinks ? 22 : -22), mitteY - 4, 9);
   }
 
   d.end();
@@ -244,10 +252,119 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   return { daten: Buffer.concat(teile), anzahl: gruesse.length };
 }
 
-const FARBE = { papier: '#faf6ee', gold: '#b8862f', text: '#2b2620', leise: '#8a8174' };
+const B = 841.89;
+const H = 595.28;
+const FARBE = {
+  papierHell: '#fffaf1',
+  papierRand: '#f1e6d2',
+  gold: '#b8862f',
+  goldHell: '#d9b86a',
+  text: '#2b2620',
+  leise: '#8a8174',
+  linie: '#e7dccb',
+  band: '#e8d6a2',
+};
 
-function papier(d: PDFKit.PDFDocument, b: number, h: number): void {
-  d.save().rect(0, 0, b, h).fill(FARBE.papier).restore();
+/** Eine Albumseite: warmes Papier, feiner goldener Doppelrahmen mit Eckverzierungen. */
+function seite(d: PDFKit.PDFDocument): void {
+  const grund = d.radialGradient(B / 2, H / 2, 60, B / 2, H / 2, B * 0.62);
+  grund.stop(0, FARBE.papierHell).stop(1, FARBE.papierRand);
+  d.rect(0, 0, B, H).fill(grund);
+
+  d.save().lineWidth(1.1).strokeColor(FARBE.gold).rect(18, 18, B - 36, H - 36).stroke().restore();
+  d.save().lineWidth(0.5).strokeColor(FARBE.goldHell).rect(24, 24, B - 48, H - 48).stroke().restore();
+  for (const [x, y, sx, sy] of [
+    [24, 24, 1, 1],
+    [B - 24, 24, -1, 1],
+    [24, H - 24, 1, -1],
+    [B - 24, H - 24, -1, -1],
+  ] as const) {
+    d.save().translate(x, y).scale(sx, sy);
+    d.lineWidth(0.9).strokeColor(FARBE.gold);
+    d.moveTo(6, 46).bezierCurveTo(6, 22, 22, 6, 46, 6).stroke();
+    d.moveTo(14, 30).bezierCurveTo(14, 20, 20, 14, 30, 14).stroke();
+    d.circle(14, 14, 2.6).fill(FARBE.gold);
+    d.restore();
+  }
+}
+
+/** Eine geschwungene Linie mit Herz in der Mitte - unter dem Titel. */
+function schnoerkel(d: PDFKit.PDFDocument, x: number, y: number, breite: number): void {
+  d.save().lineWidth(0.9).strokeColor(FARBE.gold);
+  d.moveTo(x - breite, y).bezierCurveTo(x - breite * 0.6, y - 8, x - breite * 0.3, y + 8, x - 16, y).stroke();
+  d.moveTo(x + breite, y).bezierCurveTo(x + breite * 0.6, y - 8, x + breite * 0.3, y + 8, x + 16, y).stroke();
+  d.restore();
+  herz(d, x, y, 7);
+}
+
+function herz(d: PDFKit.PDFDocument, x: number, y: number, r: number): void {
+  d.save()
+    .translate(x, y)
+    .moveTo(0, r * 0.9)
+    .bezierCurveTo(-r * 1.6, -r * 0.1, -r * 0.7, -r * 1.3, 0, -r * 0.4)
+    .bezierCurveTo(r * 0.7, -r * 1.3, r * 1.6, -r * 0.1, 0, r * 0.9)
+    .fill(FARBE.gold)
+    .restore();
+}
+
+/** Ein Foto wie ein eingeklebtes Sofortbild: weisser Rand, weicher Schatten, leicht schraeg. */
+function sofortbild(d: PDFKit.PDFDocument, bild: Buffer, mx: number, my: number, breite: number, winkel: number): void {
+  const rand = 9;
+  const hoehe = (breite - 2 * rand) / 1.5 + 2 * rand + 14;
+  const x = mx - breite / 2;
+  const y = my - hoehe / 2;
+  d.save().rotate(winkel, { origin: [mx, my] });
+  for (const [versatz, deckung] of [
+    [6, 0.05],
+    [4, 0.07],
+    [2, 0.09],
+  ] as const) {
+    d.save().fillOpacity(deckung).rect(x + versatz, y + versatz + 2, breite, hoehe).fill('#3a2a10').restore();
+  }
+  d.rect(x, y, breite, hoehe).fill('#ffffff');
+  d.image(bild, x + rand, y + rand, { fit: [breite - 2 * rand, (breite - 2 * rand) / 1.5], align: 'center', valign: 'center' });
+  klebeband(d, mx - 18, y - 5, -6);
+  d.restore();
+}
+
+/** Der Gruss auf liniertem Briefpapier mit zwei Klebestreifen, unten rechts die Uhrzeit. */
+function briefkarte(
+  d: PDFKit.PDFDocument,
+  pfad: string,
+  mx: number,
+  my: number,
+  breite: number,
+  hoehe: number,
+  winkel: number,
+  zeit: string,
+  schrift: string,
+): void {
+  const x = mx - breite / 2;
+  const y = my - hoehe / 2;
+  d.save().rotate(winkel, { origin: [mx, my] });
+  d.save().fillOpacity(0.07).rect(x + 4, y + 5, breite, hoehe).fill('#3a2a10').restore();
+  d.rect(x, y, breite, hoehe).fill('#fffdf7');
+  d.save().lineWidth(0.4).strokeColor(FARBE.linie);
+  for (let ly = y + hoehe / 6; ly < y + hoehe - 4; ly += hoehe / 6) d.moveTo(x + 10, ly).lineTo(x + breite - 10, ly).stroke();
+  d.restore();
+  d.image(pfad, x + 6, y + 6, { fit: [breite - 12, hoehe - 22], align: 'center', valign: 'center' });
+  d.font(schrift).fontSize(13).fillColor(FARBE.gold).text(zeit, x + 10, y + hoehe - 22, {
+    width: breite - 22,
+    align: 'right',
+    lineBreak: false,
+  });
+  klebeband(d, x - 6, y - 4, -35);
+  klebeband(d, x + breite - 34, y - 4, 35);
+  d.restore();
+}
+
+function klebeband(d: PDFKit.PDFDocument, x: number, y: number, winkel: number): void {
+  d.save()
+    .rotate(winkel, { origin: [x + 20, y + 7] })
+    .fillOpacity(0.72)
+    .rect(x, y, 40, 14)
+    .fill(FARBE.band)
+    .restore();
 }
 
 function datum(iso: string): string {
