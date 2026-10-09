@@ -129,15 +129,12 @@ describe('Gaestebuch', () => {
     const pdf = readFileSync(ergebnis!.pfad);
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
     const seiten = pdf.toString('latin1').match(/\/Type \/Page\b/g)?.length;
-    expect(seiten).toBe(1 + Math.ceil(anzahl / 2));
+    // Dazu die Fotos ohne Gruss, sechs je Seite.
+    expect(seiten).toBe(1 + Math.ceil(anzahl / 2) + Math.ceil(ergebnis!.fotos / 6));
   });
 
-  it('haengt auf Wunsch die Fotos ohne Gruss an - sechs je Seite, wie die Galerie', async () => {
+  it('haengt die Fotos ohne Gruss an - sechs je Seite, wie die Galerie', async () => {
     const seitenVon = (pdf: Buffer) => pdf.toString('latin1').match(/\/Type \/Page\b/g)?.length;
-    // Ab Werk aus: nur die Gruesse.
-    expect((await baueGaestebuchPdf(event))?.fotos).toBe(0);
-
-    event = aktualisiereEvent(event.id, { einstellungen: { gaestebuchAlleFotos: true } });
     for (let i = 0; i < 7; i++) await fotoMachen();
     // Herausgenommen und Probelauf bleiben draussen - wie in der Galerie.
     const verborgen = await fotoMachen();
@@ -156,16 +153,12 @@ describe('Gaestebuch', () => {
     expect(pdf?.anzahl).toBe(3);
     expect(pdf?.fotos).toBe(ohne.length);
     expect(seitenVon(pdf!.daten)).toBe(1 + Math.ceil(3 / 2) + Math.ceil(ohne.length / 6));
-
-    event = aktualisiereEvent(event.id, { einstellungen: { gaestebuchAlleFotos: false } });
-    expect((await baueGaestebuchPdf(event))?.fotos).toBe(0);
   });
 
-  it('ein Gaestebuch nur aus Fotos - aber nur, wenn das Gaestebuch selbst an ist', async () => {
+  it('entsteht immer - auch wenn das Gaestebuch fuer die Feier aus war', async () => {
     const roh = erstelleEvent({ name: 'Nur Fotos', datum: '2026-10-13' }, wurzel.events);
-    let nurFotos = aktualisiereEvent(roh.id, {
-      einstellungen: { vorlagen: ['standard-1-quer'], gaestebuchAktiv: true, gaestebuchAlleFotos: true },
-    });
+    const nurFotos = aktualisiereEvent(roh.id, { einstellungen: { vorlagen: ['standard-1-quer'] } });
+    expect(nurFotos.einstellungen.gaestebuchAktiv).toBe(false);
     // Fotos wie von der Box - aktiv sein muss die Feier dafuer nicht.
     await fotoMachen(false, nurFotos);
     await fotoMachen(false, nurFotos);
@@ -173,12 +166,11 @@ describe('Gaestebuch', () => {
     const pdf = await baueGaestebuchPdf(nurFotos);
     expect(pdf?.anzahl).toBe(0);
     expect(pdf?.fotos).toBe(2);
-
-    nurFotos = aktualisiereEvent(nurFotos.id, { einstellungen: { gaestebuchAktiv: false } });
-    expect(await baueGaestebuchPdf(nurFotos)).toBeNull();
+    // Deckblatt und eine Seite "Momente des Abends".
+    expect(pdf!.daten.toString('latin1').match(/\/Type \/Page\b/g)?.length).toBe(2);
   });
 
-  it('kein PDF ohne Gruss', async () => {
+  it('kein PDF ohne Fotos', async () => {
     const leer = erstelleEvent({ name: 'Ohne Grüße', datum: '2026-10-11' }, wurzel.events);
     expect(await erzeugeGaestebuchPdf(leer)).toBeNull();
   });
@@ -202,7 +194,6 @@ describe('Diashow-Einstellungen', () => {
     expect(EINSTELLUNGEN_VORGABE.diashowExtern).toBe(false);
     expect(EINSTELLUNGEN_VORGABE.gaestebuchAktiv).toBe(false);
     expect(EINSTELLUNGEN_VORGABE.gaestebuchSymbole).toBe(false);
-    expect(EINSTELLUNGEN_VORGABE.gaestebuchAlleFotos).toBe(false);
     // Auch eine Veranstaltung aus der Zeit vor diesen Funktionen hat sie aus.
     const alt = erstelleEvent({ name: 'Alte Feier', datum: '2026-10-12' }, wurzel.events);
     expect(alt.einstellungen.diashowAufStart).toBe(false);

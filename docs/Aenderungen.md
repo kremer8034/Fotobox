@@ -7,7 +7,9 @@ ihn auf der Box verstehst.
 ## 1.2.0
 
 Alle drei neuen Funktionen sind **ab Werk aus** und werden je Veranstaltung
-einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
+einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch. Nur
+das Gästebuch-PDF selbst entsteht immer – mit allen Fotos als Album, auch
+ohne Grüße.
 
 - **Diashow:** Steht die Box eine Weile unberührt, laufen am Startbildschirm
   die Fotos der Feier – mit der Einladung „Tippt auf den Bildschirm und macht
@@ -32,9 +34,11 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   dem Deckblatt der Name der Feier in Schreibschrift und ein Fächer aus den
   ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
   (Lochung, Spirale, Klebebindung – einseitig wie beidseitig gedruckt).
-- **Auch Fotos ohne Gruß im Gästebuch** (eigener Schalter, ab Werk aus): als
-  Anhang „Momente des Abends“ hinter den Grüßen, sechs je Seite, in der
-  Reihenfolge der Aufnahme – nur, was auch in der Galerie steht. Hochformat-
+- **Gästebuch bei jeder Übergabe – mit allen Fotos:** Das PDF entsteht immer,
+  auch wenn die Schreibfunktion aus war; dann ist es ein Album der Feier.
+  Fotos ohne Gruß stehen hinter den Grüßen unter „Momente des Abends“, sechs
+  je Seite, in der Reihenfolge der Aufnahme – nur, was auch in der Galerie
+  steht. Hochformat-
   Layouts bekommen im PDF einen hohen Rahmen statt eines kleinen Bildes im
   Querformat.
 - **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von

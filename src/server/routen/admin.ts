@@ -64,7 +64,7 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
-import { baueGaestebuchPdf, erzeugeGaestebuchPdf, fotosOhneGruss, gruesseVon, mitAllenFotos } from '../fach/gaestebuch.js';
+import { baueGaestebuchPdf, erzeugeGaestebuchPdf, fotosOhneGruss, gruesseVon } from '../fach/gaestebuch.js';
 import { oeffneDiashowFenster, schliesseDiashowFenster } from '../fach/kiosk-browser.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
@@ -922,8 +922,9 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const event = holeEvent(anfrage.params.id);
       if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
       try {
-        // Das Gaestebuch kommt als fertiges PDF mit - frisch erzeugt, damit
-        // auch der letzte Gruss des Abends darin steht.
+        // Das Gaestebuch kommt immer als fertiges PDF mit - auch ohne
+        // Gruesse, dann als Album der Fotos. Frisch erzeugt, damit auch das
+        // letzte Foto und der letzte Gruss des Abends darin stehen.
         await erzeugeGaestebuchPdf(event).catch((fehler: Error) =>
           protokolliere('warnung', 'gaestebuch', `Gästebuch-PDF nicht erzeugt: ${fehler.message}`),
         );
@@ -946,8 +947,8 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
     return {
       anzahl: gruesseVon(event.id).length,
-      // Fotos ohne Gruss, die als Anhang mit hineinkommen - 0, solange der Schalter aus ist.
-      fotos: mitAllenFotos(event) ? fotosOhneGruss(event.id).length : 0,
+      // Die Fotos ohne Gruss kommen immer mit - als "Momente des Abends".
+      fotos: fotosOhneGruss(event.id).length,
     };
   });
 

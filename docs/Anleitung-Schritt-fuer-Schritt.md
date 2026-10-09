@@ -521,7 +521,12 @@ einfach `192.168.254.1/diashow`.
 
 ## Das Gästebuch
 
-Ab Werk ist es **aus**. Ist es bei **Ausgabe** eingeschaltet, steht nach dem Foto der Knopf **„Ins
+Das **Gästebuch-PDF bekommt der Gastgeber bei jeder Übergabe** – auch, wenn
+niemand etwas schreiben konnte. Dann ist es die Erinnerung an die Feier in
+Albumform: ein Deckblatt und alle Fotos unter **„Momente des Abends“**.
+
+Die **Schreibfunktion** ist ab Werk **aus**. Ist sie bei **Ausgabe**
+eingeschaltet, steht nach dem Foto der Knopf **„Ins
 Gästebuch schreiben“**. Die Gäste schreiben oder malen mit dem Finger einen
 Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
 
@@ -536,20 +541,18 @@ Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
   das Symbol genau dort ab (Antippen geht auch, dann landet es in der Mitte),
   in der gewählten Farbe. Danach lässt es sich weiter verschieben,
   „Rückgängig“ nimmt es wieder weg. Die Auswahl ist für jede Feier dieselbe.
-- **Auch Fotos ohne Gruß** (eigener Schalter unter dem Gästebuch, ab Werk
-  aus): Nicht jede Gruppe schreibt etwas. Mit diesem Schalter kommen auch ihre
-  Fotos ins Gästebuch – als Anhang **„Momente des Abends“** hinter den Grüßen,
-  sechs Fotos je Seite, in der Reihenfolge der Aufnahme. So bleiben die Grüße
-  vorne beisammen, und das Buch wird nicht unnötig dick (300 Fotos sind rund
-  50 Seiten). Hinein kommt nur, was auch in der Galerie steht: kein
-  Probelauf, nichts, was du aus der Galerie genommen hast. Wer nur die Grüße
-  drucken lassen will, lässt den Schalter aus.
+- **Fotos ohne Gruß:** Nicht jede Gruppe schreibt etwas. Ihre Fotos stehen
+  hinter den Grüßen unter **„Momente des Abends“**, sechs je Seite, in der
+  Reihenfolge der Aufnahme. So bleiben die Grüße vorne beisammen, und das
+  Buch wird nicht unnötig dick (300 Fotos sind rund 50 Seiten). Hinein kommt
+  nur, was auch in der Galerie steht: kein Probelauf, nichts, was du aus der
+  Galerie genommen hast.
 
 Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
 → **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick
 (Ordner `05_gaestebuch`): gestaltet wie ein Erinnerungsalbum – ein Deckblatt
 mit den ersten Fotos, danach je Seite zwei Fotos als eingeklebte Sofortbilder
-mit ihrem Gruß auf einer Briefkarte. Im Gästebuch stehen die fertigen
+mit ihrem Gruß auf einer Briefkarte, dann die übrigen Fotos. Im Gästebuch stehen die fertigen
 Layouts, so wie die Gäste sie auch ausgedruckt bekommen haben – im Querformat
 wie im Hochformat.
 
@@ -609,8 +612,8 @@ ist. Erst dann meldet sie Vollzug.
 
 Auf dem Stick landen nur die Fotos: die Ordner `01_originale` (die
 unveränderten Kamerabilder), `02_bearbeitet` (mit Filter) und `03_layouts`
-(die fertigen Bilder, wie sie gedruckt wurden) – und, wenn Gäste ins Gästebuch
-geschrieben haben, `05_gaestebuch` mit dem Gästebuch als PDF. Druckdateien, Testfotos und
+(die fertigen Bilder, wie sie gedruckt wurden) – und immer `05_gaestebuch`
+mit dem Gästebuch als PDF (und den Grüßen, falls Gäste geschrieben haben). Druckdateien, Testfotos und
 die Unterlagen der Box – Auslagen und Einstellungen – bleiben auf der Box.
 
 **Danach von der Box löschen:** Die Fotos gehören jetzt dem Gastgeber, nicht

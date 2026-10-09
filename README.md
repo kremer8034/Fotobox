@@ -148,9 +148,9 @@ Papier“), nicht als Fehlercode.
   mit Captive Portal genügt `192.168.254.1/diashow`. Neue Fotos kommen sofort
   an die Reihe. Gezeigt wird nur, was auch in der Galerie steht.
 - **Digitales Gästebuch**: Gäste schreiben nach dem Foto mit dem Finger einen
-  Gruß. Der Gastgeber bekommt alle Grüße mit dem jeweiligen Foto als
-  **Gästebuch-PDF** bei der Übergabe. Löscht ein Gast sein Foto, geht der Gruß
-  mit. Auf Wunsch kommen auch die Fotos ohne Gruß als Anhang dazu.
+  Gruß. Löscht ein Gast sein Foto, geht der Gruß mit. Das **Gästebuch-PDF**
+  bekommt der Gastgeber bei jeder Übergabe – mit allen Fotos der Feier als
+  Album, die Grüße neben ihrem Foto. Auch ohne Schreibfunktion.
 
 **Kiosk und Servicemenü**
 - **Kiosk-Sperre**: versteckter Kreis oben rechts, eine Sekunde halten, PIN.
@@ -273,7 +273,7 @@ Fotobox-Daten/
       02_bearbeitet/            Fotos mit Filter
       03_layouts/               fertige Layouts, der Inhalt der Galerie
       04_druck/                 Druckdateien 152,4 × 101,6 mm (bleiben bei der Übergabe auf der Box)
-      05_gaestebuch/            handgeschriebene Grüße und Gaestebuch.pdf (gehen mit der Übergabe)
+      05_gaestebuch/            Gaestebuch.pdf und handgeschriebene Grüße (gehen mit der Übergabe)
       _probelauf/               Testfotos (gehen nicht in die Übergabe)
       .cache/                   Vorschaubilder, Testdrucke, Unterlagen
       auslagen.csv              Abrechnung (bleibt bei der Übergabe auf der Box)

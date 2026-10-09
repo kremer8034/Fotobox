@@ -131,11 +131,6 @@ export function fotosOhneGruss(eventId: string): { ausgabeId: string; pfadLayout
   ).map((z) => ({ ausgabeId: z.id, pfadLayout: z.pfad_layout, erstellt: z.erstellt }));
 }
 
-/** Kommen die Fotos ohne Gruss mit ins Gaestebuch? Nur, wenn beides eingeschaltet ist. */
-export function mitAllenFotos(event: Veranstaltung): boolean {
-  return event.einstellungen.gaestebuchAktiv && event.einstellungen.gaestebuchAlleFotos;
-}
-
 /** Gibt es zu diesem Foto schon einen Gruss? */
 export function hatGruss(ausgabeId: string): boolean {
   return holeDb().prepare('SELECT 1 FROM gaestebuch WHERE ausgabe_id = ?').get(ausgabeId) !== undefined;
@@ -195,11 +190,15 @@ interface GaestebuchPdf {
 
 /**
  * Das Gaestebuch als PDF im Speicher: ein Deckblatt, danach je Seite zwei
- * Eintraege - Foto und Gruss nebeneinander. Auf Wunsch am Ende die Fotos ohne
- * Gruss, sechs je Seite. Querformat A4, damit es sich auch ausdrucken und
- * binden laesst.
+ * Eintraege - Foto und Gruss nebeneinander -, am Ende alle Fotos ohne Gruss,
+ * sechs je Seite. Querformat A4, damit es sich auch ausdrucken und binden
+ * laesst.
  *
- * @returns null, wenn nichts hineingehoert
+ * Es entsteht immer, auch wenn die Gaeste keine Gruesse schreiben konnten:
+ * Dann ist es die Erinnerung an die Feier in Albumform, die der Gastgeber
+ * bei der Uebergabe bekommt.
+ *
+ * @returns null, wenn es noch kein Foto gibt
  */
 export function baueGaestebuchPdf(event: Veranstaltung): Promise<GaestebuchPdf | null> {
   const laufend = inArbeit.get(event.id);
@@ -215,7 +214,7 @@ async function baue(event: Veranstaltung): Promise<GaestebuchPdf | null> {
   // Nur Layouts, die dort liegen, wo Layouts hingehoeren - der Pfad kommt aus
   // der Datenbank, nicht von aussen, aber sicher ist sicher.
   const vorhanden = (pfad: string) => pfad.startsWith(layouts) && existsSync(pfad);
-  const ohneGruss = mitAllenFotos(event) ? fotosOhneGruss(event.id).filter((f) => vorhanden(f.pfadLayout)) : [];
+  const ohneGruss = fotosOhneGruss(event.id).filter((f) => vorhanden(f.pfadLayout));
   if (gruesse.length === 0 && ohneGruss.length === 0) return null;
 
   const d = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0, autoFirstPage: false });
@@ -306,13 +305,16 @@ async function baue(event: Veranstaltung): Promise<GaestebuchPdf | null> {
     herz(d, luecke, mitteY - 4, 9);
   }
 
-  // ---- Anhang: Momente des Abends, sechs Fotos je Seite -----------------
+  // ---- Momente des Abends: alle Fotos ohne Gruss, sechs je Seite --------
   // Dichter als die Grussseiten - bei 300 Fotos sind das 50 Seiten statt 150,
   // und die Gruesse bleiben vorne beisammen.
   for (let start = 0; start < ohneGruss.length; start += ANHANG_JE_SEITE) {
     if (start === 0) neueSeite('Momente des Abends', 30);
     else neueSeite(event.name);
     const stapel = ohneGruss.slice(start, start + ANHANG_JE_SEITE);
+    // Die sechs Bilder einer Seite zugleich verkleinern - bei ein paar hundert
+    // Fotos wartet die Uebergabe sonst unnoetig lange.
+    const bilder = await Promise.all(stapel.map((f) => foto(f.pfadLayout, 900)));
     // Bis drei Fotos: eine Reihe in der Mitte, sonst zwei Reihen zu je drei.
     const reihen = stapel.length <= 3 ? [stapel.length] : [3, stapel.length - 3];
     const reiheY = reihen.length === 1 ? [H / 2 + 10] : [ANHANG_OBEN, ANHANG_UNTEN];
@@ -321,7 +323,7 @@ async function baue(event: Veranstaltung): Promise<GaestebuchPdf | null> {
     for (const [r, anzahlInReihe] of reihen.entries()) {
       const links = (innenLinks + innenRechts) / 2 - (anzahlInReihe * spalte) / 2;
       for (let k = 0; k < anzahlInReihe; k++, n++) {
-        const bild = await foto(stapel[n]!.pfadLayout, 900);
+        const bild = bilder[n];
         if (!bild) continue;
         // Wie von Hand eingeklebt: jedes etwas anders gedreht und versetzt.
         const j = (start + n) % ANHANG_WINKEL.length;

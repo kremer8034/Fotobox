@@ -38,7 +38,6 @@ interface EventVoll {
     diashowWechselSekunden: number;
     gaestebuchAktiv: boolean;
     gaestebuchSymbole: boolean;
-    gaestebuchAlleFotos: boolean;
   };
   auslagen: {
     sitzungen: number;
@@ -1396,7 +1395,7 @@ function DiashowGaestebuchKarte({
     return () => {
       aktiv = false;
     };
-  }, [eventId, galerieAktiv, e.diashowExtern, e.gaestebuchAktiv, e.gaestebuchAlleFotos]);
+  }, [eventId, galerieAktiv, e.diashowExtern, e.gaestebuchAktiv]);
 
   async function fenster(an: boolean) {
     try {
@@ -1487,8 +1486,9 @@ function DiashowGaestebuchKarte({
 
       <h2 style={{ marginTop: '1.4rem' }}>Gästebuch</h2>
       <p style={{ ...leise, marginTop: 0 }}>
-        Nach dem Foto können Gäste mit dem Finger einen Gruß schreiben. Den bekommt nur der Gastgeber: als
-        Gästebuch-PDF mit Foto und Gruß bei der Übergabe. In Galerie und Diashow erscheinen die Grüße nie.
+        Das Gästebuch-PDF bekommt der Gastgeber bei jeder Übergabe – alle Fotos der Feier, gestaltet wie ein
+        Album. Mit dem Schalter können Gäste nach dem Foto zusätzlich mit dem Finger einen Gruß schreiben, der
+        dann neben ihrem Foto steht. In Galerie und Diashow erscheinen die Grüße nie.
       </p>
       <div className="zeile">
         <Schalter
@@ -1503,19 +1503,15 @@ function DiashowGaestebuchKarte({
             beiWechsel={(an) => void beiAenderung({ gaestebuchSymbole: an })}
           />
         )}
-        {e.gaestebuchAktiv && (
-          <Schalter
-            an={e.gaestebuchAlleFotos}
-            name="Auch Fotos ohne Gruß – als Anhang „Momente des Abends“"
-            beiWechsel={(an) => void beiAenderung({ gaestebuchAlleFotos: an })}
-          />
-        )}
         {gaestebuch !== null && gaestebuch.anzahl + gaestebuch.fotos > 0 && (
           <PdfKnopf
             href={`/api/admin/events/${eventId}/gaestebuch.pdf`}
             beschriftung={`Gästebuch ansehen (${[
               gaestebuch.anzahl > 0 ? `${gaestebuch.anzahl} ${gaestebuch.anzahl === 1 ? 'Gruß' : 'Grüße'}` : '',
-              gaestebuch.fotos > 0 ? `${gaestebuch.fotos} ${gaestebuch.fotos === 1 ? 'Foto' : 'Fotos'} ohne Gruß` : '',
+              // "ohne Gruss" nur, wenn es Gruesse gibt - sonst sind es einfach die Fotos der Feier.
+              gaestebuch.fotos > 0
+                ? `${gaestebuch.fotos} ${gaestebuch.fotos === 1 ? 'Foto' : 'Fotos'}${gaestebuch.anzahl > 0 ? ' ohne Gruß' : ''}`
+                : '',
             ]
               .filter(Boolean)
               .join(', ')})`}
