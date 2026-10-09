@@ -311,7 +311,16 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             sitzung={schirm.sitzung}
             zeiten={start.zeiten!}
             klaenge={start.toene!}
-            beiFertig={() => setzeSchirm({ art: 'filter', sitzungId: schirm.sitzung.sitzungId })}
+            beiFertig={() => {
+              const sitzungId = schirm.sitzung.sitzungId;
+              setzeSchirm({ art: 'filter', sitzungId });
+              // Gibt es nur eine Wahl (meist "Ohne Filter"), gibt es nichts zu
+              // entscheiden - dann gleich zusammensetzen, statt den Gast vor
+              // eine einzelne Kachel zu stellen.
+              const auswahl = start.filter ?? [];
+              const einziger = auswahl.length <= 1 ? (auswahl[0]?.id ?? 'ohne') : null;
+              if (einziger) void waehleFilter(sitzungId, einziger);
+            }}
             beiAbbruch={(grund) => {
               setzeFehler(grund);
               setzeSchirm({ art: 'start' });

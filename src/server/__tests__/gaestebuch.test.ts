@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
@@ -177,12 +177,15 @@ describe('Gaestebuch', () => {
 
   it('geht mit der Uebergabe an den Gastgeber - der Probelauf nicht', async () => {
     await erzeugeGaestebuchPdf(event);
+    // Eine liegengebliebene Zwischendatei (Erzeugung abgebrochen) geht nicht mit.
+    writeFileSync(join(eventpfade(event.ordner).gaestebuch, '.Gaestebuch.pdf.abc.tmp'), 'halb');
     const ziel = mkdtempSync(join(tmpdir(), 'fotobox-stick-'));
     const ergebnis = await uebergebeAufDatentraeger(event, ziel);
     expect(ergebnis.geprueft).toBe(true);
     const kopie = join(ziel, readdirSync(ziel)[0]!);
     const dateien = readdirSync(join(kopie, '05_gaestebuch'));
     expect(dateien).toContain('Gaestebuch.pdf');
+    expect(dateien.some((d) => d.endsWith('.tmp'))).toBe(false);
     expect(dateien.filter((d) => d.endsWith('.png'))).toHaveLength(3);
     expect(existsSync(join(kopie, '_probelauf'))).toBe(false);
   });

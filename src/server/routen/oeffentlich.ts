@@ -73,7 +73,7 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
   app.get<{ Params: { token: string } }>('/api/galerie/:token', async (anfrage, antwort) => {
     const event = galerieEvent(anfrage.params.token);
     if (!event) {
-      return antwort.code(404).send({ fehler: 'Galerie nicht verfuegbar.' });
+      return antwort.code(404).send({ fehler: 'Galerie nicht verfügbar.' });
     }
     const eintraege = galerieEintraege(event.id);
     return {

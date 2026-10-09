@@ -130,7 +130,7 @@ export function starteSitzung(event: Veranstaltung, vorlageId: string): SitzungZ
   const vorlage = holeVorlage(vorlageId);
   if (!vorlage) throw new Error('Vorlage nicht gefunden.');
   if (!event.einstellungen.vorlagen.includes(vorlageId)) {
-    throw new Error('Diese Vorlage ist fuer die Veranstaltung nicht freigegeben.');
+    throw new Error('Diese Vorlage ist für die Veranstaltung nicht freigegeben.');
   }
 
   const id = randomUUID();

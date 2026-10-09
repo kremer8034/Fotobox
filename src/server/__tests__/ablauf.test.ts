@@ -59,7 +59,7 @@ describe('Lebenszyklus einer Veranstaltung', () => {
 
   it('weist unvorgesehene Statuswechsel ab', () => {
     const e = erstelleEvent({ name: 'Feier C', datum: '2026-01-03' }, wurzel.events);
-    expect(() => setzeStatus(e.id, 'aktiv')).toThrow(/nicht vorgesehen/);
+    expect(() => setzeStatus(e.id, 'aktiv')).toThrow(/geht es nicht direkt/);
   });
 });
 

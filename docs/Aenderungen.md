@@ -48,6 +48,22 @@ ohne Grüße.
   Diashow-Vorschau öffnen sich in der Verwaltung mit „Schließen“ statt in
   einem neuen Fenster, aus dem man im Kiosk-Vollbild nicht mehr herauskam.
   Die Verwaltung lässt sich nicht mehr in fremde Webseiten einbetten.
+- **Aus der Gesamtdurchsicht:**
+  - Nach dem Drucken bleibt die Ergebnisseite stehen, wenn das Gästebuch an
+    ist – vorher ging es sofort zum Start, und wer erst drucken und dann
+    schreiben wollte, kam nicht mehr ans Gästebuch.
+  - Gibt es nur eine Filter-Kachel („Ohne Filter“), entfällt die Filterwahl;
+    das Bild wird gleich zusammengesetzt.
+  - Übergabe: Der Knopf lässt sich während des Kopierens nicht ein zweites
+    Mal drücken, und das Ergebnis („… übertragen und geprüft“ bzw.
+    „unvollständig“) bleibt stehen, statt nach vier Sekunden zu
+    verschwinden. Eine halb geschriebene Zwischendatei geht nie mit auf den
+    Stick; ein veraltetes Gästebuch-PDF auch nicht.
+  - Im Gästebuch stehen die Grüße in der Reihenfolge der Fotos – wer seinen
+    Gruß neu schreibt, rutscht nicht mehr ans Ende.
+  - Meldungen in Verwaltung, Startbereit-Check und Protokoll mit richtigen
+    Umlauten („läuft“, „geprüft“, „Gerät“ …); ein abgelehnter Statuswechsel
+    nennt die Stufen beim Namen statt mit Datenbankwörtern.
 - **Startbereit-Check verständlicher:** Besitzer-PIN und Betreuer-PIN sind
   jetzt zwei getrennte Punkte. Die Besitzer-PIN gilt für die ganze Box
   („Gerät“), die Betreuer-PIN für die einzelne Veranstaltung. Vorher stand

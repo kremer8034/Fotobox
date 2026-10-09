@@ -519,7 +519,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(400).send({ fehler: 'Aus der Datei liess sich kein Schriftname lesen.' });
     }
 
-    protokolliere('info', 'schriften', `Schrift "${familie}" hinzugefuegt.`);
+    protokolliere('info', 'schriften', `Schrift "${familie}" hinzugefügt.`);
     return { datei: name, familie };
   });
 
@@ -823,7 +823,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
           // Liegengebliebene Drucke frueherer Feiern gehen hier nicht mehr raus.
           const zurueck = stelleFremdeZurueck(event.id);
           if (zurueck > 0) {
-            protokolliere('warnung', 'druck', `${zurueck} wartende Drucke frueherer Veranstaltungen zurueckgestellt.`);
+            protokolliere('warnung', 'druck', `${zurueck} wartende Drucke früherer Veranstaltungen zurückgestellt.`);
           }
         }
         if (koerper.status === 'aktiv') await betrieb.starteLiveView();
@@ -1075,7 +1075,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const eintrag = listeAdressen(anfrage.params.id).find((a) => a.id === anfrage.params.versandId);
       if (!eintrag) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
       loescheAdresse(eintrag.id);
-      protokolliere('info', 'email', 'Eine E-Mail-Adresse auf Wunsch geloescht.');
+      protokolliere('info', 'email', 'Eine E-Mail-Adresse auf Wunsch gelöscht.');
       return { ok: true };
     },
   );
@@ -1085,7 +1085,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     const event = holeEvent(anfrage.params.id);
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
     const geloescht = loescheAlleAdressen(event.id);
-    protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) von "${event.name}" geloescht.`);
+    protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) von "${event.name}" gelöscht.`);
     return { geloescht };
   });
 
@@ -1184,7 +1184,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
    */
   app.delete('/api/admin/protokoll', async () => {
     const geloescht = holeDb().prepare("DELETE FROM protokoll WHERE ebene IN ('warnung', 'fehler')").run().changes;
-    protokolliere('info', 'verwaltung', `${geloescht} Meldung(en) aus "Was zuletzt gehakt hat" geloescht.`);
+    protokolliere('info', 'verwaltung', `${geloescht} Meldung(en) aus "Was zuletzt gehakt hat" gelöscht.`);
     return { geloescht };
   });
 }

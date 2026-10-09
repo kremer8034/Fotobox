@@ -11,6 +11,7 @@ import {
   type EventStatus,
   type Veranstaltung,
   FILTER_OHNE,
+  STATUS_NAME,
 } from '../../shared/typen.js';
 
 /**
@@ -190,14 +191,14 @@ export function setzeStatus(id: string, neu: EventStatus): Veranstaltung {
 
   const erlaubt = UEBERGAENGE[event.status] ?? [];
   if (!erlaubt.includes(neu)) {
-    throw new Error(`Wechsel von "${event.status}" nach "${neu}" ist nicht vorgesehen.`);
+    throw new Error(`Von „${STATUS_NAME[event.status]}“ geht es nicht direkt nach „${STATUS_NAME[neu]}“.`);
   }
 
   if (neu === 'aktiv') {
     const anderes = holeAktivesEvent();
     if (anderes && anderes.id !== id) {
       throw new Error(
-        `"${anderes.name}" laeuft gerade. Es kann immer nur eine Veranstaltung aktiv sein.`,
+        `„${anderes.name}“ läuft gerade. Es kann immer nur eine Veranstaltung aktiv sein.`,
       );
     }
   }

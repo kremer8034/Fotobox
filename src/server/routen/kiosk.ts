@@ -293,7 +293,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
       }
       const index = Number(anfrage.params.index);
-      if (!Number.isInteger(index) || index < 1) return antwort.code(400).send({ fehler: 'Ungueltiger Platz.' });
+      if (!Number.isInteger(index) || index < 1) return antwort.code(400).send({ fehler: 'Ungültiger Platz.' });
       const bild = await bestaetigungsbild(anfrage.params.id, index).catch(() => null);
       if (!bild) return antwort.code(404).send({ fehler: 'Foto nicht gefunden.' });
       return antwort.type('image/jpeg').header('Cache-Control', 'no-store').send(bild);
@@ -779,7 +779,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     } catch (fehler) {
       return antwort.code(409).send({ fehler: (fehler as Error).message });
     }
-    protokolliere('info', 'event', `"${event.name}" ${an ? 'pausiert' : 'laeuft weiter'} (Servicemenue).`);
+    protokolliere('info', 'event', `"${event.name}" ${an ? 'pausiert' : 'läuft weiter'} (Servicemenü).`);
     return { ok: true, pausiert: an };
   });
 
@@ -811,7 +811,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       protokolliere('warnung', 'system', `Herunterfahren gescheitert: ${text}`);
       return antwort.code(500).send({ fehler: 'Windows hat das Herunterfahren abgelehnt. Bitte über das Startmenü ausschalten.' });
     }
-    protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenue).');
+    protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenü).');
     return { ok: true, simuliert: false };
   });
 
@@ -821,7 +821,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
    */
   app.get<{ Querystring: { text?: string } }>('/api/qr', async (anfrage, antwort) => {
     const text = anfrage.query.text ?? '';
-    if (!text || text.length > 500) return antwort.code(400).send({ fehler: 'Kein gueltiger Text.' });
+    if (!text || text.length > 500) return antwort.code(400).send({ fehler: 'Kein gültiger Text.' });
     const png = await QRCode.toBuffer(text, { width: 512, margin: 1 });
     return antwort.header('Content-Type', 'image/png').send(png);
   });
@@ -845,16 +845,16 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   app.post('/api/kiosk/service/kiosk-schliessen', async () => {
     writeFileSync(join(konfig.datenpfad, 'kiosk-aus.txt'), `Kiosk geschlossen am ${new Date().toISOString()}\r\n`);
     if (process.platform !== 'win32' || !konfig.echteHardware) {
-      protokolliere('info', 'system', 'Kiosk schliessen angefordert (Entwicklungsbetrieb - nur protokolliert).');
+      protokolliere('info', 'system', 'Kiosk schließen angefordert (Entwicklungsbetrieb - nur protokolliert).');
       return { ok: true, simuliert: true };
     }
     // Nicht abwarten: Die Antwort soll den Browser noch erreichen, bevor er zugeht.
     void schliesseKioskBrowser().then(
       (anzahl) =>
         anzahl > 0
-          ? protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).')
-          : protokolliere('warnung', 'system', 'Kiosk schliessen: Kein Kiosk-Browser gefunden.'),
-      (fehler: Error) => protokolliere('warnung', 'system', `Kiosk schliessen gescheitert: ${fehler.message}`),
+          ? protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenü).')
+          : protokolliere('warnung', 'system', 'Kiosk schließen: Kein Kiosk-Browser gefunden.'),
+      (fehler: Error) => protokolliere('warnung', 'system', `Kiosk schließen gescheitert: ${fehler.message}`),
     );
     return { ok: true, simuliert: false };
   });

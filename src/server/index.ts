@@ -64,7 +64,7 @@ legeStandardvorlagenAn();
 
 const wiederAngestellt = stelleUnterbrocheneWiederAn();
 if (wiederAngestellt > 0) {
-  protokolliere('warnung', 'druck', `${wiederAngestellt} unterbrochene(r) Druckauftrag/-auftraege nach Neustart wieder angestellt.`);
+  protokolliere('warnung', 'druck', `${wiederAngestellt} unterbrochene(r) Druckauftrag/-aufträge nach Neustart wieder angestellt.`);
 }
 
 const betrieb = new Betrieb({
@@ -120,7 +120,7 @@ async function galerieAn(): Promise<void> {
   if (oeffentlich) return;
   const adresse = lanAdresse();
   if (!adresse) {
-    protokolliere('warnung', 'server', 'Galerie gewuenscht, aber keine Netzwerkadresse gefunden.');
+    protokolliere('warnung', 'server', 'Galerie gewünscht, aber keine Netzwerkadresse gefunden.');
     return;
   }
   // Nur lesende Anfragen, keine Uploads: ein kleines Limit fuer den Rumpf
@@ -156,7 +156,7 @@ async function pruefeGalerie(): Promise<void> {
   // Router), lauschte die Galerie vorher weiter an der alten - der QR-Code
   // zeigte schon auf die neue, und auf dem Handy lud nichts.
   if (soll && oeffentlich && galerieAdresseJetzt !== lanAdresse()) {
-    protokolliere('info', 'server', `Netzwerkadresse hat sich geaendert (${galerieAdresseJetzt} -> ${lanAdresse()}).`);
+    protokolliere('info', 'server', `Netzwerkadresse hat sich geändert (${galerieAdresseJetzt} -> ${lanAdresse()}).`);
     await galerieAus();
   }
   if (soll) await galerieAn();
@@ -212,9 +212,9 @@ const galerieUhr = setInterval(() => {
 function raeumeAdressenAuf(): void {
   try {
     const geloescht = raeumeAlleAdressenAuf(listeEvents());
-    if (geloescht > 0) protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) nach Ablauf der Frist geloescht.`);
+    if (geloescht > 0) protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) nach Ablauf der Frist gelöscht.`);
   } catch (fehler) {
-    protokolliere('fehler', 'email', `Loeschen alter Adressen: ${(fehler as Error).message}`);
+    protokolliere('fehler', 'email', `Löschen alter Adressen: ${(fehler as Error).message}`);
   }
 }
 raeumeAdressenAuf();
@@ -227,7 +227,7 @@ const abbruchUhr = setInterval(() => {
   const event = holeAktivesEvent();
   const grenzeMs = (event?.einstellungen.zeiten.sitzungAbbruch ?? 180) * 1000;
   if (Date.now() - betrieb.letzteBeruehrung > grenzeMs) {
-    protokolliere('info', 'kiosk', 'Sitzung nach Untaetigkeit verworfen.');
+    protokolliere('info', 'kiosk', 'Sitzung nach Untätigkeit verworfen.');
     brichSitzungAb(sitzung.id);
     betrieb.aktiveSitzung = null;
   }
@@ -271,7 +271,7 @@ process.on('SIGTERM', () => void beende());
  * Schritt schon festgehalten.
  */
 process.on('unhandledRejection', (grund) => {
-  protokolliere('fehler', 'server', `Unbehandelter Fehler (Betrieb laeuft weiter): ${beschreibe(grund)}`);
+  protokolliere('fehler', 'server', `Unbehandelter Fehler (Betrieb läuft weiter): ${beschreibe(grund)}`);
 });
 process.on('uncaughtException', (fehler) => {
   protokolliere('fehler', 'server', `Absturz, Neustart folgt: ${beschreibe(fehler)}`);

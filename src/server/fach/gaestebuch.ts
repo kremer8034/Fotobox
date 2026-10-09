@@ -56,7 +56,7 @@ export async function speichereGruss(
     const bild = sharp(png, { limitInputPixels: MAX_KANTE * MAX_KANTE });
     const info = await bild.metadata();
     if (info.format !== 'png' || !info.width || !info.height || info.width > MAX_KANTE || info.height > MAX_KANTE) {
-      throw new Error('Kein gueltiges Bild.');
+      throw new Error('Kein gültiges Bild.');
     }
     daten = await bild.png({ compressionLevel: 9 }).toBuffer();
   } catch {
@@ -93,14 +93,18 @@ export class UngueltigerGruss extends Error {
   }
 }
 
-/** Die Gruesse einer Veranstaltung in der Reihenfolge, in der sie geschrieben wurden - ohne Probelauf. */
+/**
+ * Die Gruesse einer Veranstaltung in der Reihenfolge der Fotos - ohne
+ * Probelauf. Nach dem Foto, nicht nach dem Schreiben: Wer seinen Gruss neu
+ * schreibt, soll im Gaestebuch nicht ans Ende rutschen.
+ */
 export function gruesseVon(eventId: string): Gruss[] {
   const zeilen = holeDb()
     .prepare(
       `SELECT g.id, g.ausgabe_id, g.pfad, a.pfad_layout, g.erstellt
          FROM gaestebuch g JOIN ausgaben a ON a.id = g.ausgabe_id
         WHERE g.event_id = ? AND g.ist_test = 0
-        ORDER BY g.erstellt ASC`,
+        ORDER BY a.erstellt ASC`,
     )
     .all(eventId) as Zeile[];
   return zeilen.map((z) => ({
@@ -154,14 +158,19 @@ export function grussDateienVon(ausgabeId: string): string[] {
  * die Uebergabe zugleich, schrieben sonst zwei Erzeugungen in dieselbe Datei,
  * und auf dem Stick laege ein kaputtes PDF.
  *
- * @returns null, wenn es (noch) keinen Gruss gibt
+ * @returns null, wenn es (noch) kein Foto gibt
  */
 export async function erzeugeGaestebuchPdf(
   event: Veranstaltung,
 ): Promise<{ pfad: string; anzahl: number; fotos: number } | null> {
   const pdf = await baueGaestebuchPdf(event);
-  if (!pdf) return null;
   const ordner = eventpfade(event.ordner).gaestebuch;
+  if (!pdf) {
+    // Nichts mehr hineinzulegen (etwa alle Fotos geloescht): Dann soll auch
+    // kein altes Gaestebuch von vorhin mit auf den Stick.
+    await unlink(join(ordner, PDF_NAME)).catch(() => undefined);
+    return null;
+  }
   await mkdir(ordner, { recursive: true });
   const pfad = join(ordner, PDF_NAME);
   const zwischen = join(ordner, `.${PDF_NAME}.${randomUUID()}.tmp`);

@@ -85,7 +85,7 @@ export class Betrieb {
         // Treiber genommen hat, aendert sich nur, wenn jemand dort etwas umstellt.
         if (!meldung || meldung === this.letzteDruckMeldung) return;
         this.letzteDruckMeldung = meldung;
-        protokolliere('info', 'druck', `An Windows uebergeben. ${meldung}`);
+        protokolliere('info', 'druck', `An Windows übergeben. ${meldung}`);
       },
       // Waehrend der Drucker nach seinem Vorrat gefragt wird, nicht drucken.
       () => this.vorratAbfrage ?? Promise.resolve(),
@@ -443,8 +443,8 @@ export class Betrieb {
           protokolliere(
             'fehler',
             'kamera',
-            'digiCamControl antwortet, fuehrt aber keine Befehle aus. In digiCamControl unter File > Settings > ' +
-              'Webserver den Haken "Interaktion ueber Webserver erlauben" setzen.',
+            'digiCamControl antwortet, führt aber keine Befehle aus. In digiCamControl unter File > Settings > ' +
+              'Webserver den Haken "Interaktion über Webserver erlauben" setzen.',
           );
         }
 
@@ -456,15 +456,15 @@ export class Betrieb {
           }
           // Nur einmal melden, nicht alle drei Sekunden.
           if (massnahme === 'programm-fehlt' && this.letzteMassnahme !== 'programm-fehlt') {
-            protokolliere('fehler', 'kamera', 'digiCamControl ist nicht installiert oder der Pfad unter Geraet stimmt nicht.');
+            protokolliere('fehler', 'kamera', 'digiCamControl ist nicht installiert oder der Pfad unter Gerät stimmt nicht.');
           }
           if (massnahme === 'webserver-aus' && this.letzteMassnahme !== 'webserver-aus') {
             protokolliere(
               'fehler',
               'kamera',
-              'digiCamControl laeuft, sein Webserver antwortet aber nicht. In digiCamControl unter File > Settings > ' +
-                'Webserver "Benutze Webserver" und "Interaktion ueber Webserver erlauben" anhaken, Port 5513, ' +
-                'dann digiCamControl schliessen - die Fotobox startet es neu.',
+              'digiCamControl läuft, sein Webserver antwortet aber nicht. In digiCamControl unter File > Settings > ' +
+                'Webserver "Benutze Webserver" und "Interaktion über Webserver erlauben" anhaken, Port 5513, ' +
+                'dann digiCamControl schließen - die Fotobox startet es neu.',
             );
           }
           if (massnahme === 'webserver-aus' && !kameraStatus.antwortet) this.kameraGrund = 'webserver-aus';
@@ -607,15 +607,15 @@ export class Betrieb {
 export function kameraHinweis(grund: KameraGrund | 'webserver-aus' | null): string {
   switch (grund) {
     case 'keine-kamera':
-      return 'digiCamControl laeuft, sieht aber keine Kamera. USB-Kabel pruefen und die Kamera einschalten.';
+      return 'digiCamControl läuft, sieht aber keine Kamera. USB-Kabel prüfen und die Kamera einschalten.';
     case 'befehle-gesperrt':
       return 'digiCamControl antwortet, nimmt aber keine Befehle an. Dort unter File > Settings > Webserver ' +
-        '"Interaktion ueber Webserver erlauben" anhaken.';
+        '"Interaktion über Webserver erlauben" anhaken.';
     case 'webserver-aus':
-      return 'digiCamControl laeuft, aber sein Webserver ist aus. Dort unter File > Settings > Webserver ' +
-        '"Benutze Webserver" und "Interaktion ueber Webserver erlauben" anhaken, Port 5513, dann digiCamControl schliessen.';
+      return 'digiCamControl läuft, aber sein Webserver ist aus. Dort unter File > Settings > Webserver ' +
+        '"Benutze Webserver" und "Interaktion über Webserver erlauben" anhaken, Port 5513, dann digiCamControl schließen.';
     default:
-      return 'digiCamControl antwortet nicht. Laeuft das Programm? Webserver auf Port 5513 eingeschaltet?';
+      return 'digiCamControl antwortet nicht. Läuft das Programm? Webserver auf Port 5513 eingeschaltet?';
   }
 }
 

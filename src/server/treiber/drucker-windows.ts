@@ -100,7 +100,7 @@ export class WindowsDrucker implements DruckerTreiber {
     // ausgewaehlt" - und die Warteschlange blieb danach angehalten. Genau so
     // geschehen direkt nach einem Update, bevor der Drucker eingetragen war.
     if (!this.druckerName) {
-      return { zustand: 'offline', meldung: 'Kein Drucker ausgewaehlt.' };
+      return { zustand: 'offline', meldung: 'Kein Drucker ausgewählt.' };
     }
     try {
       // PrinterStatus und DetectedErrorState aus WMI, dazu die Auftraege, die
@@ -133,7 +133,7 @@ export class WindowsDrucker implements DruckerTreiber {
   }
 
   async drucke(pdfPfad: string, kopien: number): Promise<string> {
-    if (!this.druckerName) throw new Error('Kein Drucker ausgewaehlt.');
+    if (!this.druckerName) throw new Error('Kein Drucker ausgewählt.');
     const seite = seitenbildPfad(pdfPfad);
     if (!existsSync(seite)) {
       throw new Error('Zu diesem Auftrag fehlt das Druckbild. Bitte das Foto aus der Galerie neu drucken.');

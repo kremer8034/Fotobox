@@ -50,9 +50,10 @@ export function Ergebnis({
   // unter seinem Finger.
   const [beruehrt, setzeBeruehrt] = useState(0);
   // Nach dem Drucken ging es vorher sofort zum Start - wer danach das Foto
-  // noch per E-Mail wollte, kam nicht mehr heran. Gibt es E-Mail, bleibt die
-  // Seite stehen (ohne Druckknopf, damit niemand aus Versehen nachlegt), und
-  // die normale Rueckkehr-Uhr uebernimmt.
+  // noch per E-Mail wollte oder ins Gaestebuch schreiben, kam nicht mehr
+  // heran. Gibt es E-Mail oder Gaestebuch, bleibt die Seite stehen (ohne
+  // Druckknopf, damit niemand aus Versehen nachlegt), und die normale
+  // Rueckkehr-Uhr uebernimmt.
   const [gedruckt, setzeGedruckt] = useState(false);
   // Gaestebuch: Die Schreibflaeche liegt ueber allem; danach steht hier, dass
   // der Gruss angekommen ist (und er laesst sich neu schreiben).
@@ -60,7 +61,7 @@ export function Ergebnis({
   const [grussDa, setzeGrussDa] = useState(false);
   const [dankeZeigen, setzeDankeZeigen] = useState(false);
   const druck = useDrucken(ausgabeId, 'kiosk', () => {
-    if (ausgabe.emailAktiv) setzeGedruckt(true);
+    if (ausgabe.emailAktiv || ausgabe.gaestebuchAktiv) setzeGedruckt(true);
     else beiFertig();
   });
 

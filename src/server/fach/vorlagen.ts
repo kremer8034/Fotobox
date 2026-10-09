@@ -93,7 +93,7 @@ const EBENE = z.discriminatedUnion('typ', [
     ...basis,
     typ: z.literal('bild'),
     // Nur ein Dateiname aus dem Vorlagenordner, nie ein Pfad.
-    datei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/, 'Ungueltiger Dateiname').refine((d) => !d.startsWith('.')),
+    datei: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/, 'Ungültiger Dateiname').refine((d) => !d.startsWith('.')),
     deckkraft: zahl(0, 1).optional(),
   }),
   z.object({
@@ -128,7 +128,7 @@ export const VORLAGE_EINGABE = z.object({
 /** Verstaendliche Meldung aus einem Pruefergebnis, etwa "Ebene 3 (text): farbe - Farbe als #RRGGBB". */
 export function beschreibePruefung(fehler: z.ZodError, ebenen: unknown): string {
   const erstes = fehler.issues[0];
-  if (!erstes) return 'Die Vorlage ist ungueltig.';
+  if (!erstes) return 'Die Vorlage ist ungültig.';
   const [bereich, nummer, feld] = erstes.path;
   if (bereich === 'ebenen' && typeof nummer === 'number') {
     const typ = Array.isArray(ebenen) ? (ebenen[nummer] as { typ?: string } | undefined)?.typ : undefined;

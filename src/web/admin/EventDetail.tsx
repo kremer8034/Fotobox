@@ -121,6 +121,11 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [zettel, setzeZettel] = useState<string | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
   const [dialogOffen, setzeDialogOffen] = useState(false);
+  // Die Uebergabe dauert - Gaestebuch erzeugen, dann kopieren. Waehrenddessen
+  // kein zweiter Start, und das Ergebnis bleibt stehen, statt nach vier
+  // Sekunden zu verschwinden: "unvollstaendig" darf niemand verpassen.
+  const [uebergibt, setzeUebergibt] = useState(false);
+  const [uebergabe, setzeUebergabe] = useState<{ text: string; ok: boolean } | null>(null);
   // Das Notfall-Telefon gilt fuer alle Veranstaltungen - einmal eintragen, danach steht es schon da.
   const [telefon, setzeTelefon] = useState<string | null>(null);
 
@@ -617,10 +622,11 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
           <div className="karte">
             <h2>Übergabe an den Gastgeber</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-              Kopiert die Fotos der Veranstaltung: Originale, bearbeitete Fotos und die fertigen
-              Layouts – und, wenn Gäste etwas geschrieben haben, das Gästebuch als PDF. Druckdateien, Testfotos aus dem Probelauf und die Unterlagen der Box
-              (Auslagen, Einstellungen) bleiben auf der Box. Erst wenn eine Markerdatei drüben ankommt
-              und die Dateizahl stimmt, gilt die Kopie als vollständig.
+              Kopiert die Fotos der Veranstaltung: Originale, bearbeitete Fotos, die fertigen Layouts
+              und das Gästebuch als PDF (mit den Grüßen, falls Gäste geschrieben haben). Druckdateien,
+              Testfotos aus dem Probelauf und die Unterlagen der Box (Auslagen, Einstellungen) bleiben
+              auf der Box. Erst wenn eine Markerdatei drüben ankommt und die Dateizahl stimmt, gilt die
+              Kopie als vollständig.
             </p>
             <div className="zeile">
               <div className="feld" style={{ flex: 1 }}>
@@ -636,12 +642,29 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               </button>
               <button
                 className="knopf knopf--neben"
-                disabled={zielPfad.length < 2}
+                disabled={zielPfad.length < 2 || uebergibt}
                 onClick={() => void uebergeben()}
               >
-                Jetzt übergeben
+                {uebergibt ? 'Wird übergeben …' : 'Jetzt übergeben'}
               </button>
             </div>
+            {uebergibt && (
+              <p style={{ fontSize: '0.85rem', marginBottom: 0 }}>
+                Gästebuch wird erstellt und die Fotos werden kopiert – bei vielen Fotos kann das ein,
+                zwei Minuten dauern.
+              </p>
+            )}
+            {!uebergibt && uebergabe && (
+              <p
+                style={{
+                  fontSize: '0.85rem',
+                  marginBottom: 0,
+                  color: uebergabe.ok ? 'var(--gut)' : 'var(--fehler)',
+                }}
+              >
+                {uebergabe.text}
+              </p>
+            )}
           </div>
           {(event.status === 'abgeschlossen' || event.status === 'archiviert') && (
             <div className="karte">
@@ -804,15 +827,21 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   }
 
   async function uebergeben() {
-    setzeMeldung('Kopiere…');
-    await versuche(async () => {
+    if (uebergibt) return;
+    setzeUebergibt(true);
+    setzeUebergabe(null);
+    try {
       const ergebnis = await api.sende<{ meldung: string; geprueft: boolean; ziel: string }>(
         `/api/admin/events/${id}/uebergabe`,
         { ziel: zielPfad },
       );
-      zeige(`${ergebnis.meldung} Ziel: ${ergebnis.ziel}`);
+      setzeUebergabe({ text: `${ergebnis.meldung} Ziel: ${ergebnis.ziel}`, ok: ergebnis.geprueft });
       await lade();
-    });
+    } catch (u) {
+      setzeUebergabe({ text: u instanceof Error ? u.message : 'Die Übergabe hat nicht geklappt.', ok: false });
+    } finally {
+      setzeUebergibt(false);
+    }
   }
 
   async function loeschen() {
