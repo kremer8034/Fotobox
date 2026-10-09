@@ -4,7 +4,7 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
-## 1.2.0
+## 1.1.1
 
 Alle drei neuen Funktionen sind **ab Werk aus** und werden je Veranstaltung
 einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch. Nur

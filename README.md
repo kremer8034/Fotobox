@@ -18,7 +18,7 @@ In 44 Sekunden vom Antippen bis zum fertigen Druck: [Video im Querformat](docs/v
 · [Video im Hochformat](docs/video/Fotobox-Vorstellung-Hochformat.mp4) für WhatsApp-Status und
 Instagram-Stories. Die Musik ist eigens erzeugt und frei von Rechten Dritter.
 
-**Aktuelle Version: 1.2.0.** Die Setup-Datei liegt auf der
+**Aktuelle Version: 1.1.1.** Die Setup-Datei liegt auf der
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
 
