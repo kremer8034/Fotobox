@@ -27,8 +27,9 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   gezeichnet in der gewählten Tintenfarbe.
 - **Gästebuch-PDF wie ein Erinnerungsalbum:** warmes Papier mit goldenem
   Rahmen und Eckverzierungen, Fotos als eingeklebte Sofortbilder, Grüße auf
-  liniertem Briefpapier mit Klebestreifen, die Uhrzeit in Schreibschrift. Auf
-  dem Deckblatt ein Fächer aus den ersten Fotos.
+  liniertem Briefpapier mit Klebestreifen. Auf dem Deckblatt ein Fächer aus
+  den ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
+  (Lochung, Spirale, Klebebindung – einseitig wie beidseitig gedruckt).
 - **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
   selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt
   immer nur ein Finger – eine zweite Hand auf dem Glas verschluckt keinen

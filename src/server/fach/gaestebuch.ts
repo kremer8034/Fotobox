@@ -215,8 +215,8 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   const faecher = titelFotos.length === 1 ? [0] : titelFotos.length === 2 ? [-6, 6] : [-9, 0, 9];
   titelFotos.forEach((bild, i) => {
     const winkel = faecher[i]!;
-    const mitte = B / 2 + winkel * 19;
-    sofortbild(d, bild, mitte, 418, 230, winkel);
+    const mitte = B / 2 + winkel * 17;
+    sofortbild(d, bild, mitte, 412, 215, winkel);
   });
 
   // ---- Eintraege, zwei je Seite ----------------------------------------
@@ -229,22 +229,28 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
       d.addPage();
       seitenNr += 1;
       seite(d);
-      d.font(schrift).fontSize(22).fillColor(FARBE.gold).text(event.name, 0, 34, { width: B, align: 'center' });
-      d.font('Helvetica').fontSize(9).fillColor(FARBE.gold).text(`·  ${seitenNr}  ·`, 0, H - 44, { width: B, align: 'center' });
+      d.font(schrift).fontSize(22).fillColor(FARBE.gold).text(event.name, 0, KOPF + 10, { width: B, align: 'center' });
+      d.font('Helvetica').fontSize(9).fillColor(FARBE.gold).text(`·  ${seitenNr}  ·`, 0, H - KOPF - 22, { width: B, align: 'center' });
     }
     // Allein auf der letzten Seite: in die Mitte statt nach oben.
     const allein = oben && i === zeilen - 1;
-    const mitteY = allein ? H / 2 + 6 : oben ? 182 : 410;
+    const mitteY = allein ? H / 2 : oben ? 182 : 404;
     // Foto und Gruss wechseln die Seite - wie in einem Album, in das
-    // nacheinander eingeklebt wurde.
+    // nacheinander eingeklebt wurde. Alles bleibt innerhalb des Rahmens und
+    // damit ausserhalb des Bindungsrands.
     const fotoLinks = i % 2 === 0;
-    const fotoX = fotoLinks ? 225 : B - 225;
-    const kartenX = fotoLinks ? B - 245 : 245;
+    const innenLinks = BUND + 22;
+    const innenRechts = B - BUND - 22;
+    const fotoX = fotoLinks ? innenLinks + FOTO_BREITE / 2 + 8 : innenRechts - FOTO_BREITE / 2 - 8;
+    const kartenX = fotoLinks ? innenRechts - KARTE_BREITE / 2 - 8 : innenLinks + KARTE_BREITE / 2 + 8;
+    const luecke = fotoLinks
+      ? (fotoX + FOTO_BREITE / 2 + kartenX - KARTE_BREITE / 2) / 2
+      : (kartenX + KARTE_BREITE / 2 + fotoX - FOTO_BREITE / 2) / 2;
 
     const bild = await foto(g);
-    if (bild) sofortbild(d, bild, fotoX, mitteY, 300, fotoLinks ? -2.5 : 2.5);
-    briefkarte(d, g.pfad, kartenX, mitteY, 340, 205, fotoLinks ? 1.5 : -1.5, `um ${uhrzeit(g.erstellt)} Uhr`, schrift);
-    herz(d, B / 2 - (fotoLinks ? 22 : -22), mitteY - 4, 9);
+    if (bild) sofortbild(d, bild, fotoX, mitteY, FOTO_BREITE, fotoLinks ? -2.5 : 2.5);
+    briefkarte(d, g.pfad, kartenX, mitteY, KARTE_BREITE, KARTE_HOEHE, fotoLinks ? 1.5 : -1.5);
+    herz(d, luecke, mitteY - 4, 9);
   }
 
   d.end();
@@ -252,8 +258,25 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   return { daten: Buffer.concat(teile), anzahl: gruesse.length };
 }
 
+/*
+ * DIN A4 quer (297 x 210 mm) - druckt jeder Drucker und jeder Copyshop.
+ *
+ * Das Gaestebuch wird ausgedruckt und gebunden: Ringbuch-Lochung, Spirale
+ * oder Klebebindung brauchen am Rand Platz. Links UND rechts deshalb je 20 mm
+ * Bindungsrand - beim beidseitigen Druck liegt die Bindung der Rueckseite auf
+ * der anderen Seite. Rahmen und Inhalt bleiben innerhalb; nur der Papierton
+ * laeuft bis an die Kante.
+ */
 const B = 841.89;
 const H = 595.28;
+const MM = 72 / 25.4;
+/** Bindungsrand links und rechts. */
+const BUND = 20 * MM;
+/** Rand oben und unten. */
+const KOPF = 10 * MM;
+const FOTO_BREITE = 270;
+const KARTE_BREITE = 310;
+const KARTE_HOEHE = 190;
 const FARBE = {
   papierHell: '#fffaf1',
   papierRand: '#f1e6d2',
@@ -271,13 +294,13 @@ function seite(d: PDFKit.PDFDocument): void {
   grund.stop(0, FARBE.papierHell).stop(1, FARBE.papierRand);
   d.rect(0, 0, B, H).fill(grund);
 
-  d.save().lineWidth(1.1).strokeColor(FARBE.gold).rect(18, 18, B - 36, H - 36).stroke().restore();
-  d.save().lineWidth(0.5).strokeColor(FARBE.goldHell).rect(24, 24, B - 48, H - 48).stroke().restore();
+  d.save().lineWidth(1.1).strokeColor(FARBE.gold).rect(BUND, KOPF, B - 2 * BUND, H - 2 * KOPF).stroke().restore();
+  d.save().lineWidth(0.5).strokeColor(FARBE.goldHell).rect(BUND + 6, KOPF + 6, B - 2 * BUND - 12, H - 2 * KOPF - 12).stroke().restore();
   for (const [x, y, sx, sy] of [
-    [24, 24, 1, 1],
-    [B - 24, 24, -1, 1],
-    [24, H - 24, 1, -1],
-    [B - 24, H - 24, -1, -1],
+    [BUND + 6, KOPF + 6, 1, 1],
+    [B - BUND - 6, KOPF + 6, -1, 1],
+    [BUND + 6, H - KOPF - 6, 1, -1],
+    [B - BUND - 6, H - KOPF - 6, -1, -1],
   ] as const) {
     d.save().translate(x, y).scale(sx, sy);
     d.lineWidth(0.9).strokeColor(FARBE.gold);
@@ -327,7 +350,7 @@ function sofortbild(d: PDFKit.PDFDocument, bild: Buffer, mx: number, my: number,
   d.restore();
 }
 
-/** Der Gruss auf liniertem Briefpapier mit zwei Klebestreifen, unten rechts die Uhrzeit. */
+/** Der Gruss auf liniertem Briefpapier mit zwei Klebestreifen. */
 function briefkarte(
   d: PDFKit.PDFDocument,
   pfad: string,
@@ -336,8 +359,6 @@ function briefkarte(
   breite: number,
   hoehe: number,
   winkel: number,
-  zeit: string,
-  schrift: string,
 ): void {
   const x = mx - breite / 2;
   const y = my - hoehe / 2;
@@ -347,12 +368,7 @@ function briefkarte(
   d.save().lineWidth(0.4).strokeColor(FARBE.linie);
   for (let ly = y + hoehe / 6; ly < y + hoehe - 4; ly += hoehe / 6) d.moveTo(x + 10, ly).lineTo(x + breite - 10, ly).stroke();
   d.restore();
-  d.image(pfad, x + 6, y + 6, { fit: [breite - 12, hoehe - 22], align: 'center', valign: 'center' });
-  d.font(schrift).fontSize(13).fillColor(FARBE.gold).text(zeit, x + 10, y + hoehe - 22, {
-    width: breite - 22,
-    align: 'right',
-    lineBreak: false,
-  });
+  d.image(pfad, x + 6, y + 6, { fit: [breite - 12, hoehe - 12], align: 'center', valign: 'center' });
   klebeband(d, x - 6, y - 4, -35);
   klebeband(d, x + breite - 34, y - 4, 35);
   d.restore();
@@ -370,10 +386,6 @@ function klebeband(d: PDFKit.PDFDocument, x: number, y: number, winkel: number):
 function datum(iso: string): string {
   const [j, m, t] = iso.split('-');
   return j && m && t ? `${t}.${m}.${j}` : iso;
-}
-
-function uhrzeit(iso: string): string {
-  return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 }
 
 function dateiZeit(iso: string): string {

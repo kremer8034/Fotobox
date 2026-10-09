@@ -540,7 +540,15 @@ Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
 → **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick
 (Ordner `05_gaestebuch`): gestaltet wie ein Erinnerungsalbum – ein Deckblatt
 mit den ersten Fotos, danach je Seite zwei Fotos als eingeklebte Sofortbilder
-mit ihrem Gruß auf Briefpapier. Zum Ausdrucken und Abheften.
+mit ihrem Gruß auf Briefpapier.
+
+**Drucken und binden:** Das Gästebuch ist **DIN A4 quer** – das druckt jeder
+Drucker und jeder Copyshop. Links und rechts bleiben je 20 mm frei, oben und
+unten 10 mm: Dort darf gelocht, gespiralt oder geklebt werden, ohne dass etwas
+verschwindet – einseitig wie beidseitig gedruckt. Gebunden wird an der linken
+(kurzen) Seite wie ein Fotoalbum. Zu Hause druckt der Drucker meist einen
+schmalen weißen Rand um den Papierton; Rahmen und Inhalt liegen weit genug
+innen.
 
 ## Wenn etwas ausfällt
 
