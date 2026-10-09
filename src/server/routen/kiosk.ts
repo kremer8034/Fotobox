@@ -29,7 +29,7 @@ import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
 import { speichereGruss, UngueltigerGruss } from '../fach/gaestebuch.js';
 import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin, verwirfAuftraegeVon } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
-import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
+import { schliesseDiashowFenster, schliesseKioskBrowser } from '../fach/kiosk-browser.js';
 import {
   adresseZuOft,
   drosselGreift,
@@ -530,6 +530,37 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       protokolliere('warnung', 'email', (fehler as Error).message);
       return antwort.code(502).send({ fehler: 'Versand hat nicht geklappt.' });
     }
+  });
+
+  /**
+   * Was die Diashow braucht - und nur das: die Fotos der Galerie und ein paar
+   * Angaben zur Darstellung. Bewusst ohne Geraetestatus und Internet-Pruefung;
+   * die Diashow fragt alle zehn Sekunden, oft stundenlang.
+   */
+  app.get('/api/kiosk/diashow', async () => {
+    const event = holeAktivesEvent();
+    if (!event) return { veranstaltung: null, extern: false, bilder: [] };
+    return {
+      veranstaltung: event.name,
+      titel: event.einstellungen.startTitel,
+      extern: event.einstellungen.diashowExtern,
+      wechselSekunden: event.einstellungen.diashowWechselSekunden,
+      portalWlan: portalWlanName(),
+      bilder: galerieEintraege(event.id).map((e) => ({ id: e.ausgabeId, erstellt: e.erstellt })),
+    };
+  });
+
+  /**
+   * Das Diashow-Fenster auf dem zweiten Bildschirm meldet: Es gibt nur noch
+   * einen Bildschirm (Beamer abgezogen). Windows schiebt das Fenster dann auf
+   * den Touchscreen - ueber den Kiosk, und die Gaeste koennten nichts mehr
+   * antippen. Also schliesst die Box es.
+   */
+  app.post('/api/kiosk/diashow/fenster-zu', async () => {
+    if (process.platform !== 'win32' || !konfig.echteHardware) return { ok: true, simuliert: true };
+    const anzahl = await schliesseDiashowFenster().catch(() => 0);
+    if (anzahl > 0) protokolliere('info', 'diashow', 'Zweiter Bildschirm weg - Diashow-Fenster geschlossen.');
+    return { ok: true };
   });
 
   /**

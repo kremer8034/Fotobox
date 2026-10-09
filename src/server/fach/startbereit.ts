@@ -243,12 +243,14 @@ export async function startbereitPruefung(
         : 'Gesetzt – der Gastgeber bekommt sie mit der Kurzanleitung.',
   });
 
+  // Erinnerungen: Ob etwas ausgedruckt in der Box liegt, sieht die Software
+  // nicht. Vorher stand hier ein gruener Haken - als waere es geprueft.
   punkte.push({
     schluessel: 'unterlagen',
     titel: event.einstellungen.galerieAktiv
-      ? 'Kurzanleitung und Aushang ausgedruckt'
-      : 'Kurzanleitung ausgedruckt',
-    bestanden: true,
+      ? 'Erinnerung: Kurzanleitung und Aushang ausdrucken'
+      : 'Erinnerung: Kurzanleitung ausdrucken',
+    bestanden: false,
     nurWarnung: true,
     hinweis: event.einstellungen.galerieAktiv
       ? 'Die Kurzanleitung (Reiter „Übergabe“) in die Box legen, den Aushang für die Gäste („WLAN & Portal“) außen ankleben.'
@@ -257,12 +259,12 @@ export async function startbereitPruefung(
 
   punkte.push({
     schluessel: 'windows',
-    titel: 'Windows vorbereitet',
-    bestanden: true,
+    titel: 'Erinnerung: Windows-Einstellungen',
+    bestanden: false,
     nurWarnung: true,
     hinweis:
-      'Anzeigeskalierung 100 %, Bildschirmschoner und Energiesparen aus, ' +
-      'Benachrichtigungen stumm, Update-Neustarts unterdrückt.',
+      'Energiesparen und Update-Neustarts hat das Setup erledigt. Von Hand einmal prüfen: ' +
+      'Anzeigeskalierung 100 %, Benachrichtigungen aus („Bitte nicht stören“), kein Bildschirmschoner.',
   });
 
   const bestanden = punkte.every((p) => p.bestanden || p.nurWarnung === true);

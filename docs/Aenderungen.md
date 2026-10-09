@@ -22,6 +22,13 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
   und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
   erscheint er nie.
+- **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
+  selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt
+  immer nur ein Finger – eine zweite Hand auf dem Glas verschluckt keinen
+  Strich mehr. PDFs (Kurzanleitung, Aushang, Gästebuch) und die
+  Diashow-Vorschau öffnen sich in der Verwaltung mit „Schließen“ statt in
+  einem neuen Fenster, aus dem man im Kiosk-Vollbild nicht mehr herauskam.
+  Die Verwaltung lässt sich nicht mehr in fremde Webseiten einbetten.
 - **Startbereit-Check verständlicher:** Besitzer-PIN und Betreuer-PIN sind
   jetzt zwei getrennte Punkte. Die Besitzer-PIN gilt für die ganze Box
   („Gerät“), die Betreuer-PIN für die einzelne Veranstaltung. Vorher stand

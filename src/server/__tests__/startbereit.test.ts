@@ -57,6 +57,9 @@ describe('Startbereit-Check: PINs', () => {
     expect(punkt(ergebnis, 'betreuerPin')?.bestanden).toBe(false);
     expect(punkt(ergebnis, 'betreuerPin')?.hinweis).toContain('Aussehen & PIN');
     expect(ergebnis.punkte.some((p) => !p.bestanden && /Besitzer/.test(p.titel + p.hinweis))).toBe(false);
+    // Was die Software nicht pruefen kann, steht als Erinnerung da - nie als gruener Haken.
+    expect(punkt(ergebnis, 'unterlagen')).toMatchObject({ bestanden: false, nurWarnung: true });
+    expect(punkt(ergebnis, 'windows')).toMatchObject({ bestanden: false, nurWarnung: true });
 
     const mitPin = aktualisiereEvent(event.id, { betreuerPinHash: await hashePin('5678') });
     ergebnis = await startbereitPruefung(mitPin, betrieb, konfig);

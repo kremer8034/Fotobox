@@ -502,7 +502,17 @@ Bildschirm holt den Start zurück.
    wählen – nicht „Duplizieren“, sonst zeigt der Beamer den Touchscreen.
 2. In der Verwaltung: Veranstaltung → **Ausgabe** → **„Auf zweitem Bildschirm
    zeigen“**. Die Diashow öffnet sich dort im Vollbild.
-3. Am Ende **„Diashow beenden“** – oder einfach das Kabel abziehen.
+3. Am Ende **„Diashow beenden“** – oder einfach das Kabel abziehen: Dann
+   schließt die Box das Diashow-Fenster von selbst, damit es nicht auf den
+   Touchscreen rutscht.
+
+Zwei Windows-Einstellungen, einmal pro Beamer bzw. Fernseher:
+- Der **Touchscreen bleibt Hauptanzeige** (Einstellungen → System → Anzeige →
+  Touchscreen anklicken → „Als Hauptanzeige festlegen“). Die Diashow kommt
+  immer auf den anderen Bildschirm.
+- Landen Berührungen auf dem Beamer statt auf dem Touchscreen: Startmenü →
+  „**Tablet PC-Einstellungen**“ → „Setup“ → „Toucheingabe“ und den Touchscreen
+  antippen. Windows merkt sich das.
 
 **Fernseher oder Beamer mit eigenem Browser im WLAN** (nur mit „Galerie im
 WLAN“): Das Gerät mit dem WLAN der Box verbinden und im Browser die Adresse

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Zeiten } from '../api.js';
+import { DiashowVorschau, PdfKnopf } from './PdfFenster.js';
 import { STATUS_NAME, STATUS_WECHSEL, UEBERGAENGE, type EventStatus } from '../../shared/typen.js';
 
 interface EventVoll {
@@ -607,9 +608,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             )}
             {zettel && (
               <p style={{ marginBottom: 0 }}>
-                <a href={zettel} target="_blank" rel="noreferrer">
-                  Kurzanleitung öffnen
-                </a>
+                <PdfKnopf href={zettel} beschriftung="Kurzanleitung öffnen" />
               </p>
             )}
           </div>
@@ -1468,9 +1467,7 @@ function DiashowGaestebuchKarte({
             <button className="knopf knopf--neben" onClick={() => void fenster(false)}>
               Diashow beenden
             </button>
-            <a className="knopf knopf--neben" href="/diashow" target="_blank" rel="noreferrer">
-              Vorschau
-            </a>
+            <DiashowVorschau />
           </div>
           <p style={{ ...leise, marginBottom: 0 }}>
             <strong>Fernseher oder Beamer mit eigenem Browser im WLAN:</strong>{' '}
@@ -1498,9 +1495,10 @@ function DiashowGaestebuchKarte({
           beiWechsel={(an) => void beiAenderung({ gaestebuchAktiv: an })}
         />
         {gruesse !== null && gruesse > 0 && (
-          <a className="knopf knopf--neben" href={`/api/admin/events/${eventId}/gaestebuch.pdf`} target="_blank" rel="noreferrer">
-            Gästebuch ansehen ({gruesse} {gruesse === 1 ? 'Gruß' : 'Grüße'})
-          </a>
+          <PdfKnopf
+            href={`/api/admin/events/${eventId}/gaestebuch.pdf`}
+            beschriftung={`Gästebuch ansehen (${gruesse} ${gruesse === 1 ? 'Gruß' : 'Grüße'})`}
+          />
         )}
       </div>
     </div>

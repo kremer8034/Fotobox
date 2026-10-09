@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { PdfKnopf } from './PdfFenster.js';
 
 interface Geraet {
   portalAktiv: boolean;
@@ -134,9 +135,7 @@ export function PortalSeite() {
             Aushang erzeugen
           </button>
           {aushang && (
-            <a href={aushang} target="_blank" rel="noreferrer">
-              Aushang öffnen
-            </a>
+            <PdfKnopf href={aushang} beschriftung="Aushang öffnen" />
           )}
         </div>
       </div>

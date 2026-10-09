@@ -64,7 +64,7 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
-import { erzeugeGaestebuchPdf, gruesseVon } from '../fach/gaestebuch.js';
+import { baueGaestebuchPdf, erzeugeGaestebuchPdf, gruesseVon } from '../fach/gaestebuch.js';
 import { oeffneDiashowFenster, schliesseDiashowFenster } from '../fach/kiosk-browser.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
@@ -951,13 +951,15 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
   app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch.pdf', async (anfrage, antwort) => {
     const event = holeEvent(anfrage.params.id);
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
-    const ergebnis = await erzeugeGaestebuchPdf(event);
-    if (!ergebnis) return antwort.code(404).send({ fehler: 'Im Gästebuch steht noch kein Gruß.' });
+    // Im Speicher gebaut und direkt geschickt - die Datei fuer die Uebergabe
+    // bleibt davon unberuehrt.
+    const pdf = await baueGaestebuchPdf(event);
+    if (!pdf) return antwort.code(404).send({ fehler: 'Im Gästebuch steht noch kein Gruß.' });
     return antwort
       .type('application/pdf')
       .header('Cache-Control', 'no-store')
       .header('Content-Disposition', 'inline; filename="Gaestebuch.pdf"')
-      .send(createReadStream(ergebnis.pfad));
+      .send(pdf.daten);
   });
 
   // --------------------------------------------------------- Diashow
@@ -992,7 +994,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
         await schliesseDiashowFenster();
         return { ok: true };
       }
-      const ergebnis = await oeffneDiashowFenster(`http://localhost:${konfig.portLokal}/diashow`);
+      const ergebnis = await oeffneDiashowFenster(`http://localhost:${konfig.portLokal}/diashow?fenster=1`);
       if (ergebnis === 'kein-zweiter-bildschirm') {
         return antwort.code(409).send({
           fehler: 'Windows meldet keinen zweiten Bildschirm. Beamer oder Fernseher per HDMI anschließen und unter „Anzeige“ auf „Erweitern“ stellen.',

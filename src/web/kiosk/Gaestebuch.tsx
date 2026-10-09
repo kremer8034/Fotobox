@@ -43,6 +43,9 @@ export function Gaestebuch({
   const leinwand = useRef<HTMLCanvasElement>(null);
   const striche = useRef<Strich[]>([]);
   const aktiv = useRef<Strich | null>(null);
+  // Es schreibt immer nur ein Finger. Ein zweiter (die Hand auf dem Glas, ein
+  // Kind daneben) verwarf sonst den angefangenen Strich des ersten.
+  const finger = useRef<number | null>(null);
   const [farbe, setzeFarbe] = useState(FARBEN[0]!.wert);
   const [anzahl, setzeAnzahl] = useState(0);
   const [beruehrt, setzeBeruehrt] = useState(0);
@@ -100,6 +103,8 @@ export function Gaestebuch({
   }
 
   function beginne(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (finger.current !== null || speichert) return;
+    finger.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     setzeBeruehrt((n) => n + 1);
     aktiv.current = { farbe, punkte: [punkt(e)] };
@@ -109,7 +114,7 @@ export function Gaestebuch({
 
   function ziehe(e: React.PointerEvent<HTMLCanvasElement>) {
     const s = aktiv.current;
-    if (!s) return;
+    if (!s || e.pointerId !== finger.current) return;
     const neu = punkt(e);
     const letzter = s.punkte[s.punkte.length - 1]!;
     // Kleinste Zitterbewegungen auslassen - sie machen die Linie nur krakelig.
@@ -124,7 +129,9 @@ export function Gaestebuch({
     ctx.stroke();
   }
 
-  function beende() {
+  function beende(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerId !== finger.current) return;
+    finger.current = null;
     if (!aktiv.current) return;
     striche.current.push(aktiv.current);
     aktiv.current = null;

@@ -1,8 +1,8 @@
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
-import { createWriteStream, existsSync } from 'node:fs';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { join, sep } from 'node:path';
 import { holeDb, jetzt } from '../db/index.js';
 import { eventpfade } from './pfade.js';
@@ -129,28 +129,61 @@ export function grussDateienVon(ausgabeId: string): string[] {
 }
 
 /**
- * Das Gaestebuch als PDF in 05_gaestebuch: ein Deckblatt, danach je Seite zwei
- * Eintraege - links das Foto, rechts der Gruss. Querformat A4, damit es sich
- * auch ausdrucken und abheften laesst.
+ * Das Gaestebuch als PDF in 05_gaestebuch - fuer die Uebergabe.
+ *
+ * Erst in eine Zwischendatei, dann umbenannt: Laufen "Gaestebuch ansehen" und
+ * die Uebergabe zugleich, schrieben sonst zwei Erzeugungen in dieselbe Datei,
+ * und auf dem Stick laege ein kaputtes PDF.
  *
  * @returns null, wenn es (noch) keinen Gruss gibt
  */
 export async function erzeugeGaestebuchPdf(event: Veranstaltung): Promise<{ pfad: string; anzahl: number } | null> {
-  const gruesse = gruesseVon(event.id).filter((g) => existsSync(g.pfad));
-  if (gruesse.length === 0) return null;
-
+  const pdf = await baueGaestebuchPdf(event);
+  if (!pdf) return null;
   const ordner = eventpfade(event.ordner).gaestebuch;
   await mkdir(ordner, { recursive: true });
   const pfad = join(ordner, PDF_NAME);
+  const zwischen = join(ordner, `.${PDF_NAME}.${randomUUID()}.tmp`);
+  await writeFile(zwischen, pdf.daten);
+  try {
+    await rename(zwischen, pfad);
+  } catch {
+    // Windows verweigert das Umbenennen, solange jemand die alte Datei offen
+    // hat - dann eben direkt hineinschreiben.
+    await unlink(zwischen).catch(() => undefined);
+    await writeFile(pfad, pdf.daten);
+  }
+  return { pfad, anzahl: pdf.anzahl };
+}
+
+/** Laufende Erzeugungen je Veranstaltung: Wer gleichzeitig fragt, bekommt dasselbe Ergebnis. */
+const inArbeit = new Map<string, Promise<{ daten: Buffer; anzahl: number } | null>>();
+
+/**
+ * Das Gaestebuch als PDF im Speicher: ein Deckblatt, danach je Seite zwei
+ * Eintraege - links das Foto, rechts der Gruss. Querformat A4, damit es sich
+ * auch ausdrucken und abheften laesst.
+ */
+export function baueGaestebuchPdf(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: number } | null> {
+  const laufend = inArbeit.get(event.id);
+  if (laufend) return laufend;
+  const neu = baue(event).finally(() => inArbeit.delete(event.id));
+  inArbeit.set(event.id, neu);
+  return neu;
+}
+
+async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: number } | null> {
+  const gruesse = gruesseVon(event.id).filter((g) => existsSync(g.pfad));
+  if (gruesse.length === 0) return null;
   const layouts = eventpfade(event.ordner).layouts + sep;
 
   const d = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0, autoFirstPage: false });
   d.info.Title = `Gästebuch – ${event.name}`;
+  const teile: Buffer[] = [];
+  d.on('data', (teil: Buffer) => teile.push(teil));
   const fertig = new Promise<void>((ok, fehler) => {
-    const strom = createWriteStream(pfad);
-    strom.on('finish', ok);
-    strom.on('error', fehler);
-    d.pipe(strom);
+    d.on('end', ok);
+    d.on('error', fehler);
   });
 
   const skript = join(MITGELIEFERT, 'GreatVibes-Regular.ttf');
@@ -208,7 +241,7 @@ export async function erzeugeGaestebuchPdf(event: Veranstaltung): Promise<{ pfad
 
   d.end();
   await fertig;
-  return { pfad, anzahl: gruesse.length };
+  return { daten: Buffer.concat(teile), anzahl: gruesse.length };
 }
 
 const FARBE = { papier: '#faf6ee', gold: '#b8862f', text: '#2b2620', leise: '#8a8174' };

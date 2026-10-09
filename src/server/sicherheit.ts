@@ -24,8 +24,16 @@ const LOKALER_URSPRUNG = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i
  *  - Untergeschobene Formulare (CSRF): Eine fremde Seite schickt still eine
  *    Anfrage "Warteschlange fortsetzen" oder "Kiosk schliessen". Gegenmittel:
  *    Schreibende Anfragen muessen von einer localhost-Seite kommen.
+ *  - Unsichtbar eingebettet (Clickjacking): Eine fremde Seite legt die
+ *    Verwaltung durchsichtig unter ihre eigenen Knoepfe. Gegenmittel: Einbetten
+ *    nur in Seiten der Box selbst - so, wie die Verwaltung ihre PDFs zeigt.
  */
 export function schuetzeLokal(app: FastifyInstance): void {
+  app.addHook('onSend', async (_anfrage, antwort, nutzlast) => {
+    antwort.header('X-Frame-Options', 'SAMEORIGIN');
+    antwort.header('Content-Security-Policy', "frame-ancestors 'self'");
+    return nutzlast;
+  });
   app.addHook('onRequest', async (anfrage, antwort) => {
     const host = anfrage.headers.host ?? '';
     if (!LOKALER_HOST.test(host)) {

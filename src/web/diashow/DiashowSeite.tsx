@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, type KioskStart } from '../api.js';
+import { api } from '../api.js';
 import { Diashow, useDiashowBilder, type DiashowBild } from './Diashow.js';
 
 /** So lange bleibt der Vollbild-Knopf nach der letzten Mausbewegung sichtbar. */
@@ -51,17 +51,20 @@ export function DiashowSeite({ token }: { token?: string }) {
         return [];
       }
     }
-    const start = await api.hole<KioskStart>('/api/kiosk/start');
-    setzeFehlt(!start.veranstaltung);
-    setzeTitel(start.veranstaltung?.name ?? '');
-    const an = Boolean(start.darstellung?.diashowExtern);
-    setzeAus(Boolean(start.veranstaltung) && !an);
-    if (!an) return [];
-    const galerie = await api.hole<{ bilder: { id: string; erstellt: string }[] }>('/api/kiosk/galerie');
-    if (start.darstellung?.diashowWechselSekunden) setzeWechsel(start.darstellung.diashowWechselSekunden);
-    const name = start.darstellung?.portalWlan;
-    setzeWlan(typeof name === 'string' ? name : null);
-    return galerie.bilder.map((b) => ({ id: b.id, erstellt: b.erstellt, url: `/medien/ausgabe/${b.id}.jpg` }));
+    const daten = await api.hole<{
+      veranstaltung: string | null;
+      extern: boolean;
+      wechselSekunden?: number;
+      portalWlan?: string | null;
+      bilder: { id: string; erstellt: string }[];
+    }>('/api/kiosk/diashow');
+    setzeFehlt(!daten.veranstaltung);
+    setzeTitel(daten.veranstaltung ?? '');
+    setzeAus(Boolean(daten.veranstaltung) && !daten.extern);
+    if (!daten.extern) return [];
+    if (daten.wechselSekunden) setzeWechsel(daten.wechselSekunden);
+    setzeWlan(typeof daten.portalWlan === 'string' ? daten.portalWlan : null);
+    return daten.bilder.map((b) => ({ id: b.id, erstellt: b.erstellt, url: `/medien/ausgabe/${b.id}.jpg` }));
   });
 
   // Der Mauszeiger und der Vollbild-Knopf stoeren auf der Leinwand - beides
@@ -78,6 +81,31 @@ export function DiashowSeite({ token }: { token?: string }) {
       clearTimeout(uhr);
       window.removeEventListener('pointermove', bewegt);
     };
+  }, []);
+
+  /*
+   * Als Fenster auf dem zweiten Bildschirm geoeffnet (?fenster=1): Wird der
+   * Beamer abgezogen, schiebt Windows das Fenster auf den Touchscreen - ueber
+   * den Kiosk. Dann bittet es die Box, es zu schliessen.
+   */
+  const alsFenster = !token && new URLSearchParams(window.location.search).has('fenster');
+  useEffect(() => {
+    if (!alsFenster) return;
+    const bildschirm = window.screen as Screen & { isExtended?: boolean };
+    if (bildschirm.isExtended === undefined) return;
+    const pruefe = () => {
+      if (bildschirm.isExtended === false) void api.sende('/api/kiosk/diashow/fenster-zu', {}).catch(() => undefined);
+    };
+    const uhr = setInterval(pruefe, 3000);
+    return () => clearInterval(uhr);
+  }, [alsFenster]);
+
+  // Der Vollbild-Knopf verschwindet, sobald das Vollbild steht.
+  const [vollbild, setzeVollbild] = useState(Boolean(document.fullscreenElement));
+  useEffect(() => {
+    const wechsel = () => setzeVollbild(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', wechsel);
+    return () => document.removeEventListener('fullscreenchange', wechsel);
   }, []);
 
   useEffect(() => {
@@ -118,7 +146,7 @@ export function DiashowSeite({ token }: { token?: string }) {
           </p>
         </div>
       )}
-      {knopf && !document.fullscreenElement && (
+      {knopf && !vollbild && !alsFenster && (
         <button
           className="knopf knopf--neben diashow__vollbild"
           onClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}

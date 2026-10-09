@@ -2708,3 +2708,49 @@ html.diashow-seite body {
   max-height: 74%;
   margin-bottom: 12vh;
 }
+
+/* PDF und Diashow-Vorschau in der Verwaltung: ueber allem, mit "Schliessen". */
+.pdf-fenster {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--grund);
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-fenster__leiste {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  color: var(--schrift-leise);
+  border-bottom: 1px solid var(--kante);
+}
+
+.pdf-fenster__inhalt {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.diashow-vorschau {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.diashow-vorschau .diashow,
+.diashow-vorschau .diashow__leer {
+  z-index: 71;
+}
+
+.diashow-vorschau__zu {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 80;
+}

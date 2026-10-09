@@ -181,7 +181,7 @@ export function KioskDiashow({
   beiEnde: () => void;
 }) {
   const bilder = useDiashowBilder(async () =>
-    (await api.hole<{ bilder: { id: string; erstellt: string }[] }>('/api/kiosk/galerie')).bilder.map((b) => ({
+    (await api.hole<{ bilder: { id: string; erstellt: string }[] }>('/api/kiosk/diashow')).bilder.map((b) => ({
       id: b.id,
       erstellt: b.erstellt,
       url: `/medien/ausgabe/${b.id}.jpg`,
