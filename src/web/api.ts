@@ -105,7 +105,6 @@ export interface Stoerungstext {
 export interface KioskStart {
   bereit: boolean;
   aktiveSitzungId?: string | null;
-  pausiert?: boolean;
   grund?: string;
   /** Noch keine Besitzer-PIN - der Kiosk zeigt den Weg in die Verwaltung. */
   ersteinrichtung?: boolean;

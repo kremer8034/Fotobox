@@ -17,7 +17,7 @@ import {
 /**
  * Veranstaltungen und ihr Lebenszyklus.
  *
- *   Entwurf -> Startbereit -> Aktiv <-> Pausiert -> Abgeschlossen -> Archiviert
+ *   Entwurf -> Startbereit -> Aktiv -> Abgeschlossen -> Archiviert
  *
  * Es darf immer nur genau ein Event aktiv sein. Das verhindert den Klassiker,
  * dass Fotos im Ordner der letzten Hochzeit landen; erzwungen wird es zusaetzlich
@@ -75,10 +75,10 @@ export function holeEvent(id: string): Veranstaltung | null {
   return zeile ? zuVeranstaltung(zeile) : null;
 }
 
-/** Das eine aktive oder pausierte Event, mit dem die Box gerade arbeitet. */
+/** Das eine aktive Event, mit dem die Box gerade arbeitet. */
 export function holeAktivesEvent(): Veranstaltung | null {
   const zeile = holeDb()
-    .prepare("SELECT * FROM events WHERE status IN ('aktiv','pausiert') LIMIT 1")
+    .prepare("SELECT * FROM events WHERE status = 'aktiv' LIMIT 1")
     .get() as EventZeile | undefined;
   return zeile ? zuVeranstaltung(zeile) : null;
 }

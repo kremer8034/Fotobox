@@ -1604,7 +1604,6 @@ table.liste td {
 .marke--entwurf { background: transparent; border: 1px solid var(--kante); color: var(--schrift-leise); }
 .marke--startbereit { background: rgba(95, 164, 99, 0.18); color: #9fd3a2; border: 1px solid rgba(95, 164, 99, 0.5); }
 .marke--aktiv { background: var(--gut); color: #08210a; }
-.marke--pausiert { background: var(--warnung); color: #2a1405; }
 .marke--abgeschlossen { background: var(--flaeche-hell); color: var(--schrift); }
 .marke--archiviert { background: transparent; border: 1px dashed var(--kante); color: var(--schrift-leise); }
 

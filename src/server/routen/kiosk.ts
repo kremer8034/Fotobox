@@ -88,7 +88,6 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
     return {
       bereit: event.status === 'aktiv',
-      pausiert: event.status === 'pausiert',
       status,
       // Damit der Kiosk eine verwaiste Sitzung erkennt - etwa nach einem
       // Neuladen des Browsers mitten in der Aufnahme - und sie verwirft,
@@ -764,23 +763,6 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
     protokolliere('info', 'material', 'Neue Rolle eingelegt.');
     const rest = await betrieb.leseDruckerVorrat();
     return { ok: true, rest };
-  });
-
-  /**
-   * Servicemenue: Pause ein/aus. Der Kiosk zeigt waehrend der Pause einen
-   * freundlichen Hinweis statt der Startseite - etwa waehrend des Essens.
-   */
-  app.post<{ Body: unknown }>('/api/kiosk/service/pause', async (anfrage, antwort) => {
-    const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
-    const event = holeAktivesEvent();
-    if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
-    try {
-      setzeStatus(event.id, an ? 'pausiert' : 'aktiv');
-    } catch (fehler) {
-      return antwort.code(409).send({ fehler: (fehler as Error).message });
-    }
-    protokolliere('info', 'event', `"${event.name}" ${an ? 'pausiert' : 'läuft weiter'} (Servicemenü).`);
-    return { ok: true, pausiert: an };
   });
 
   /**

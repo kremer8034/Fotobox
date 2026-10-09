@@ -239,7 +239,7 @@ export async function startbereitPruefung(
     bestanden: event.betreuerPinHash !== null,
     hinweis:
       event.betreuerPinHash === null
-        ? 'Unter „Aussehen & PIN“ setzen – ohne sie kommt der Gastgeber nicht ins Servicemenü (Papier wechseln, Pause).'
+        ? 'Unter „Aussehen & PIN“ setzen – ohne sie kommt der Gastgeber nicht ins Servicemenü (Papier wechseln, nachdrucken).'
         : 'Gesetzt – der Gastgeber bekommt sie mit der Kurzanleitung.',
   });
 

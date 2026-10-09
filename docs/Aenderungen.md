@@ -48,6 +48,9 @@ ohne Grüße.
   Diashow-Vorschau öffnen sich in der Verwaltung mit „Schließen“ statt in
   einem neuen Fenster, aus dem man im Kiosk-Vollbild nicht mehr herauskam.
   Die Verwaltung lässt sich nicht mehr in fremde Webseiten einbetten.
+- **Pause entfernt:** Den Handgriff „Pause einlegen“ im Servicemenü gibt es
+  nicht mehr – die Box soll Fotos machen, nicht warten. Eine Veranstaltung,
+  die beim Update gerade pausiert war, läuft einfach weiter.
 - **Aus der Gesamtdurchsicht:**
   - Nach dem Drucken bleibt die Ergebnisseite stehen, wenn das Gästebuch an
     ist – vorher ging es sofort zum Start, und wer erst drucken und dann

@@ -287,7 +287,6 @@ export type EventStatus =
   | 'entwurf'
   | 'startbereit'
   | 'aktiv'
-  | 'pausiert'
   | 'abgeschlossen'
   | 'archiviert';
 
@@ -301,8 +300,7 @@ export type EventStatus =
 export const UEBERGAENGE: Record<EventStatus, EventStatus[]> = {
   entwurf: ['startbereit', 'archiviert'],
   startbereit: ['aktiv', 'entwurf', 'archiviert'],
-  aktiv: ['pausiert', 'abgeschlossen'],
-  pausiert: ['aktiv', 'abgeschlossen'],
+  aktiv: ['abgeschlossen'],
   abgeschlossen: ['archiviert', 'aktiv'],
   archiviert: ['entwurf'],
 };
@@ -312,7 +310,6 @@ export const STATUS_NAME: Record<EventStatus, string> = {
   entwurf: 'Entwurf',
   startbereit: 'Startbereit',
   aktiv: 'Aktiv',
-  pausiert: 'Pausiert',
   abgeschlossen: 'Abgeschlossen',
   archiviert: 'Archiviert',
 };
@@ -322,7 +319,6 @@ export const STATUS_WECHSEL: Record<EventStatus, string> = {
   entwurf: 'Zurück in den Entwurf',
   startbereit: 'Als startbereit markieren',
   aktiv: 'Veranstaltung starten',
-  pausiert: 'Pause einlegen',
   abgeschlossen: 'Veranstaltung abschließen',
   archiviert: 'Archivieren',
 };

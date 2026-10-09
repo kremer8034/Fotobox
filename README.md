@@ -107,7 +107,7 @@ Papier“), nicht als Fehlercode.
 
 **Veranstaltungen**
 - Eigener Ordner je Feier, Lebenszyklus von *Entwurf* über *startbereit*,
-  *aktiv* und *pausiert* bis *abgeschlossen* und *archiviert*.
+  *aktiv* bis *abgeschlossen* und *archiviert*.
 - **Startbereit-Check** vor dem Start: Kamera, Drucker, Papier, Speicherplatz,
   Vorlagen, E-Mail, Galerie im Netz, PINs, Probelauf.
 - **Probelauf**: Testfotos zählen weder in den Auslagenersatz noch in die
@@ -155,7 +155,7 @@ Papier“), nicht als Fehlercode.
 **Kiosk und Servicemenü**
 - **Kiosk-Sperre**: versteckter Kreis oben rechts, eine Sekunde halten, PIN.
 - **Zwei PIN-Ebenen:**
-  - Betreuer (Gastgeber): Pause, Papier gewechselt, neue Rolle, Galerie
+  - Betreuer (Gastgeber): Papier gewechselt, neue Rolle, Galerie
   - Besitzer: zusätzlich Verwaltung öffnen, Probelauf, Veranstaltung
     abschließen, Kiosk schließen, PC herunterfahren
 - **Galerie pflegen**: Ein Foto lässt sich sofort aus der Galerie nehmen und

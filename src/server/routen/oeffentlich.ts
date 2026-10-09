@@ -24,13 +24,12 @@ import type { Veranstaltung } from '../../shared/typen.js';
  * dass er im Ordner des freigegebenen Events liegt. Damit ist "../.." nicht
  * weggefiltert, sondern strukturell ausgeschlossen.
  *
- * Ein Token gilt nur, solange seine Veranstaltung laeuft (aktiv oder
- * pausiert). Vorher galt es fuer immer: Der Reise-Router ist bei jeder Feier
+ * Ein Token gilt nur, solange seine Veranstaltung laeuft (aktiv). Vorher galt es fuer immer: Der Reise-Router ist bei jeder Feier
  * derselbe, mit demselben WLAN-Passwort - wer den Link der Hochzeit vom
  * letzten Wochenende aufhob oder weitergeleitet bekam, sah deren Bilder auf
  * dem naechsten Geburtstag wieder.
  */
-const LAUFEND = new Set(['aktiv', 'pausiert']);
+const LAUFEND = new Set(['aktiv']);
 
 function galerieEvent(token: string): Veranstaltung | null {
   const event = findeEventNachGalerieToken(token);

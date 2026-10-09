@@ -228,9 +228,9 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Der Betreuer kommt aus dem Servicemenue in die Galerie - auch in der
-    // Pause, in der sonst "Kleine Pause" ueber allem steht. Gerade dann hat
-    // er Zeit, nachzudrucken oder ein Foto herauszunehmen.
+    // Der Betreuer kommt aus dem Servicemenue in die Galerie - auch dann,
+    // wenn gerade keine Veranstaltung laeuft und der Kiosk sonst nur
+    // "Die Fotobox ruht gerade" zeigt.
     if (schirm.art === 'galerie' && schirm.betreuung && start) {
       return (
         <>
@@ -258,17 +258,15 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Keine Veranstaltung aktiv oder pausiert: freundlicher Hinweis statt
+    // Keine Veranstaltung aktiv: freundlicher Hinweis statt
     // Startseite, die Box bleibt betriebsbereit.
     if (!start.bereit) {
       return (
         <div className="seite kiosk">
           {schloss}
           <div className="mitte">
-            <h1 className="titel">{start.pausiert ? 'Kleine Pause' : 'Die Fotobox ruht gerade'}</h1>
-            <p className="untertitel">
-              {start.pausiert ? 'Gleich geht es weiter.' : (start.grund ?? '')}
-            </p>
+            <h1 className="titel">Die Fotobox ruht gerade</h1>
+            <p className="untertitel">{start.grund ?? ''}</p>
             {start.ersteinrichtung && (
               <>
                 <p className="untertitel">

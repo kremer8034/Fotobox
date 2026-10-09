@@ -35,6 +35,7 @@ export function oeffneDb(pfad: string): DB {
   }
   verbindung.exec(schema);
   ergaenzeSpalten(verbindung);
+  hebePauseAuf(verbindung);
   db = verbindung;
   return verbindung;
 }
@@ -56,6 +57,25 @@ function ergaenzeSpalten(verbindung: DB): void {
     );
     if (!vorhanden) verbindung.exec(`ALTER TABLE ${tabelle} ADD COLUMN ${spalte} ${definition}`);
   }
+}
+
+/**
+ * Die Pause gibt es nicht mehr (sie bremste nur das Fotografieren). Eine
+ * Veranstaltung, die bei einem Update gerade pausiert war, laeuft weiter -
+ * es sei denn, inzwischen ist eine andere aktiv; dann gilt sie als
+ * abgeschlossen.
+ */
+function hebePauseAuf(verbindung: DB): void {
+  const andereAktiv = verbindung.prepare("SELECT 1 FROM events WHERE status = 'aktiv' LIMIT 1").get();
+  const pausiert = verbindung.prepare("SELECT id FROM events WHERE status = 'pausiert' ORDER BY erstellt DESC").all() as {
+    id: string;
+  }[];
+  pausiert.forEach(({ id }, i) => {
+    const weiter = !andereAktiv && i === 0;
+    verbindung
+      .prepare('UPDATE events SET status = ?, geschlossen_am = COALESCE(geschlossen_am, ?) WHERE id = ?')
+      .run(weiter ? 'aktiv' : 'abgeschlossen', weiter ? null : new Date().toISOString(), id);
+  });
 }
 
 export function holeDb(): DB {

@@ -409,7 +409,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     // sie mitten im Abend vom Bildschirm - und war sie die einzige, stuende
     // der Kiosk ohne Auswahl da.
     const laufend = vorlageInVeranstaltungen(anfrage.params.id).find(
-      (e) => e.status === 'aktiv' || e.status === 'pausiert',
+      (e) => e.status === 'aktiv',
     );
     if (laufend) {
       return antwort
@@ -812,14 +812,14 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     async (anfrage, antwort) => {
       const koerper = z
         .object({
-          status: z.enum(['entwurf', 'startbereit', 'aktiv', 'pausiert', 'abgeschlossen', 'archiviert']),
+          status: z.enum(['entwurf', 'startbereit', 'aktiv', 'abgeschlossen', 'archiviert']),
         })
         .parse(anfrage.body);
       try {
         const vorher = holeEvent(anfrage.params.id)?.status;
         const event = setzeStatus(anfrage.params.id, koerper.status);
         if (koerper.status === 'abgeschlossen') await schreibeAuslagenCsv(event);
-        if (koerper.status === 'aktiv' && vorher !== 'pausiert' && vorher !== 'aktiv') {
+        if (koerper.status === 'aktiv' && vorher !== 'aktiv') {
           // Liegengebliebene Drucke frueherer Feiern gehen hier nicht mehr raus.
           const zurueck = stelleFremdeZurueck(event.id);
           if (zurueck > 0) {

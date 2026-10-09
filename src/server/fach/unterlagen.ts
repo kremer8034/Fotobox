@@ -127,7 +127,7 @@ function zeichneKurzanleitung(
     .text(angaben.betreuerPin, rand + 22, y + 36, { characterSpacing: 10, lineBreak: false });
   const pinText = rand + 250;
   d.font('Helvetica').fontSize(10.5).fillColor(FARBE.text)
-    .text('Damit öffnest du das Servicemenü: Papier wechseln, nachdrucken, Pause einlegen.', pinText, y + 20, {
+    .text('Damit öffnest du das Servicemenü: Papier wechseln, nachdrucken, Fotos herausnehmen.', pinText, y + 20, {
       width: innen - (pinText - rand) - 20,
     });
   d.font('Helvetica-Oblique').fontSize(9.5).fillColor(FARBE.leise)
@@ -175,7 +175,7 @@ function zeichneKurzanleitung(
   const reihe2 = [
     karte('Was du sonst noch kannst', [
       'Nachdruck: im Servicemenü „Galerie“, Foto antippen, nachdrucken.',
-      'Pause: „Pause einlegen“ zeigt den Gästen einen freundlichen Hinweis – etwa während des Essens.',
+      'Foto herausnehmen: im Servicemenü „Galerie“, Foto antippen, „Aus der Galerie nehmen“.',
     ]),
     angaben.portal
       ? karte('Fotos aufs Handy', [
