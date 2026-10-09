@@ -68,7 +68,7 @@ export async function startbereitPruefung(
     hinweis:
       status.kamera === 'bereit'
         ? 'Kamera antwortet.'
-        : (status.kameraHinweis ?? 'Kamera meldet sich nicht. USB-Kabel und digiCamControl pruefen.'),
+        : (status.kameraHinweis ?? 'Kamera meldet sich nicht. USB-Kabel und digiCamControl prüfen.'),
   });
 
   punkte.push({
@@ -77,7 +77,7 @@ export async function startbereitPruefung(
     bestanden: status.drucker === 'bereit',
     hinweis:
       status.drucker === 'bereit'
-        ? 'Drucker meldet sich bereit. (Kein Testdruck - der verbraucht nur Material.)'
+        ? 'Drucker meldet sich bereit. (Kein Testdruck – der verbraucht nur Material.)'
         : 'Drucker meldet einen Fehlerzustand.',
   });
 
@@ -90,12 +90,12 @@ export async function startbereitPruefung(
     nurWarnung: true,
     hinweis: vomDrucker
       ? `Noch ${vomDrucker.rest} Blatt laut Drucker.`
-      : 'Der Drucker meldet gerade keinen Vorrat - unter Gerät → Papiervorrat nachsehen.',
+      : 'Der Drucker meldet gerade keinen Vorrat – unter „Gerät“ → „Papiervorrat laut Drucker“ nachsehen.',
   });
 
   punkte.push({
     schluessel: 'speicher',
-    titel: 'Freier Speicherplatz ueber der Warnschwelle',
+    titel: 'Freier Speicherplatz über der Warnschwelle',
     bestanden: status.speicherFreiGb >= geraet.speicherWarnungGb,
     hinweis: `${status.speicherFreiGb} GB frei, Warnschwelle ${geraet.speicherWarnungGb} GB.`,
   });
@@ -169,10 +169,10 @@ export async function startbereitPruefung(
       titel: 'Galerie im Netz erreichbar',
       bestanden: adresse !== null && blockiert === null,
       hinweis: !adresse
-        ? 'Keine Netzwerkadresse gefunden. Haengt die Box am Reise-Router?'
+        ? 'Keine Netzwerkadresse gefunden. Hängt die Box am Reise-Router?'
         : blockiert ??
-          `Galerie laeuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}` +
-            (diagnose?.netz ? ` - die Handys muessen im WLAN „${diagnose.netz}“ sein.` : ' - die Handys muessen im selben WLAN sein wie die Box.'),
+          `Galerie läuft unter http://${adresse}:${konfig.portOeffentlich}/g/${event.galerieToken}` +
+            (diagnose?.netz ? ` – die Handys müssen im WLAN „${diagnose.netz}“ sein.` : ' – die Handys müssen im selben WLAN sein wie die Box.'),
     });
 
     // Captive Portal (Test): Vor dem Start laufen Namensdienst und Portal noch
@@ -206,46 +206,65 @@ export async function startbereitPruefung(
     if (alle.length > 1) {
       punkte.push({
         schluessel: 'netze',
-        titel: 'Box haengt nur im eigenen Netz',
+        titel: 'Box hängt nur im eigenen Netz',
         bestanden: false,
         nurWarnung: true,
         hinweis:
-          `Die Box hat mehrere Netzwerkadressen (${alle.join(', ')}); die Galerie laeuft unter ${adresse}. ` +
+          `Die Box hat mehrere Netzwerkadressen (${alle.join(', ')}); die Galerie läuft unter ${adresse}. ` +
           'Ist das nicht der Reise-Router, andere Verbindungen trennen (Netzwerkkabel ziehen, fremdes WLAN vergessen).',
       });
     }
   }
 
+  /*
+   * Zwei getrennte Punkte: Die Besitzer-PIN gilt fuer die ganze Box und wird
+   * einmal unter "Geraet" gesetzt, die Betreuer-PIN gehoert zur einzelnen
+   * Veranstaltung. Vorher standen beide in einem Punkt "Besitzer-PIN und
+   * Betreuer-PIN gesetzt" - fehlte bei einer neuen Feier nur die
+   * Betreuer-PIN, sah es aus, als fehle die Besitzer-PIN.
+   */
   punkte.push({
-    schluessel: 'pins',
-    titel: 'Besitzer-PIN und Betreuer-PIN gesetzt',
-    bestanden: geraet.besitzerPinHash !== null && event.betreuerPinHash !== null,
+    schluessel: 'besitzerPin',
+    titel: 'Besitzer-PIN der Box gesetzt',
+    bestanden: geraet.besitzerPinHash !== null,
     hinweis:
       geraet.besitzerPinHash === null
-        ? 'Es gibt keine Besitzer-PIN. Ohne sie laesst sich kein Event starten.'
-        : event.betreuerPinHash === null
-          ? 'Die Betreuer-PIN fehlt - der Gastgeber kaeme an nichts heran.'
-          : 'Beide PINs sind gesetzt.',
+        ? 'Unter „Gerät“ eine Besitzer-PIN festlegen – sie gilt für die ganze Box. Ohne sie kommt am Kiosk niemand in die Verwaltung.'
+        : 'Gesetzt unter „Gerät“ – sie gilt für alle Veranstaltungen.',
   });
 
   punkte.push({
+    schluessel: 'betreuerPin',
+    titel: 'Betreuer-PIN dieser Veranstaltung gesetzt',
+    bestanden: event.betreuerPinHash !== null,
+    hinweis:
+      event.betreuerPinHash === null
+        ? 'Unter „Aussehen & PIN“ setzen – ohne sie kommt der Gastgeber nicht ins Servicemenü (Papier wechseln, nachdrucken).'
+        : 'Gesetzt – der Gastgeber bekommt sie mit der Kurzanleitung.',
+  });
+
+  // Erinnerungen: Ob etwas ausgedruckt in der Box liegt, sieht die Software
+  // nicht. Vorher stand hier ein gruener Haken - als waere es geprueft.
+  punkte.push({
     schluessel: 'unterlagen',
     titel: event.einstellungen.galerieAktiv
-      ? 'Kurzanleitung und QR-Aushang ausgedruckt'
-      : 'Kurzanleitung ausgedruckt',
-    bestanden: true,
+      ? 'Erinnerung: Kurzanleitung und Aushang ausdrucken'
+      : 'Erinnerung: Kurzanleitung ausdrucken',
+    bestanden: false,
     nurWarnung: true,
-    hinweis: 'Bitte vor Ort in die Box legen bzw. aussen ankleben.',
+    hinweis: event.einstellungen.galerieAktiv
+      ? 'Die Kurzanleitung (Reiter „Übergabe“) in die Box legen, den Aushang für die Gäste („WLAN & Portal“) außen ankleben.'
+      : 'Die Kurzanleitung (Reiter „Übergabe“) in die Box legen.',
   });
 
   punkte.push({
     schluessel: 'windows',
-    titel: 'Windows vorbereitet',
-    bestanden: true,
+    titel: 'Erinnerung: Windows-Einstellungen',
+    bestanden: false,
     nurWarnung: true,
     hinweis:
-      'Anzeigeskalierung 100 %, Bildschirmschoner und Energiesparen aus, ' +
-      'Benachrichtigungen stumm, Update-Neustarts unterdrueckt.',
+      'Energiesparen und Update-Neustarts hat das Setup erledigt. Von Hand einmal prüfen: ' +
+      'Anzeigeskalierung 100 %, Benachrichtigungen aus („Bitte nicht stören“), kein Bildschirmschoner.',
   });
 
   const bestanden = punkte.every((p) => p.bestanden || p.nurWarnung === true);

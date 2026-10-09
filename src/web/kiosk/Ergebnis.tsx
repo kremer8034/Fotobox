@@ -4,6 +4,7 @@ import { EmailEingabe } from './Email.js';
 import { Mengenwahl, Quittung, useDrucken } from './Drucken.js';
 import { useZeitgeber } from './zeitgeber.js';
 import { api } from '../api.js';
+import { Gaestebuch } from './Gaestebuch.js';
 
 /**
  * Ergebnis und Ausgabe auf einer Seite: das fertige Layout gross oben, darunter
@@ -30,6 +31,8 @@ export function Ergebnis({
     kopienMax: number;
     druckLimitErreicht: boolean;
     druckRest?: number | null;
+    gaestebuchAktiv?: boolean;
+    gaestebuchSymbole?: boolean;
   };
   rueckkehrSekunden: number;
   tonAn: boolean;
@@ -47,12 +50,18 @@ export function Ergebnis({
   // unter seinem Finger.
   const [beruehrt, setzeBeruehrt] = useState(0);
   // Nach dem Drucken ging es vorher sofort zum Start - wer danach das Foto
-  // noch per E-Mail wollte, kam nicht mehr heran. Gibt es E-Mail, bleibt die
-  // Seite stehen (ohne Druckknopf, damit niemand aus Versehen nachlegt), und
-  // die normale Rueckkehr-Uhr uebernimmt.
+  // noch per E-Mail wollte oder ins Gaestebuch schreiben, kam nicht mehr
+  // heran. Gibt es E-Mail oder Gaestebuch, bleibt die Seite stehen (ohne
+  // Druckknopf, damit niemand aus Versehen nachlegt), und die normale
+  // Rueckkehr-Uhr uebernimmt.
   const [gedruckt, setzeGedruckt] = useState(false);
+  // Gaestebuch: Die Schreibflaeche liegt ueber allem; danach steht hier, dass
+  // der Gruss angekommen ist (und er laesst sich neu schreiben).
+  const [gaestebuchOffen, setzeGaestebuchOffen] = useState(false);
+  const [grussDa, setzeGrussDa] = useState(false);
+  const [dankeZeigen, setzeDankeZeigen] = useState(false);
   const druck = useDrucken(ausgabeId, 'kiosk', () => {
-    if (ausgabe.emailAktiv) setzeGedruckt(true);
+    if (ausgabe.emailAktiv || ausgabe.gaestebuchAktiv) setzeGedruckt(true);
     else beiFertig();
   });
 
@@ -65,7 +74,14 @@ export function Ergebnis({
   // seines Vorgaengers, mit aktivem Druckknopf. Waehrend der E-Mail-Eingabe
   // steht die Uhr: Wer eine Adresse tippt, braucht laenger als 20 Sekunden,
   // und die Eingabe hat ihren eigenen Leerlauf.
-  useZeitgeber(beiFertig, emailOffen || loeschenFragen ? null : rueckkehrSekunden * 1000, [druck.quittung, beruehrt]);
+  useZeitgeber(() => setzeDankeZeigen(false), dankeZeigen ? 3000 : null, [dankeZeigen]);
+
+  // Auch beim Schreiben ins Gaestebuch steht sie - die Schreibflaeche hat ihren eigenen Leerlauf.
+  useZeitgeber(
+    beiFertig,
+    emailOffen || loeschenFragen || gaestebuchOffen ? null : rueckkehrSekunden * 1000,
+    [druck.quittung, beruehrt, gaestebuchOffen],
+  );
 
   async function loeschen() {
     try {
@@ -109,6 +125,12 @@ export function Ergebnis({
           </button>
         )}
 
+        {ausgabe.gaestebuchAktiv && (
+          <button className="knopf" onClick={() => setzeGaestebuchOffen(true)}>
+            {grussDa ? '✓ Gruß neu schreiben' : 'Ins Gästebuch schreiben'}
+          </button>
+        )}
+
         <button className="knopf" onClick={beiFertig}>
           Fertig
         </button>
@@ -129,6 +151,7 @@ export function Ergebnis({
               {gedruckt
                 ? 'Es wird endgültig gelöscht – niemand kann es danach zurückholen. Ein Ausdruck, der noch auf den Drucker wartet, wird abgebrochen.'
                 : 'Es wird endgültig gelöscht und nicht gedruckt – niemand kann es danach zurückholen.'}
+              {grussDa && ' Euer Gruß im Gästebuch wird mit gelöscht.'}
             </p>
             <div className="ergebnis__frage">
               <button className="knopf knopf--haupt" onClick={() => setzeLoeschenFragen(false)}>
@@ -152,6 +175,27 @@ export function Ergebnis({
           einwilligungstext={ausgabe.einwilligungstext}
           beiSchliessen={() => setzeEmailOffen(false)}
         />
+      )}
+
+      {gaestebuchOffen && (
+        <Gaestebuch
+          ausgabeId={ausgabeId}
+          mitSymbolen={Boolean(ausgabe.gaestebuchSymbole)}
+          beiAbbruch={() => setzeGaestebuchOffen(false)}
+          beiGespeichert={() => {
+            setzeGaestebuchOffen(false);
+            setzeGrussDa(true);
+            setzeDankeZeigen(true);
+          }}
+        />
+      )}
+
+      {dankeZeigen && (
+        <div className="quittung" onClick={() => setzeDankeZeigen(false)}>
+          <div className="quittung__karte">
+            <p className="quittung__text">Danke! Euer Gruß steht im Gästebuch.</p>
+          </div>
+        </div>
       )}
 
       {druck.quittung && (

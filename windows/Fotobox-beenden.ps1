@@ -51,9 +51,10 @@ $belegt = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Sil
 $server += @($alle | Where-Object { $_.Name -eq 'node.exe' -and $belegt -contains $_.ProcessId })
 Beende $server
 
-# 3. Der Kiosk-Browser - nur die Instanz mit dem Fotobox-Profil
+# 3. Kiosk-Browser und Diashow-Fenster - nur die Instanzen mit den Fotobox-Profilen
 Beende ($alle | Where-Object {
-  ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') -and $_.CommandLine -like '*Fotobox-Kiosk*'
+  ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') -and
+  ($_.CommandLine -like '*Fotobox-Kiosk*' -or $_.CommandLine -like '*Fotobox-Diashow*')
 })
 
 # Warten, bis der Server wirklich weg ist - vorher sind seine Dateien gesperrt.

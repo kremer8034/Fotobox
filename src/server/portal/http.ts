@@ -5,7 +5,7 @@ import { PORTAL_ADRESSE } from './adresse.js';
  * Das Portal auf Port 80.
  *
  * Jede Anfrage - egal an welchen Namen, egal welcher Pfad - bekommt eine
- * Weiterleitung auf die Galerie. Nie "Success" und nie 204: Genau daran
+ * Weiterleitung auf die Galerie (nur /diashow auf deren Diashow). Nie "Success" und nie 204: Genau daran
  * erkennen iPhone und Android ein Anmeldeportal und oeffnen das Fenster.
  * Weil die Box nie "Internet ok" meldet, bleibt das Handy fuer alles andere
  * bei seinen mobilen Daten - WhatsApp & Co. laufen weiter.
@@ -16,8 +16,12 @@ import { PORTAL_ADRESSE } from './adresse.js';
  */
 export function bauePortal(ziel: () => string | null): FastifyInstance {
   const app = Fastify({ logger: false, bodyLimit: 1024, connectionTimeout: 10_000 });
-  app.all('/*', async (_anfrage, antwort) => {
-    const url = ziel();
+  app.all('/*', async (anfrage, antwort) => {
+    const galerie = ziel();
+    // Eine einzige Ausnahme: "192.168.254.1/diashow" fuehrt Fernseher und
+    // Beamer mit eigenem Browser zur Diashow - die lange Galerie-Adresse
+    // tippt dort niemand mit der Fernbedienung ein.
+    const url = galerie && anfrage.url.replace(/\/+$/, '').toLowerCase() === '/diashow' ? `${galerie}/diashow` : galerie;
     antwort.header('Cache-Control', 'no-store');
     if (!url) {
       // Keine laufende Galerie: freundlich sagen, statt ins Leere zu leiten.

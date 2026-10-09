@@ -24,13 +24,12 @@ import type { Veranstaltung } from '../../shared/typen.js';
  * dass er im Ordner des freigegebenen Events liegt. Damit ist "../.." nicht
  * weggefiltert, sondern strukturell ausgeschlossen.
  *
- * Ein Token gilt nur, solange seine Veranstaltung laeuft (aktiv oder
- * pausiert). Vorher galt es fuer immer: Der Reise-Router ist bei jeder Feier
+ * Ein Token gilt nur, solange seine Veranstaltung laeuft (aktiv). Vorher galt es fuer immer: Der Reise-Router ist bei jeder Feier
  * derselbe, mit demselben WLAN-Passwort - wer den Link der Hochzeit vom
  * letzten Wochenende aufhob oder weitergeleitet bekam, sah deren Bilder auf
  * dem naechsten Geburtstag wieder.
  */
-const LAUFEND = new Set(['aktiv', 'pausiert']);
+const LAUFEND = new Set(['aktiv']);
 
 function galerieEvent(token: string): Veranstaltung | null {
   const event = findeEventNachGalerieToken(token);
@@ -73,12 +72,16 @@ export function registriereOeffentlich(app: FastifyInstance, betrieb: Betrieb): 
   app.get<{ Params: { token: string } }>('/api/galerie/:token', async (anfrage, antwort) => {
     const event = galerieEvent(anfrage.params.token);
     if (!event) {
-      return antwort.code(404).send({ fehler: 'Galerie nicht verfuegbar.' });
+      return antwort.code(404).send({ fehler: 'Galerie nicht verfügbar.' });
     }
     const eintraege = galerieEintraege(event.id);
     return {
       veranstaltung: event.name,
       datum: event.datum,
+      // Fuer die Diashow auf Fernseher und Beamer (/g/<token>/diashow) - die
+      // zeigt nur etwas, wenn sie fuer diese Feier eingeschaltet ist.
+      diashowExtern: event.einstellungen.diashowExtern,
+      diashowWechselSekunden: event.einstellungen.diashowWechselSekunden,
       bilder: eintraege.map((e) => ({ id: e.ausgabeId, erstellt: e.erstellt })),
     };
   });

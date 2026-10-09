@@ -100,6 +100,6 @@ describe('Filter', () => {
   });
 
   it('lehnt riesige LUTs ab, statt den Speicher zu fluten', () => {
-    expect(() => parseCube('LUT_3D_SIZE 256\n0 0 0\n')).toThrow(/zu gross/);
+    expect(() => parseCube('LUT_3D_SIZE 256\n0 0 0\n')).toThrow(/zu groß/);
   });
 });

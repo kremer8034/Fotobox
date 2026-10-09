@@ -5,6 +5,7 @@ import { Aufnahme } from './Aufnahme.js';
 import { Ergebnis } from './Ergebnis.js';
 import { Galerie } from './Galerie.js';
 import { WlanAnleitung } from './WlanAnleitung.js';
+import { KioskDiashow } from '../diashow/Diashow.js';
 import { PinAbfrage, Schloss, Servicemenue } from './Sperre.js';
 import { Stoerungshinweis } from './Stoerung.js';
 import { schimmerAus, schriftAuf } from './farbe.js';
@@ -182,6 +183,24 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
     };
   }, []);
 
+  /*
+   * Diashow im Leerlauf: Steht der Startbildschirm eine Weile unberuehrt,
+   * laufen dort die Fotos der Feier. Nicht bei einer Stoerung - deren Hinweis
+   * soll der Betreuer sehen - und nicht ohne Verbindung.
+   */
+  const [diashowAn, setzeDiashowAn] = useState(false);
+  const [startBeruehrt, setzeStartBeruehrt] = useState(0);
+  const diashow = start?.darstellung?.diashow ?? null;
+  const darfDiashow = schirm.art === 'start' && Boolean(start?.bereit) && diashow !== null && !stoerungstext && !getrennt;
+  useZeitgeber(
+    () => setzeDiashowAn(true),
+    darfDiashow && !diashowAn && diashow ? diashow.nachSekunden * 1000 : null,
+    [schirm.art, startBeruehrt, diashowAn, darfDiashow],
+  );
+  useEffect(() => {
+    if (!darfDiashow) setzeDiashowAn(false);
+  }, [darfDiashow]);
+
   const schloss = <Schloss beiOeffnen={() => setzeSchirm({ art: 'pin' })} />;
 
   // Alles, was der Bildschirm gerade zeigt - darueber liegt bei Bedarf der
@@ -209,9 +228,9 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Der Betreuer kommt aus dem Servicemenue in die Galerie - auch in der
-    // Pause, in der sonst "Kleine Pause" ueber allem steht. Gerade dann hat
-    // er Zeit, nachzudrucken oder ein Foto herauszunehmen.
+    // Der Betreuer kommt aus dem Servicemenue in die Galerie - auch dann,
+    // wenn gerade keine Veranstaltung laeuft und der Kiosk sonst nur
+    // "Die Fotobox ruht gerade" zeigt.
     if (schirm.art === 'galerie' && schirm.betreuung && start) {
       return (
         <>
@@ -239,17 +258,15 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Keine Veranstaltung aktiv oder pausiert: freundlicher Hinweis statt
+    // Keine Veranstaltung aktiv: freundlicher Hinweis statt
     // Startseite, die Box bleibt betriebsbereit.
     if (!start.bereit) {
       return (
         <div className="seite kiosk">
           {schloss}
           <div className="mitte">
-            <h1 className="titel">{start.pausiert ? 'Kleine Pause' : 'Die Fotobox ruht gerade'}</h1>
-            <p className="untertitel">
-              {start.pausiert ? 'Gleich geht es weiter.' : (start.grund ?? '')}
-            </p>
+            <h1 className="titel">Die Fotobox ruht gerade</h1>
+            <p className="untertitel">{start.grund ?? ''}</p>
             {start.ersteinrichtung && (
               <>
                 <p className="untertitel">
@@ -292,7 +309,16 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
             sitzung={schirm.sitzung}
             zeiten={start.zeiten!}
             klaenge={start.toene!}
-            beiFertig={() => setzeSchirm({ art: 'filter', sitzungId: schirm.sitzung.sitzungId })}
+            beiFertig={() => {
+              const sitzungId = schirm.sitzung.sitzungId;
+              setzeSchirm({ art: 'filter', sitzungId });
+              // Gibt es nur eine Wahl (meist "Ohne Filter"), gibt es nichts zu
+              // entscheiden - dann gleich zusammensetzen, statt den Gast vor
+              // eine einzelne Kachel zu stellen.
+              const auswahl = start.filter ?? [];
+              const einziger = auswahl.length <= 1 ? (auswahl[0]?.id ?? 'ohne') : null;
+              if (einziger) void waehleFilter(sitzungId, einziger);
+            }}
             beiAbbruch={(grund) => {
               setzeFehler(grund);
               setzeSchirm({ art: 'start' });
@@ -426,7 +452,8 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       );
     }
 
-    // Startbildschirm - ruhig und immer gleich, kein Attract-Modus. Auf Wunsch
+    // Startbildschirm - ruhig und immer gleich; erst im Leerlauf (auf Wunsch)
+    // die Diashow darueber. Auf Wunsch
     // mit einem Hintergrundbild der Veranstaltung, randlos ueber die ganze
     // Flaeche und so weit abgedunkelt, dass Schrift und Knoepfe lesbar bleiben.
     const hintergrund = start.darstellung?.hintergrund;
@@ -435,6 +462,7 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
       <>
         {schloss}
         <div
+          onPointerDown={() => setzeStartBeruehrt((n) => n + 1)}
           className={hintergrund ? 'seite kiosk kiosk--hintergrund' : 'seite kiosk'}
           style={
             hintergrund
@@ -484,6 +512,17 @@ export function Kiosk({ navigiere }: { navigiere: (ziel: string) => void }) {
                 <div>Alle Fotos aufs Handy</div>
               </div>
             )
+          )}
+
+          {diashowAn && diashow && (
+            <KioskDiashow
+              wechselSekunden={diashow.wechselSekunden}
+              titel={start.darstellung?.titel}
+              beiEnde={() => {
+                setzeDiashowAn(false);
+                setzeStartBeruehrt((n) => n + 1);
+              }}
+            />
           )}
         </div>
       </>

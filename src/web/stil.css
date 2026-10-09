@@ -1567,6 +1567,15 @@ html.admin .knopf--riesig {
   max-width: 9rem;
 }
 
+/* Eine ganze Frage als Beschriftung, darunter ein kurzes Zahlenfeld. */
+.feld--breit {
+  max-width: 26rem;
+}
+
+.feld--breit .zahl {
+  max-width: 9rem;
+}
+
 .zeile {
   display: flex;
   gap: 1rem;
@@ -1604,7 +1613,6 @@ table.liste td {
 .marke--entwurf { background: transparent; border: 1px solid var(--kante); color: var(--schrift-leise); }
 .marke--startbereit { background: rgba(95, 164, 99, 0.18); color: #9fd3a2; border: 1px solid rgba(95, 164, 99, 0.5); }
 .marke--aktiv { background: var(--gut); color: #08210a; }
-.marke--pausiert { background: var(--warnung); color: #2a1405; }
 .marke--abgeschlossen { background: var(--flaeche-hell); color: var(--schrift); }
 .marke--archiviert { background: transparent; border: 1px dashed var(--kante); color: var(--schrift-leise); }
 
@@ -2413,4 +2421,424 @@ html.handy-ansicht body {
 .kippschalter:focus-visible {
   outline: 2px solid var(--akzent);
   outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ Diashow
+ * Ein Foto nach dem anderen: unscharf und abgedunkelt fuellt es den ganzen
+ * Schirm, scharf und vollstaendig liegt es darueber - Layouts im Querformat
+ * 3:2 lassen auf 16:9 sonst schwarze Streifen. Jedes Bild zoomt langsam heran.
+ */
+.diashow {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+  z-index: 30;
+}
+
+.diashow__bild {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diashow__bild--jetzt {
+  animation: diashow-ein 1.2s ease-out both;
+}
+
+.diashow__hg {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) brightness(0.45) saturate(1.2);
+}
+
+.diashow__bild img {
+  position: relative;
+  max-width: 88%;
+  max-height: 80%;
+  object-fit: contain;
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.6);
+}
+
+.diashow__bild--jetzt img {
+  animation: diashow-zoom var(--diashow-dauer, 8s) linear both;
+}
+
+@keyframes diashow-ein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes diashow-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.diashow__neu {
+  position: absolute;
+  top: 5vh;
+  right: 4vw;
+  padding: 1.2vh 2.4vw;
+  border-radius: 999px;
+  background: var(--akzent);
+  color: var(--akzent-schrift);
+  font-weight: 800;
+  font-size: 2.6vh;
+  box-shadow: 0 1vh 3vh rgba(0, 0, 0, 0.5);
+  animation: diashow-ein 0.6s 0.8s ease-out both;
+}
+
+.diashow__titel {
+  position: absolute;
+  top: 3vh;
+  left: 3vw;
+  padding: 1vh 1.8vw;
+  border-radius: 1.2vh;
+  background: rgba(16, 18, 22, 0.72);
+  font-size: 3vh;
+  font-weight: 700;
+  color: #fff;
+}
+
+.diashow__hinweis {
+  position: absolute;
+  bottom: 4vh;
+  right: 4vw;
+  padding: 1.2vh 2vw;
+  border-radius: 1.2vh;
+  background: rgba(16, 18, 22, 0.72);
+  font-size: 2.4vh;
+  color: #fff;
+}
+
+.diashow__leer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 3.4vh;
+  color: var(--schrift-leise);
+  padding: 5vw;
+}
+
+.diashow__leer-titel {
+  font-size: 6vh;
+  font-weight: 800;
+  color: var(--schrift);
+  margin-bottom: 2vh;
+}
+
+.diashow__vollbild {
+  position: fixed;
+  bottom: 2vh;
+  left: 2vw;
+  z-index: 40;
+}
+
+html.diashow-seite,
+html.diashow-seite body {
+  background: #000;
+}
+
+.diashow-rahmen--ruhig,
+.diashow-rahmen--ruhig * {
+  cursor: none;
+}
+
+/* Am Startbildschirm: Ein Band unten laedt zum Mitmachen ein. */
+.diashow--kiosk .diashow__einladung {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 6vh 4vw 5vh;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2vw;
+  color: #fff;
+  font-size: 4.2vh;
+  font-weight: 800;
+  text-align: center;
+}
+
+.diashow__einladung-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.diashow__einladung-text small {
+  font-size: 0.72em;
+  font-weight: 600;
+  opacity: 0.88;
+}
+
+.diashow__finger {
+  width: 7vh;
+  height: 7vh;
+  border-radius: 50%;
+  background: var(--akzent);
+  box-shadow: 0 0 0 0 var(--akzent-schimmer);
+  animation: diashow-puls 1.6s ease-out infinite;
+  flex: none;
+}
+
+@keyframes diashow-puls {
+  0% {
+    box-shadow: 0 0 0 0 var(--akzent-schimmer);
+    transform: scale(0.92);
+  }
+  60% {
+    box-shadow: 0 0 0 3vh rgba(0, 0, 0, 0);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    transform: scale(0.92);
+  }
+}
+
+/* ---------------------------------------------------------------- Gaestebuch */
+.gaestebuch {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: var(--grund);
+  display: flex;
+  flex-direction: column;
+  padding: var(--rand-sicher);
+  gap: var(--abstand);
+}
+
+.gaestebuch__kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand);
+}
+
+.gaestebuch__foto {
+  height: calc(22 * var(--mm));
+  border-radius: var(--radius-klein);
+  box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+.gaestebuch__titel {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.gaestebuch__unter {
+  margin: 0.2rem 0 0;
+  color: var(--schrift-leise);
+  font-size: 0.85rem;
+}
+
+.gaestebuch__flaeche {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Unliniertes Papier, wie die Karte im Gaestebuch: Mit dem Finger trifft
+   niemand eine Zeile genau, und das soll man spaeter nicht sehen. */
+.gaestebuch__papier {
+  aspect-ratio: 3 / 2;
+  height: 100%;
+  max-width: 100%;
+  border-radius: var(--radius);
+  background-color: #fdfaf3;
+  box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.5);
+  touch-action: none;
+  position: relative;
+}
+
+.gaestebuch__papier canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.gaestebuch__platzhalter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: center;
+  color: rgba(60, 70, 90, 0.35);
+  font-size: 1.3rem;
+  font-style: italic;
+  pointer-events: none;
+}
+
+.gaestebuch__platzhalter small {
+  font-size: 1rem;
+}
+
+.gaestebuch__leiste {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand);
+}
+
+.gaestebuch__farben {
+  display: flex;
+  gap: calc(2.5 * var(--mm));
+  margin-right: auto;
+}
+
+.gaestebuch__farbe {
+  width: var(--ziel-min);
+  height: var(--ziel-min);
+  border-radius: 50%;
+  border: 3px solid var(--kante);
+  cursor: pointer;
+}
+
+.gaestebuch__farbe--gewaehlt {
+  border-color: #fff;
+  box-shadow: 0 0 0 4px var(--akzent);
+}
+
+/* Am Startbildschirm etwas kleiner und hoeher: unten liegt das Einladungsband. */
+.diashow--kiosk .diashow__bild img {
+  max-height: 74%;
+  margin-bottom: 12vh;
+}
+
+/* PDF und Diashow-Vorschau in der Verwaltung: ueber allem, mit "Schliessen". */
+.pdf-fenster {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--grund);
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-fenster__leiste {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  color: var(--schrift-leise);
+  border-bottom: 1px solid var(--kante);
+}
+
+.pdf-fenster__inhalt {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.diashow-vorschau {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.diashow-vorschau .diashow,
+.diashow-vorschau .diashow__leer {
+  z-index: 71;
+}
+
+.diashow-vorschau__zu {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 80;
+}
+
+/* Symbole neben dem Papier: links eine Spalte zum Antippen. */
+.gaestebuch__flaeche--symbole {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  /* Feste Zeilenhoehe: Sonst hat das Papier keine Hoehe, an der es sich
+     ausrichten kann, und waechst ueber die Knoepfe hinaus. */
+  grid-template-rows: 100%;
+  align-items: center;
+  gap: var(--abstand);
+}
+
+.gaestebuch__symbole {
+  justify-self: end;
+  display: grid;
+  grid-template-columns: repeat(3, calc(16 * var(--mm)));
+  gap: calc(2.5 * var(--mm));
+}
+
+.gaestebuch__symbol {
+  width: calc(16 * var(--mm));
+  height: calc(16 * var(--mm));
+  border-radius: var(--radius);
+  border: 2px solid var(--kante);
+  background: #fdfaf3;
+  padding: calc(1.5 * var(--mm));
+  cursor: pointer;
+  /* Sonst nimmt der Browser das Ziehen als Wischen und nicht als Ziehen. */
+  touch-action: none;
+}
+
+.gaestebuch__symbol svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Das Symbol unter dem Finger, waehrend es aufs Papier gezogen wird. */
+.gaestebuch__schwebt {
+  position: fixed;
+  width: calc(22 * var(--mm));
+  height: calc(22 * var(--mm));
+  transform: translate(-50%, -50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.gaestebuch__symbol:active {
+  transform: scale(0.94);
+}
+
+.gaestebuch__markierung {
+  position: absolute;
+  border: 3px dashed var(--akzent);
+  border-radius: var(--radius-klein);
+  pointer-events: none;
 }

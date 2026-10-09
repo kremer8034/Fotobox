@@ -27,18 +27,23 @@ export interface Uebergabeergebnis {
 
 /**
  * Der Gastgeber bekommt nur die Fotos: 01_originale, 02_bearbeitet und
- * 03_layouts. Nicht mit gehen der Zwischenspeicher, der Probelauf (Testfotos
- * vom Aufbau), die Druckdateien (nur die Layouts als PDF - jedes Bild doppelt)
- * und die Unterlagen der Box: event.json und auslagen.csv bleiben fuer die
- * eigene Abrechnung auf der Box; eine galerie.html aus aelteren Versionen
- * ebenso. Vom Gast geloeschte Fotos gibt es gar nicht mehr; vom Betreuer aus
- * der Galerie genommene gehen bewusst mit.
+ * 03_layouts - dazu 05_gaestebuch mit dem Gaestebuch-PDF (die Verwaltung
+ * erzeugt es vorher frisch) und den Gruessen. Nicht mit gehen der
+ * Zwischenspeicher, der Probelauf (Testfotos vom Aufbau), die Druckdateien
+ * (nur die Layouts als PDF - jedes Bild doppelt) und die Unterlagen der Box:
+ * event.json und auslagen.csv bleiben fuer die eigene Abrechnung auf der Box;
+ * eine galerie.html aus aelteren Versionen ebenso. Auch keine halb
+ * geschriebene Zwischendatei (*.tmp), falls eine Erzeugung abbrach. Vom Gast
+ * geloeschte Fotos gibt es gar nicht mehr; vom Betreuer aus der Galerie
+ * genommene gehen bewusst mit.
  */
 const AUSGELASSENE_ORDNER = ['.cache', '_probelauf', '04_druck'];
 const AUSGELASSENE_DATEIEN = ['event.json', 'auslagen.csv', 'galerie.html'];
+const AUSGELASSENE_MUSTER = ['*.tmp'];
 
 function ausgelassen(name: string, istOrdner: boolean): boolean {
-  return istOrdner ? AUSGELASSENE_ORDNER.includes(name) : AUSGELASSENE_DATEIEN.includes(name);
+  if (istOrdner) return AUSGELASSENE_ORDNER.includes(name);
+  return AUSGELASSENE_DATEIEN.includes(name) || name.endsWith('.tmp');
 }
 
 export async function uebergebeAufDatentraeger(
@@ -71,8 +76,8 @@ export async function uebergebeAufDatentraeger(
       bytes: zielDateien.bytes,
       geprueft,
       meldung: geprueft
-        ? `${zielDateien.anzahl} Dateien uebertragen und geprueft.`
-        : 'Die Kopie ist unvollstaendig. Bitte den Datentraeger pruefen und erneut versuchen.',
+        ? `${zielDateien.anzahl} Dateien übertragen und geprüft.`
+        : 'Die Kopie ist unvollständig. Bitte den Datenträger prüfen und erneut versuchen.',
     };
   } finally {
     // Marker auf beiden Seiten wieder aufraeumen.
@@ -96,6 +101,7 @@ async function kopiereOrdner(quelle: string, ziel: string): Promise<void> {
           ...AUSGELASSENE_ORDNER,
           '/XF',
           ...AUSGELASSENE_DATEIEN,
+          ...AUSGELASSENE_MUSTER,
           '/R:2',
           '/W:2',
           '/NFL',

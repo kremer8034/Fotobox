@@ -26,9 +26,10 @@ import {
   zahlDerFotos,
 } from '../fach/sitzungen.js';
 import { warteAufNeueDatei, warteAufStabileDatei } from '../fach/aufnahme.js';
+import { speichereGruss, UngueltigerGruss } from '../fach/gaestebuch.js';
 import { blattInWarteschlange, blattVergeben, gastKopienVon, reiheEin, verwirfAuftraegeVon } from '../fach/druckwarteschlange.js';
 import { berechneAuslagen } from '../fach/auslagen.js';
-import { schliesseKioskBrowser } from '../fach/kiosk-browser.js';
+import { schliesseDiashowFenster, schliesseKioskBrowser } from '../fach/kiosk-browser.js';
 import {
   adresseZuOft,
   drosselGreift,
@@ -87,7 +88,6 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
 
     return {
       bereit: event.status === 'aktiv',
-      pausiert: event.status === 'pausiert',
       status,
       // Damit der Kiosk eine verwaiste Sitzung erkennt - etwa nach einem
       // Neuladen des Browsers mitten in der Aufnahme - und sie verwirft,
@@ -112,6 +112,17 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Einstellungen antippt, bekommt die Galerie von selbst. Statt eines
         // QR-Codes steht dann eine kurze Anleitung mit dem Netznamen da.
         portalWlan: portalWlanName(),
+        // Diashow im Leerlauf - nur, wenn es auch Fotos zu zeigen gibt; das
+        // entscheidet der Kiosk, sobald er die Galerie geladen hat.
+        diashow: event.einstellungen.diashowAufStart
+          ? {
+              nachSekunden: event.einstellungen.diashowNachSekunden,
+              wechselSekunden: event.einstellungen.diashowWechselSekunden,
+            }
+          : null,
+        // Diashow-Seite fuer Beamer und Fernseher (/diashow) - nur, wenn eingeschaltet.
+        diashowExtern: event.einstellungen.diashowExtern,
+        diashowWechselSekunden: event.einstellungen.diashowWechselSekunden,
       },
       zeiten: event.einstellungen.zeiten,
       toene: event.einstellungen.toene,
@@ -124,6 +135,8 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         druckLimitErreicht: druckLimitErreicht(event.id),
         // Blatt bis zum Druck-Limit, null ohne Limit - die Mengenwahl bietet nie mehr an.
         druckRest: druckRest(event.id),
+        gaestebuchAktiv: event.einstellungen.gaestebuchAktiv,
+        gaestebuchSymbole: event.einstellungen.gaestebuchSymbole,
       },
       vorlagen: freigegeben.map((v) => ({
         id: v.id,
@@ -279,7 +292,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         return antwort.code(409).send({ fehler: 'Sitzung ist nicht mehr aktiv.' });
       }
       const index = Number(anfrage.params.index);
-      if (!Number.isInteger(index) || index < 1) return antwort.code(400).send({ fehler: 'Ungueltiger Platz.' });
+      if (!Number.isInteger(index) || index < 1) return antwort.code(400).send({ fehler: 'Ungültiger Platz.' });
       const bild = await bestaetigungsbild(anfrage.params.id, index).catch(() => null);
       if (!bild) return antwort.code(404).send({ fehler: 'Foto nicht gefunden.' });
       return antwort.type('image/jpeg').header('Cache-Control', 'no-store').send(bild);
@@ -520,6 +533,74 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   });
 
   /**
+   * Was die Diashow braucht - und nur das: die Fotos der Galerie und ein paar
+   * Angaben zur Darstellung. Bewusst ohne Geraetestatus und Internet-Pruefung;
+   * die Diashow fragt alle zehn Sekunden, oft stundenlang.
+   */
+  app.get('/api/kiosk/diashow', async () => {
+    const event = holeAktivesEvent();
+    if (!event) return { veranstaltung: null, extern: false, bilder: [] };
+    return {
+      veranstaltung: event.name,
+      titel: event.einstellungen.startTitel,
+      extern: event.einstellungen.diashowExtern,
+      wechselSekunden: event.einstellungen.diashowWechselSekunden,
+      portalWlan: portalWlanName(),
+      bilder: galerieEintraege(event.id).map((e) => ({ id: e.ausgabeId, erstellt: e.erstellt })),
+    };
+  });
+
+  /**
+   * Das Diashow-Fenster auf dem zweiten Bildschirm meldet: Es gibt nur noch
+   * einen Bildschirm (Beamer abgezogen). Windows schiebt das Fenster dann auf
+   * den Touchscreen - ueber den Kiosk, und die Gaeste koennten nichts mehr
+   * antippen. Also schliesst die Box es.
+   */
+  app.post('/api/kiosk/diashow/fenster-zu', async () => {
+    if (process.platform !== 'win32' || !konfig.echteHardware) return { ok: true, simuliert: true };
+    const anzahl = await schliesseDiashowFenster().catch(() => 0);
+    if (anzahl > 0) protokolliere('info', 'diashow', 'Zweiter Bildschirm weg - Diashow-Fenster geschlossen.');
+    return { ok: true };
+  });
+
+  /**
+   * Gaestebuch: der handgeschriebene Gruss zum gerade fertigen Foto. Wie beim
+   * E-Mail-Versand von der Ergebnisseite nur fuer das frische Foto - an
+   * fremde, aeltere Bilder schreibt am Touchscreen niemand etwas dazu.
+   */
+  app.post<{ Body: unknown }>(
+    '/api/kiosk/gaestebuch',
+    { bodyLimit: 5 * 1024 * 1024 },
+    async (anfrage, antwort) => {
+      const koerper = z
+        .object({
+          ausgabeId: z.string().max(64),
+          // Die Schreibflaeche liefert ein PNG als data:-Adresse.
+          bild: z.string().max(4 * 1024 * 1024).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/),
+        })
+        .parse(anfrage.body);
+      const event = holeAktivesEvent();
+      if (!event || !event.einstellungen.gaestebuchAktiv) {
+        return antwort.code(403).send({ fehler: 'Das Gästebuch ist bei dieser Feier ausgeschaltet.' });
+      }
+      const ausgabe = holeAusgabe(koerper.ausgabeId);
+      if (!ausgabe || !darfKioskVerschicken(event.id, ausgabe.id, 'ergebnis')) {
+        return antwort.code(404).send({ fehler: 'Zu diesem Foto lässt sich nichts mehr schreiben.' });
+      }
+      const png = Buffer.from(koerper.bild.slice(koerper.bild.indexOf(',') + 1), 'base64');
+      try {
+        await speichereGruss(event, ausgabe, png);
+      } catch (fehler) {
+        if (fehler instanceof UngueltigerGruss) return antwort.code(400).send({ fehler: fehler.message });
+        throw fehler;
+      }
+      betrieb.letzteBeruehrung = Date.now();
+      protokolliere('info', 'gaestebuch', `Gruß zu Foto ${ausgabe.id.slice(0, 8)} gespeichert.`);
+      return { ok: true };
+    },
+  );
+
+  /**
    * Galerie am Touchscreen: die fertigen Layouts der laufenden Veranstaltung.
    * Mit ?alle=1 (aus dem Servicemenue) auch die aus der Galerie genommenen,
    * damit man sie zurueckholen kann.
@@ -685,23 +766,6 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   });
 
   /**
-   * Servicemenue: Pause ein/aus. Der Kiosk zeigt waehrend der Pause einen
-   * freundlichen Hinweis statt der Startseite - etwa waehrend des Essens.
-   */
-  app.post<{ Body: unknown }>('/api/kiosk/service/pause', async (anfrage, antwort) => {
-    const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
-    const event = holeAktivesEvent();
-    if (!event) return antwort.code(409).send({ fehler: 'Keine Veranstaltung aktiv.' });
-    try {
-      setzeStatus(event.id, an ? 'pausiert' : 'aktiv');
-    } catch (fehler) {
-      return antwort.code(409).send({ fehler: (fehler as Error).message });
-    }
-    protokolliere('info', 'event', `"${event.name}" ${an ? 'pausiert' : 'laeuft weiter'} (Servicemenue).`);
-    return { ok: true, pausiert: an };
-  });
-
-  /**
    * Servicemenue (Besitzer): PC herunterfahren.
    *
    * Nur mit echter Hardware unter Windows - im Entwicklungsbetrieb wuerde das
@@ -729,7 +793,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       protokolliere('warnung', 'system', `Herunterfahren gescheitert: ${text}`);
       return antwort.code(500).send({ fehler: 'Windows hat das Herunterfahren abgelehnt. Bitte über das Startmenü ausschalten.' });
     }
-    protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenue).');
+    protokolliere('info', 'system', 'PC wird heruntergefahren (Servicemenü).');
     return { ok: true, simuliert: false };
   });
 
@@ -739,7 +803,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
    */
   app.get<{ Querystring: { text?: string } }>('/api/qr', async (anfrage, antwort) => {
     const text = anfrage.query.text ?? '';
-    if (!text || text.length > 500) return antwort.code(400).send({ fehler: 'Kein gueltiger Text.' });
+    if (!text || text.length > 500) return antwort.code(400).send({ fehler: 'Kein gültiger Text.' });
     const png = await QRCode.toBuffer(text, { width: 512, margin: 1 });
     return antwort.header('Content-Type', 'image/png').send(png);
   });
@@ -763,16 +827,16 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
   app.post('/api/kiosk/service/kiosk-schliessen', async () => {
     writeFileSync(join(konfig.datenpfad, 'kiosk-aus.txt'), `Kiosk geschlossen am ${new Date().toISOString()}\r\n`);
     if (process.platform !== 'win32' || !konfig.echteHardware) {
-      protokolliere('info', 'system', 'Kiosk schliessen angefordert (Entwicklungsbetrieb - nur protokolliert).');
+      protokolliere('info', 'system', 'Kiosk schließen angefordert (Entwicklungsbetrieb - nur protokolliert).');
       return { ok: true, simuliert: true };
     }
     // Nicht abwarten: Die Antwort soll den Browser noch erreichen, bevor er zugeht.
     void schliesseKioskBrowser().then(
       (anzahl) =>
         anzahl > 0
-          ? protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenue).')
-          : protokolliere('warnung', 'system', 'Kiosk schliessen: Kein Kiosk-Browser gefunden.'),
-      (fehler: Error) => protokolliere('warnung', 'system', `Kiosk schliessen gescheitert: ${fehler.message}`),
+          ? protokolliere('info', 'system', 'Kiosk geschlossen (Servicemenü).')
+          : protokolliere('warnung', 'system', 'Kiosk schließen: Kein Kiosk-Browser gefunden.'),
+      (fehler: Error) => protokolliere('warnung', 'system', `Kiosk schließen gescheitert: ${fehler.message}`),
     );
     return { ok: true, simuliert: false };
   });

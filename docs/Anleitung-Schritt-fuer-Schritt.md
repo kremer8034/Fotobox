@@ -321,6 +321,8 @@ Weiter unten:
   Handgriffe des Alltags, nicht die Verwaltung.
 - Bei **Ausgabe** einstellen, ob gedruckt werden darf und wie viele Kopien
   höchstens.
+- Ebenfalls bei **Ausgabe**: **Diashow** und **Gästebuch** (siehe unten
+  „Diashow auf einem zweiten Bildschirm“ und „Das Gästebuch“).
 
 ## Schritt 20: Der Startbereit-Check
 
@@ -483,6 +485,88 @@ Die Handy-Galerie ist nur erreichbar, solange die Veranstaltung läuft. Nach dem
 Abschließen zeigt der alte Link nichts mehr — auch nicht, wenn ein Gast ihn auf
 der nächsten Feier wieder aufruft.
 
+## Diashow auf einem zweiten Bildschirm
+
+Die Fotos der Feier laufen als Diashow – neue Fotos kommen sofort an die
+Reihe. Ab Werk ist sie **aus**; es gibt zwei getrennte Schalter unter
+Veranstaltung → **Ausgabe** → **Diashow**: „Am Startbildschirm …“ und „Auf
+einem zweiten Bildschirm“ (Beamer, Fernseher oder Monitor). Gezeigt wird nur, was auch in der Galerie steht: keine Testfotos aus
+dem Probelauf und nichts, was aus der Galerie genommen wurde.
+
+**Am Startbildschirm** läuft sie – eingeschaltet – von selbst, wenn eine Weile
+niemand die Box benutzt – nach wie vielen Sekunden, steht im Feld darunter
+(„Startet nach wie vielen Sekunden ohne Berührung?“, Vorgabe 60). Auf dem
+zweiten Bildschirm läuft sie dagegen immer. Wie lange jedes Foto zu sehen ist,
+gilt für beide („Wie viele Sekunden bleibt jedes Foto stehen?“, Vorgabe 7). Ein Tipp auf den
+Bildschirm holt den Start zurück.
+
+**Zweiter Bildschirm am HDMI-Anschluss der Box:**
+1. Kabel anstecken. In Windows mit **Windows-Taste + P** „**Erweitern**“
+   wählen – nicht „Duplizieren“, sonst zeigt der Beamer den Touchscreen.
+2. In der Verwaltung: Veranstaltung → **Ausgabe** → **„Auf zweitem Bildschirm
+   zeigen“**. Die Diashow öffnet sich dort im Vollbild.
+3. Am Ende **„Diashow beenden“** – oder einfach das Kabel abziehen: Dann
+   schließt die Box das Diashow-Fenster von selbst, damit es nicht auf den
+   Touchscreen rutscht.
+
+Zwei Windows-Einstellungen, einmal pro Beamer bzw. Fernseher:
+- Der **Touchscreen bleibt Hauptanzeige** (Einstellungen → System → Anzeige →
+  Touchscreen anklicken → „Als Hauptanzeige festlegen“). Die Diashow kommt
+  immer auf den anderen Bildschirm.
+- Landen Berührungen auf dem Beamer statt auf dem Touchscreen: Startmenü →
+  „**Tablet PC-Einstellungen**“ → „Setup“ → „Toucheingabe“ und den Touchscreen
+  antippen. Windows merkt sich das.
+
+**Zweiter Bildschirm mit eigenem Browser im WLAN** (z. B. Smart-TV; nur mit „Galerie im
+WLAN“): Das Gerät mit dem WLAN der Box verbinden und im Browser die Adresse
+öffnen, die bei **Diashow** in der Verwaltung steht. Mit Captive Portal ist das
+einfach `192.168.254.1/diashow`.
+
+## Das Gästebuch
+
+Das **Gästebuch-PDF bekommt der Gastgeber bei jeder Übergabe** – auch, wenn
+niemand etwas schreiben konnte. Dann ist es die Erinnerung an die Feier in
+Albumform: ein Deckblatt und alle Fotos unter **„Momente des Abends“**.
+
+Der Haken **„Gästebuch einschalten“** bei **Ausgabe** ist ab Werk **aus**.
+Ist er gesetzt, steht nach dem Foto der Knopf **„Ins
+Gästebuch schreiben“**. Die Gäste schreiben oder malen mit dem Finger einen
+Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
+
+- Den Gruß bekommt **nur der Gastgeber**. Er erscheint weder in der Galerie
+  noch in der Diashow – das steht auch auf der Schreibseite.
+- Je Foto gibt es einen Gruß; neu geschrieben ersetzt er den alten.
+- Löscht die Gruppe ihr Foto, ist auch der Gruß weg.
+- Wer zwei Minuten nichts schreibt, kommt ohne Speichern zurück.
+- **Symbole** (eigener Schalter unter dem Gästebuch, ab Werk aus): Links neben
+  dem Papier stehen neun Symbole – Herz, Ringe, Sektgläser, Torte, Geschenk,
+  Luftballons, Blume, Sterne, Smiley. Mit dem Finger aufs Papier ziehen legt
+  das Symbol genau dort ab (Antippen geht auch, dann landet es in der Mitte),
+  in der gewählten Farbe. Danach lässt es sich weiter verschieben,
+  „Rückgängig“ nimmt es wieder weg. Die Auswahl ist für jede Feier dieselbe.
+- **Fotos ohne Gruß:** Nicht jede Gruppe schreibt etwas. Ihre Fotos stehen
+  hinter den Grüßen unter **„Momente des Abends“**, sechs je Seite, in der
+  Reihenfolge der Aufnahme. So bleiben die Grüße vorne beisammen, und das
+  Buch wird nicht unnötig dick (300 Fotos sind rund 50 Seiten). Hinein kommt
+  nur, was auch in der Galerie steht: kein Probelauf, nichts, was du aus der
+  Galerie genommen hast.
+
+Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
+→ **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick
+(Ordner `05_gaestebuch`): gestaltet wie ein Erinnerungsalbum – ein Deckblatt
+mit den ersten Fotos, danach je Seite zwei Fotos als eingeklebte Sofortbilder
+mit ihrem Gruß auf einer Briefkarte, dann die übrigen Fotos. Im Gästebuch stehen die fertigen
+Layouts, so wie die Gäste sie auch ausgedruckt bekommen haben – im Querformat
+wie im Hochformat.
+
+**Drucken und binden:** Das Gästebuch ist **DIN A4 quer** – das druckt jeder
+Drucker und jeder Copyshop. Links und rechts bleiben je 20 mm frei, oben und
+unten 10 mm: Dort darf gelocht, gespiralt oder geklebt werden, ohne dass etwas
+verschwindet – einseitig wie beidseitig gedruckt. Gebunden wird an der linken
+(kurzen) Seite wie ein Fotoalbum. Zu Hause druckt der Drucker meist einen
+schmalen weißen Rand um den Papierton; Rahmen und Inhalt liegen weit genug
+innen.
+
 ## Wenn etwas ausfällt
 
 Die Box ist dafür gebaut, allein beim Gastgeber zu stehen. Das meiste regelt
@@ -531,7 +615,8 @@ ist. Erst dann meldet sie Vollzug.
 
 Auf dem Stick landen nur die Fotos: die Ordner `01_originale` (die
 unveränderten Kamerabilder), `02_bearbeitet` (mit Filter) und `03_layouts`
-(die fertigen Bilder, wie sie gedruckt wurden). Druckdateien, Testfotos und
+(die fertigen Bilder, wie sie gedruckt wurden) – und immer `05_gaestebuch`
+mit dem Gästebuch als PDF (und den Grüßen, falls Gäste geschrieben haben). Druckdateien, Testfotos und
 die Unterlagen der Box – Auslagen und Einstellungen – bleiben auf der Box.
 
 **Danach von der Box löschen:** Die Fotos gehören jetzt dem Gastgeber, nicht

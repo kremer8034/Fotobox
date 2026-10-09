@@ -13,7 +13,7 @@ import {
   PIN_EINGABE,
 } from '../fach/einstellungen-pruefung.js';
 import sharp from 'sharp';
-import { portalNetzEingerichtet } from '../portal/adresse.js';
+import { PORTAL_ADRESSE, portalNetzEingerichtet } from '../portal/adresse.js';
 import { gleichePortalAb, holePortal } from '../portal/steuerung.js';
 
 /** Zustand der Portal-Dienste in diesem Augenblick - die Diagnose fragt mehrmals. */
@@ -64,6 +64,8 @@ import { filterVorschau, leereVorschauLager, vorlagenVorschau } from '../bild/vo
 import { familieAus, listeSchriften, schriftenOrdner } from '../fach/schriften.js';
 import { startbereitPruefung } from '../fach/startbereit.js';
 import { uebergebeAufDatentraeger } from '../fach/uebergabe.js';
+import { baueGaestebuchPdf, erzeugeGaestebuchPdf, fotosOhneGruss, gruesseVon } from '../fach/gaestebuch.js';
+import { oeffneDiashowFenster, schliesseDiashowFenster } from '../fach/kiosk-browser.js';
 import { waehleOrdner } from '../fach/ordnerdialog.js';
 import { erzeugeKurzanleitung, schreibePortalAushang } from '../fach/unterlagen.js';
 import {
@@ -407,7 +409,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     // sie mitten im Abend vom Bildschirm - und war sie die einzige, stuende
     // der Kiosk ohne Auswahl da.
     const laufend = vorlageInVeranstaltungen(anfrage.params.id).find(
-      (e) => e.status === 'aktiv' || e.status === 'pausiert',
+      (e) => e.status === 'aktiv',
     );
     if (laufend) {
       return antwort
@@ -517,7 +519,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       return antwort.code(400).send({ fehler: 'Aus der Datei liess sich kein Schriftname lesen.' });
     }
 
-    protokolliere('info', 'schriften', `Schrift "${familie}" hinzugefuegt.`);
+    protokolliere('info', 'schriften', `Schrift "${familie}" hinzugefügt.`);
     return { datei: name, familie };
   });
 
@@ -810,18 +812,18 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     async (anfrage, antwort) => {
       const koerper = z
         .object({
-          status: z.enum(['entwurf', 'startbereit', 'aktiv', 'pausiert', 'abgeschlossen', 'archiviert']),
+          status: z.enum(['entwurf', 'startbereit', 'aktiv', 'abgeschlossen', 'archiviert']),
         })
         .parse(anfrage.body);
       try {
         const vorher = holeEvent(anfrage.params.id)?.status;
         const event = setzeStatus(anfrage.params.id, koerper.status);
         if (koerper.status === 'abgeschlossen') await schreibeAuslagenCsv(event);
-        if (koerper.status === 'aktiv' && vorher !== 'pausiert' && vorher !== 'aktiv') {
+        if (koerper.status === 'aktiv' && vorher !== 'aktiv') {
           // Liegengebliebene Drucke frueherer Feiern gehen hier nicht mehr raus.
           const zurueck = stelleFremdeZurueck(event.id);
           if (zurueck > 0) {
-            protokolliere('warnung', 'druck', `${zurueck} wartende Drucke frueherer Veranstaltungen zurueckgestellt.`);
+            protokolliere('warnung', 'druck', `${zurueck} wartende Drucke früherer Veranstaltungen zurückgestellt.`);
           }
         }
         if (koerper.status === 'aktiv') await betrieb.starteLiveView();
@@ -920,6 +922,12 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const event = holeEvent(anfrage.params.id);
       if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
       try {
+        // Das Gaestebuch kommt immer als fertiges PDF mit - auch ohne
+        // Gruesse, dann als Album der Fotos. Frisch erzeugt, damit auch das
+        // letzte Foto und der letzte Gruss des Abends darin stehen.
+        await erzeugeGaestebuchPdf(event).catch((fehler: Error) =>
+          protokolliere('warnung', 'gaestebuch', `Gästebuch-PDF nicht erzeugt: ${fehler.message}`),
+        );
         const ergebnis = await uebergebeAufDatentraeger(event, koerper.ziel);
         protokolliere(
           ergebnis.geprueft ? 'info' : 'warnung',
@@ -932,6 +940,80 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       }
     },
   );
+
+  // ------------------------------------------------------- Gaestebuch
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    return {
+      anzahl: gruesseVon(event.id).length,
+      // Die Fotos ohne Gruss kommen immer mit - als "Momente des Abends".
+      fotos: fotosOhneGruss(event.id).length,
+    };
+  });
+
+  /** Das Gaestebuch als PDF - jedes Mal frisch, mit allen Gruessen (und Fotos) bis jetzt. */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/gaestebuch.pdf', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    // Im Speicher gebaut und direkt geschickt - die Datei fuer die Uebergabe
+    // bleibt davon unberuehrt.
+    const pdf = await baueGaestebuchPdf(event);
+    if (!pdf) return antwort.code(404).send({ fehler: 'Im Gästebuch steht noch nichts.' });
+    return antwort
+      .type('application/pdf')
+      .header('Cache-Control', 'no-store')
+      .header('Content-Disposition', 'inline; filename="Gaestebuch.pdf"')
+      .send(pdf.daten);
+  });
+
+  // --------------------------------------------------------- Diashow
+  /**
+   * Wo die Diashow zu sehen ist: am zweiten Bildschirm der Box und - mit
+   * Galerie im WLAN - auf jedem Fernseher oder Beamer mit eigenem Browser.
+   * Laeuft das Captive Portal, genuegt dort die kurze Adresse.
+   */
+  app.get<{ Params: { id: string } }>('/api/admin/events/:id/diashow', async (anfrage, antwort) => {
+    const event = holeEvent(anfrage.params.id);
+    if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
+    if (!event.einstellungen.diashowExtern) return { wlan: null, kurz: false };
+    const galerie = event.einstellungen.galerieAktiv ? galerieAdresse(event.galerieToken, konfig.portOeffentlich) : null;
+    const kurz = portalZustand()?.portal && event.einstellungen.galerieAktiv ? `http://${PORTAL_ADRESSE}/diashow` : null;
+    return { wlan: kurz ?? (galerie ? `${galerie}/diashow` : null), kurz: kurz !== null };
+  });
+
+  /** Diashow auf dem zweiten Bildschirm oeffnen oder schliessen. */
+  app.post<{ Body: unknown }>('/api/admin/diashow/fenster', async (anfrage, antwort) => {
+    const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
+    if (an && !holeAktivesEvent()?.einstellungen.diashowExtern) {
+      return antwort.code(409).send({
+        fehler: 'Erst bei der laufenden Veranstaltung die Diashow „Auf einem zweiten Bildschirm“ einschalten.',
+      });
+    }
+    if (process.platform !== 'win32' || !konfig.echteHardware) {
+      protokolliere('info', 'diashow', `Diashow-Fenster ${an ? 'öffnen' : 'schließen'} (Entwicklungsbetrieb - nur protokolliert).`);
+      return { ok: true, simuliert: true };
+    }
+    try {
+      if (!an) {
+        await schliesseDiashowFenster();
+        return { ok: true };
+      }
+      const ergebnis = await oeffneDiashowFenster(`http://localhost:${konfig.portLokal}/diashow?fenster=1`);
+      if (ergebnis === 'kein-zweiter-bildschirm') {
+        return antwort.code(409).send({
+          fehler: 'Windows meldet keinen zweiten Bildschirm. Den zweiten Bildschirm per HDMI anschließen und unter „Anzeige“ auf „Erweitern“ stellen.',
+        });
+      }
+      if (ergebnis === 'kein-browser') {
+        return antwort.code(409).send({ fehler: 'Weder Chrome noch Edge gefunden.' });
+      }
+      protokolliere('info', 'diashow', 'Diashow auf dem zweiten Bildschirm geöffnet.');
+      return { ok: true };
+    } catch (fehler) {
+      return antwort.code(500).send({ fehler: `Hat nicht geklappt: ${(fehler as Error).message}` });
+    }
+  });
 
   // ------------------------------------------------------ Unterlagen
   /**
@@ -993,7 +1075,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const eintrag = listeAdressen(anfrage.params.id).find((a) => a.id === anfrage.params.versandId);
       if (!eintrag) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
       loescheAdresse(eintrag.id);
-      protokolliere('info', 'email', 'Eine E-Mail-Adresse auf Wunsch geloescht.');
+      protokolliere('info', 'email', 'Eine E-Mail-Adresse auf Wunsch gelöscht.');
       return { ok: true };
     },
   );
@@ -1003,7 +1085,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     const event = holeEvent(anfrage.params.id);
     if (!event) return antwort.code(404).send({ fehler: 'Nicht gefunden.' });
     const geloescht = loescheAlleAdressen(event.id);
-    protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) von "${event.name}" geloescht.`);
+    protokolliere('info', 'email', `${geloescht} E-Mail-Adresse(n) von "${event.name}" gelöscht.`);
     return { geloescht };
   });
 
@@ -1102,7 +1184,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
    */
   app.delete('/api/admin/protokoll', async () => {
     const geloescht = holeDb().prepare("DELETE FROM protokoll WHERE ebene IN ('warnung', 'fehler')").run().changes;
-    protokolliere('info', 'verwaltung', `${geloescht} Meldung(en) aus "Was zuletzt gehakt hat" geloescht.`);
+    protokolliere('info', 'verwaltung', `${geloescht} Meldung(en) aus "Was zuletzt gehakt hat" gelöscht.`);
     return { geloescht };
   });
 }

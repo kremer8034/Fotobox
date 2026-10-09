@@ -82,7 +82,7 @@ export function richteSchriftenEin(datenpfad: string, mitgeliefert = MITGELIEFER
 }
 
 /** Die drei Hochzeits-Schreibschriften (SIL Open Font License), die der Fotobox beiliegen. */
-const MITGELIEFERT = fileURLToPath(new URL('../schriften-mitgeliefert/', import.meta.url));
+export const MITGELIEFERT = fileURLToPath(new URL('../schriften-mitgeliefert/', import.meta.url));
 
 /**
  * Mitgelieferte Schriften einmalig in den Schriftenordner legen. Dort sind sie

@@ -4,6 +4,78 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.1.1
+
+Alle drei neuen Funktionen sind **ab Werk aus** und werden je Veranstaltung
+einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch. Nur
+das Gästebuch-PDF selbst entsteht immer – mit allen Fotos als Album, auch
+ohne Grüße.
+
+- **Diashow:** Steht die Box eine Weile unberührt, laufen am Startbildschirm
+  die Fotos der Feier – mit der Einladung „Tippt auf den Bildschirm – für
+  euer eigenes Foto oder alle bisherigen Fotos“. Ein Tipp holt den Start
+  zurück; dort geht es zum Foto oder in die Galerie. Neue Fotos kommen
+  sofort an die Reihe („Gerade eben entstanden“). Schalter „Am
+  Startbildschirm, wenn niemand die Box benutzt“.
+- **Diashow auf einem zweiten Bildschirm (Beamer, Fernseher):** am HDMI-Anschluss der Box per Knopf
+  „Auf zweitem Bildschirm zeigen“ im Vollbild – oder auf jedem Fernseher mit
+  Browser im WLAN. Mit Captive Portal genügt `192.168.254.1/diashow`. Eigener
+  Schalter „Auf einem zweiten Bildschirm“.
+- **Digitales Gästebuch:** Nach dem Foto können Gäste mit dem Finger einen
+  Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
+  und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
+  erscheint er nie. Auf Wunsch (eigener Schalter, ab Werk aus) gibt es neun
+  Symbole zum Einfügen – Herz, Ringe, Sektgläser, Torte, Geschenk,
+  Luftballons, Blume, Sterne, Smiley: aufs Papier ziehen oder antippen,
+  danach mit dem Finger verschieben, gezeichnet in der gewählten Tintenfarbe.
+- **Gästebuch-PDF wie ein Erinnerungsalbum:** warmes Papier mit goldenem
+  Rahmen und Eckverzierungen, Fotos als eingeklebte Sofortbilder, Grüße auf
+  einer Briefkarte mit Klebestreifen (ohne Linien – mit dem Finger trifft
+  niemand eine Zeile genau, deshalb ist auch die Schreibseite unliniert). Auf
+  dem Deckblatt der Name der Feier in Schreibschrift und ein Fächer aus den
+  ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
+  (Lochung, Spirale, Klebebindung – einseitig wie beidseitig gedruckt).
+- **Gästebuch bei jeder Übergabe – mit allen Fotos:** Das PDF entsteht immer,
+  auch wenn das Gästebuch für die Feier aus war; dann ist es ein Album der Feier.
+  Fotos ohne Gruß stehen hinter den Grüßen unter „Momente des Abends“, sechs
+  je Seite, in der Reihenfolge der Aufnahme – nur, was auch in der Galerie
+  steht. Hochformat-
+  Layouts bekommen im PDF einen hohen Rahmen statt eines kleinen Bildes im
+  Querformat.
+- **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
+  selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt
+  immer nur ein Finger – eine zweite Hand auf dem Glas verschluckt keinen
+  Strich mehr. PDFs (Kurzanleitung, Aushang, Gästebuch) und die
+  Diashow-Vorschau öffnen sich in der Verwaltung mit „Schließen“ statt in
+  einem neuen Fenster, aus dem man im Kiosk-Vollbild nicht mehr herauskam.
+  Die Verwaltung lässt sich nicht mehr in fremde Webseiten einbetten.
+- **Pause entfernt:** Den Handgriff „Pause einlegen“ im Servicemenü gibt es
+  nicht mehr – die Box soll Fotos machen, nicht warten. Eine Veranstaltung,
+  die beim Update gerade pausiert war, läuft einfach weiter.
+- **Aus der Gesamtdurchsicht:**
+  - Nach dem Drucken bleibt die Ergebnisseite stehen, wenn das Gästebuch an
+    ist – vorher ging es sofort zum Start, und wer erst drucken und dann
+    schreiben wollte, kam nicht mehr ans Gästebuch.
+  - Gibt es nur eine Filter-Kachel („Ohne Filter“), entfällt die Filterwahl;
+    das Bild wird gleich zusammengesetzt.
+  - Übergabe: Der Knopf lässt sich während des Kopierens nicht ein zweites
+    Mal drücken, und das Ergebnis („… übertragen und geprüft“ bzw.
+    „unvollständig“) bleibt stehen, statt nach vier Sekunden zu
+    verschwinden. Eine halb geschriebene Zwischendatei geht nie mit auf den
+    Stick; ein veraltetes Gästebuch-PDF auch nicht.
+  - Im Gästebuch stehen die Grüße in der Reihenfolge der Fotos – wer seinen
+    Gruß neu schreibt, rutscht nicht mehr ans Ende.
+  - Meldungen in Verwaltung, Startbereit-Check und Protokoll mit richtigen
+    Umlauten („läuft“, „geprüft“, „Gerät“ …); ein abgelehnter Statuswechsel
+    nennt die Stufen beim Namen statt mit Datenbankwörtern.
+- **Startbereit-Check verständlicher:** Besitzer-PIN und Betreuer-PIN sind
+  jetzt zwei getrennte Punkte. Die Besitzer-PIN gilt für die ganze Box
+  („Gerät“), die Betreuer-PIN für die einzelne Veranstaltung. Vorher stand
+  beides in einer Zeile – fehlte bei einer neuen Feier nur die Betreuer-PIN,
+  sah es aus, als fehle die Besitzer-PIN. „Beheben“ führt jeweils an die
+  richtige Stelle. Dazu stimmen die Hinweise zu Kurzanleitung und Aushang
+  wieder.
+
 ## 1.1.0
 
 - **Übergabe nur mit den Fotos:** Der Gastgeber bekommt die Ordner

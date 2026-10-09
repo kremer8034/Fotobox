@@ -18,7 +18,7 @@ In 44 Sekunden vom Antippen bis zum fertigen Druck: [Video im Querformat](docs/v
 · [Video im Hochformat](docs/video/Fotobox-Vorstellung-Hochformat.mp4) für WhatsApp-Status und
 Instagram-Stories. Die Musik ist eigens erzeugt und frei von Rechten Dritter.
 
-**Aktuelle Version: 1.1.0.** Die Setup-Datei liegt auf der
+**Aktuelle Version: 1.1.1.** Die Setup-Datei liegt auf der
 [Releases-Seite](https://github.com/kremer8034/Fotobox/releases/latest). Was sich
 in jeder Version geändert hat, steht in [docs/Aenderungen.md](docs/Aenderungen.md).
 
@@ -43,6 +43,10 @@ seconds later. *The user interface and the documentation are in German.*
   gallery opens by itself (built-in captive portal with DHCP and DNS).
 - **Template editor** with image, photo and text layers, custom fonts and
   placeholders such as names and date; 20+ filters plus your own `.cube` LUTs.
+- **Slideshow and guestbook:** an idle slideshow on the touchscreen, on a
+  projector or TV (second HDMI screen or any browser on the Wi-Fi), and a
+  digital guestbook – guests write a note with their finger, the hosts get a
+  PDF with every photo and note.
 - **Made for parties:** big touch buttons, plain-language error messages, a
   hidden service menu with two PIN levels, a print queue that never loses a job,
   and a hand-over of all photos to a USB stick at the end.
@@ -86,9 +90,14 @@ Questions, ideas and bug reports are welcome as
 4. **Ergebnis:**
    - **Drucken**
    - **Per E-Mail** schicken
+   - **Ins Gästebuch schreiben** (wenn eingeschaltet): mit dem Finger einen Gruß schreiben oder
+     malen – nur für den Gastgeber, er erscheint in keiner Galerie
    - **Löschen**: Das Foto ist dann endgültig weg, für niemanden mehr abrufbar.
 5. **Galerie** am Touchscreen: alle Fotos der Feier ansehen, nachdrucken oder
    per E-Mail verschicken.
+6. **Diashow** (wenn eingeschaltet): Steht die Box eine Weile unberührt, laufen am Startbildschirm
+   die Fotos der Feier und laden die nächsten Gäste ein. Ein Tipp holt den
+   Start zurück.
 
 Die Bedienung ist auf den Finger ausgelegt. Knöpfe sind in Millimetern
 bemessen, Hinweise bei Störungen stehen in Alltagssprache („Der Drucker braucht
@@ -98,7 +107,7 @@ Papier“), nicht als Fehlercode.
 
 **Veranstaltungen**
 - Eigener Ordner je Feier, Lebenszyklus von *Entwurf* über *startbereit*,
-  *aktiv* und *pausiert* bis *abgeschlossen* und *archiviert*.
+  *aktiv* bis *abgeschlossen* und *archiviert*.
 - **Startbereit-Check** vor dem Start: Kamera, Drucker, Papier, Speicherplatz,
   Vorlagen, E-Mail, Galerie im Netz, PINs, Probelauf.
 - **Probelauf**: Testfotos zählen weder in den Auslagenersatz noch in die
@@ -132,10 +141,21 @@ Papier“), nicht als Fehlercode.
   der Auftrag. Nach „Papier gewechselt“ druckt die Box von selbst weiter.
 - **Papiervorrat** direkt aus dem DNP-Drucker, sichtbar im Servicemenü.
 
+**Diashow und Gästebuch** (ab Werk aus, je Veranstaltung einzeln einzuschalten)
+- **Diashow** am Startbildschirm im Leerlauf, auf einem **Beamer oder
+  Fernseher am HDMI-Anschluss** (per Knopfdruck in der Verwaltung im Vollbild
+  auf dem zweiten Bildschirm) oder auf jedem Fernseher mit Browser im WLAN –
+  mit Captive Portal genügt `192.168.254.1/diashow`. Neue Fotos kommen sofort
+  an die Reihe. Gezeigt wird nur, was auch in der Galerie steht.
+- **Digitales Gästebuch**: Gäste schreiben nach dem Foto mit dem Finger einen
+  Gruß. Löscht ein Gast sein Foto, geht der Gruß mit. Das **Gästebuch-PDF**
+  bekommt der Gastgeber bei jeder Übergabe – mit allen Fotos der Feier als
+  Album, die Grüße neben ihrem Foto. Auch wenn das Gästebuch aus war.
+
 **Kiosk und Servicemenü**
 - **Kiosk-Sperre**: versteckter Kreis oben rechts, eine Sekunde halten, PIN.
 - **Zwei PIN-Ebenen:**
-  - Betreuer (Gastgeber): Pause, Papier gewechselt, neue Rolle, Galerie
+  - Betreuer (Gastgeber): Papier gewechselt, neue Rolle, Galerie
   - Besitzer: zusätzlich Verwaltung öffnen, Probelauf, Veranstaltung
     abschließen, Kiosk schließen, PC herunterfahren
 - **Galerie pflegen**: Ein Foto lässt sich sofort aus der Galerie nehmen und
@@ -253,6 +273,7 @@ Fotobox-Daten/
       02_bearbeitet/            Fotos mit Filter
       03_layouts/               fertige Layouts, der Inhalt der Galerie
       04_druck/                 Druckdateien 152,4 × 101,6 mm (bleiben bei der Übergabe auf der Box)
+      05_gaestebuch/            Gaestebuch.pdf und handgeschriebene Grüße (gehen mit der Übergabe)
       _probelauf/               Testfotos (gehen nicht in die Übergabe)
       .cache/                   Vorschaubilder, Testdrucke, Unterlagen
       auslagen.csv              Abrechnung (bleibt bei der Übergabe auf der Box)

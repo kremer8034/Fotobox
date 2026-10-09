@@ -105,7 +105,6 @@ export interface Stoerungstext {
 export interface KioskStart {
   bereit: boolean;
   aktiveSitzungId?: string | null;
-  pausiert?: boolean;
   grund?: string;
   /** Noch keine Besitzer-PIN - der Kiosk zeigt den Weg in die Verwaltung. */
   ersteinrichtung?: boolean;
@@ -131,6 +130,11 @@ export interface KioskStart {
     hintergrund?: string | null;
     /** Abdunkeln des Hintergrundbilds in Prozent. */
     abdunkeln?: number;
+    /** Diashow am Startbildschirm im Leerlauf; null = aus. */
+    diashow?: { nachSekunden: number; wechselSekunden: number } | null;
+    /** Diashow-Seite fuer Beamer und Fernseher eingeschaltet. */
+    diashowExtern?: boolean;
+    diashowWechselSekunden?: number;
   };
   zeiten?: Zeiten;
   toene?: Toene;
@@ -143,6 +147,10 @@ export interface KioskStart {
     druckLimitErreicht: boolean;
     /** Blatt bis zum Druck-Limit; null ohne Limit. */
     druckRest?: number | null;
+    /** Knopf "Ins Gästebuch schreiben" auf der Ergebnisseite. */
+    gaestebuchAktiv?: boolean;
+    /** Symbole zum Einfuegen auf der Schreibseite. */
+    gaestebuchSymbole?: boolean;
   };
   vorlagen?: { id: string; name: string; fotos: number; canvas: { breiteMm: number; hoeheMm: number } }[];
   filter?: { id: string; name: string }[];

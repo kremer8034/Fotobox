@@ -18,6 +18,7 @@ import { join } from 'node:path';
  *         02_bearbeitet/   Fotos mit angewendetem Filter
  *         03_layouts/      fertige Layouts, das ist der Galerie-Inhalt
  *         04_druck/        Druck-PDFs
+ *         05_gaestebuch/   handgeschriebene Gruesse und das Gaestebuch als PDF
  *         _probelauf/      Sitzungen aus dem Probelauf, zaehlen nirgends mit
  *         .cache/          Thumbnails und QR-Codes, nicht Teil der Uebergabe
  *         auslagen.csv
@@ -50,6 +51,8 @@ export interface Eventpfade {
   bearbeitet: string;
   layouts: string;
   druck: string;
+  /** Wird erst beim ersten Gruss angelegt - ohne Gaestebuch kein leerer Ordner. */
+  gaestebuch: string;
   probelauf: string;
   cache: string;
   eventJson: string;
@@ -66,6 +69,7 @@ export function eventpfade(eventOrdner: string, probelauf = false): Eventpfade {
     bearbeitet: join(basis, '02_bearbeitet'),
     layouts: join(basis, '03_layouts'),
     druck: join(basis, '04_druck'),
+    gaestebuch: join(basis, '05_gaestebuch'),
     probelauf: join(eventOrdner, '_probelauf'),
     cache: join(eventOrdner, '.cache'),
     eventJson: join(eventOrdner, 'event.json'),

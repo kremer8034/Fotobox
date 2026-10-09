@@ -11,12 +11,13 @@ import {
   type EventStatus,
   type Veranstaltung,
   FILTER_OHNE,
+  STATUS_NAME,
 } from '../../shared/typen.js';
 
 /**
  * Veranstaltungen und ihr Lebenszyklus.
  *
- *   Entwurf -> Startbereit -> Aktiv <-> Pausiert -> Abgeschlossen -> Archiviert
+ *   Entwurf -> Startbereit -> Aktiv -> Abgeschlossen -> Archiviert
  *
  * Es darf immer nur genau ein Event aktiv sein. Das verhindert den Klassiker,
  * dass Fotos im Ordner der letzten Hochzeit landen; erzwungen wird es zusaetzlich
@@ -74,10 +75,10 @@ export function holeEvent(id: string): Veranstaltung | null {
   return zeile ? zuVeranstaltung(zeile) : null;
 }
 
-/** Das eine aktive oder pausierte Event, mit dem die Box gerade arbeitet. */
+/** Das eine aktive Event, mit dem die Box gerade arbeitet. */
 export function holeAktivesEvent(): Veranstaltung | null {
   const zeile = holeDb()
-    .prepare("SELECT * FROM events WHERE status IN ('aktiv','pausiert') LIMIT 1")
+    .prepare("SELECT * FROM events WHERE status = 'aktiv' LIMIT 1")
     .get() as EventZeile | undefined;
   return zeile ? zuVeranstaltung(zeile) : null;
 }
@@ -190,14 +191,14 @@ export function setzeStatus(id: string, neu: EventStatus): Veranstaltung {
 
   const erlaubt = UEBERGAENGE[event.status] ?? [];
   if (!erlaubt.includes(neu)) {
-    throw new Error(`Wechsel von "${event.status}" nach "${neu}" ist nicht vorgesehen.`);
+    throw new Error(`Von „${STATUS_NAME[event.status]}“ geht es nicht direkt nach „${STATUS_NAME[neu]}“.`);
   }
 
   if (neu === 'aktiv') {
     const anderes = holeAktivesEvent();
     if (anderes && anderes.id !== id) {
       throw new Error(
-        `"${anderes.name}" laeuft gerade. Es kann immer nur eine Veranstaltung aktiv sein.`,
+        `„${anderes.name}“ läuft gerade. Es kann immer nur eine Veranstaltung aktiv sein.`,
       );
     }
   }

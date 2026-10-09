@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Zeiten } from '../api.js';
+import { DiashowVorschau, PdfKnopf } from './PdfFenster.js';
 import { STATUS_NAME, STATUS_WECHSEL, UEBERGAENGE, type EventStatus } from '../../shared/typen.js';
 
 interface EventVoll {
@@ -31,6 +32,12 @@ interface EventVoll {
     emailLoeschfristTage: number;
     vorlagen: string[];
     filter: string[];
+    diashowAufStart: boolean;
+    diashowExtern: boolean;
+    diashowNachSekunden: number;
+    diashowWechselSekunden: number;
+    gaestebuchAktiv: boolean;
+    gaestebuchSymbole: boolean;
   };
   auslagen: {
     sitzungen: number;
@@ -114,6 +121,11 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   const [zettel, setzeZettel] = useState<string | null>(null);
   const [zielPfad, setzeZielPfad] = useState('');
   const [dialogOffen, setzeDialogOffen] = useState(false);
+  // Die Uebergabe dauert - Gaestebuch erzeugen, dann kopieren. Waehrenddessen
+  // kein zweiter Start, und das Ergebnis bleibt stehen, statt nach vier
+  // Sekunden zu verschwinden: "unvollstaendig" darf niemand verpassen.
+  const [uebergibt, setzeUebergibt] = useState(false);
+  const [uebergabe, setzeUebergabe] = useState<{ text: string; ok: boolean } | null>(null);
   // Das Notfall-Telefon gilt fuer alle Veranstaltungen - einmal eintragen, danach steht es schon da.
   const [telefon, setzeTelefon] = useState<string | null>(null);
 
@@ -454,6 +466,16 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
         </div>
       )}
 
+      {reiter === 'ausgabe' && (
+        <DiashowGaestebuchKarte
+          eventId={id}
+          einstellungen={e}
+          galerieAktiv={e.galerieAktiv}
+          beiAenderung={(teil) => speichere(teil)}
+          zeige={zeige}
+        />
+      )}
+
       {reiter === 'aussehen' && (
         <HintergrundKarte
           datei={e.hintergrundDatei}
@@ -592,9 +614,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
             )}
             {zettel && (
               <p style={{ marginBottom: 0 }}>
-                <a href={zettel} target="_blank" rel="noreferrer">
-                  Kurzanleitung öffnen
-                </a>
+                <PdfKnopf href={zettel} beschriftung="Kurzanleitung öffnen" />
               </p>
             )}
           </div>
@@ -602,10 +622,11 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
           <div className="karte">
             <h2>Übergabe an den Gastgeber</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--schrift-leise)', marginTop: 0 }}>
-              Kopiert die Fotos der Veranstaltung: Originale, bearbeitete Fotos und die fertigen
-              Layouts. Druckdateien, Testfotos aus dem Probelauf und die Unterlagen der Box
-              (Auslagen, Einstellungen) bleiben auf der Box. Erst wenn eine Markerdatei drüben ankommt
-              und die Dateizahl stimmt, gilt die Kopie als vollständig.
+              Kopiert die Fotos der Veranstaltung: Originale, bearbeitete Fotos, die fertigen Layouts
+              und das Gästebuch als PDF (mit den Grüßen, falls Gäste geschrieben haben). Druckdateien,
+              Testfotos aus dem Probelauf und die Unterlagen der Box (Auslagen, Einstellungen) bleiben
+              auf der Box. Erst wenn eine Markerdatei drüben ankommt und die Dateizahl stimmt, gilt die
+              Kopie als vollständig.
             </p>
             <div className="zeile">
               <div className="feld" style={{ flex: 1 }}>
@@ -621,12 +642,29 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
               </button>
               <button
                 className="knopf knopf--neben"
-                disabled={zielPfad.length < 2}
+                disabled={zielPfad.length < 2 || uebergibt}
                 onClick={() => void uebergeben()}
               >
-                Jetzt übergeben
+                {uebergibt ? 'Wird übergeben …' : 'Jetzt übergeben'}
               </button>
             </div>
+            {uebergibt && (
+              <p style={{ fontSize: '0.85rem', marginBottom: 0 }}>
+                Gästebuch wird erstellt und die Fotos werden kopiert – bei vielen Fotos kann das ein,
+                zwei Minuten dauern.
+              </p>
+            )}
+            {!uebergibt && uebergabe && (
+              <p
+                style={{
+                  fontSize: '0.85rem',
+                  marginBottom: 0,
+                  color: uebergabe.ok ? 'var(--gut)' : 'var(--fehler)',
+                }}
+              >
+                {uebergabe.text}
+              </p>
+            )}
           </div>
           {(event.status === 'abgeschlossen' || event.status === 'archiviert') && (
             <div className="karte">
@@ -652,12 +690,13 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
 
   /** Springt zu dem Reiter, auf dem der fehlgeschlagene Pruefpunkt behoben wird. */
   function beheben(schluessel: string): (() => void) | null {
+    // Die Besitzer-PIN gehoert zur Box, nicht zur Veranstaltung - also dorthin.
+    if (schluessel === 'besitzerPin') return () => navigiere('/admin/geraet');
     const ziel: Record<string, Reiter> = {
       vorlagen: 'vorlagen',
       betreuerPin: 'aussehen',
       galerie: 'ausgabe',
       unterlagen: 'unterlagen',
-      material: 'auslagen',
     };
     const reiterZiel = ziel[schluessel];
     return reiterZiel ? () => setzeReiter(reiterZiel) : null;
@@ -752,7 +791,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     return versuche(async () => {
       await api.sende(`/api/admin/events/${id}/galerie-token`, {});
       await lade();
-      zeige('Der alte Link ist jetzt tot. Den QR-Aushang neu erzeugen und austauschen.');
+      zeige('Der alte Link ist jetzt tot. Der QR-Code am Startbildschirm zeigt schon den neuen – eine ausgedruckte Kurzanleitung bitte neu erzeugen.');
     });
   }
 
@@ -788,15 +827,21 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
   }
 
   async function uebergeben() {
-    setzeMeldung('Kopiere…');
-    await versuche(async () => {
+    if (uebergibt) return;
+    setzeUebergibt(true);
+    setzeUebergabe(null);
+    try {
       const ergebnis = await api.sende<{ meldung: string; geprueft: boolean; ziel: string }>(
         `/api/admin/events/${id}/uebergabe`,
         { ziel: zielPfad },
       );
-      zeige(`${ergebnis.meldung} Ziel: ${ergebnis.ziel}`);
+      setzeUebergabe({ text: `${ergebnis.meldung} Ziel: ${ergebnis.ziel}`, ok: ergebnis.geprueft });
       await lade();
-    });
+    } catch (u) {
+      setzeUebergabe({ text: u instanceof Error ? u.message : 'Die Übergabe hat nicht geklappt.', ok: false });
+    } finally {
+      setzeUebergibt(false);
+    }
   }
 
   async function loeschen() {
@@ -835,6 +880,7 @@ function ZahlFeld({
   schritt = 1,
   komma = false,
   klein = false,
+  breit = false,
   beiSpeichern,
 }: {
   id?: string;
@@ -845,6 +891,8 @@ function ZahlFeld({
   schritt?: number;
   komma?: boolean;
   klein?: boolean;
+  /** Fuer eine Beschriftung als ganze Frage: breit genug, dass sie in eine Zeile passt. */
+  breit?: boolean;
   beiSpeichern: (n: number) => Promise<void> | void;
 }) {
   const [entwurf, setzeEntwurf] = useState(String(wert));
@@ -865,7 +913,7 @@ function ZahlFeld({
   const gueltig = lies(entwurf) !== null;
 
   return (
-    <div className={`feld${klein ? ' feld--klein' : ''}`}>
+    <div className={`feld${klein ? ' feld--klein' : ''}${breit ? ' feld--breit' : ''}`}>
       <label htmlFor={id} title={titel}>
         {name}
       </label>
@@ -1342,5 +1390,175 @@ function MailHinweis() {
       Noch kein Mailserver eingetragen (Verwaltung → Gerät → E-Mail). Solange erscheint der Knopf „Per E-Mail
       schicken“ auf der Ergebnisseite nicht.
     </p>
+  );
+}
+
+/**
+ * Diashow und Gaestebuch - beides fuer die Feier selbst: Die Diashow laeuft am
+ * Startbildschirm im Leerlauf und auf Wunsch auf einem zweiten Bildschirm,
+ * das Gaestebuch sammelt handgeschriebene Gruesse fuer den Gastgeber.
+ */
+function DiashowGaestebuchKarte({
+  eventId,
+  einstellungen: e,
+  galerieAktiv,
+  beiAenderung,
+  zeige,
+}: {
+  eventId: string;
+  einstellungen: EventVoll['einstellungen'];
+  galerieAktiv: boolean;
+  beiAenderung: (teil: Record<string, unknown>) => Promise<void>;
+  zeige: (text: string) => void;
+}) {
+  const [wlan, setzeWlan] = useState<{ wlan: string | null; kurz: boolean } | null>(null);
+  const [gaestebuch, setzeGaestebuch] = useState<{ anzahl: number; fotos: number } | null>(null);
+
+  useEffect(() => {
+    let aktiv = true;
+    api
+      .hole<{ wlan: string | null; kurz: boolean }>(`/api/admin/events/${eventId}/diashow`)
+      .then((d) => aktiv && setzeWlan(d))
+      .catch(() => undefined);
+    api
+      .hole<{ anzahl: number; fotos?: number }>(`/api/admin/events/${eventId}/gaestebuch`)
+      .then((d) => aktiv && setzeGaestebuch({ anzahl: d.anzahl, fotos: d.fotos ?? 0 }))
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, [eventId, galerieAktiv, e.diashowExtern, e.gaestebuchAktiv]);
+
+  async function fenster(an: boolean) {
+    try {
+      const antwort = await api.sende<{ simuliert?: boolean }>('/api/admin/diashow/fenster', { an });
+      zeige(
+        antwort.simuliert
+          ? 'Im Entwicklungsbetrieb wird kein Fenster geöffnet.'
+          : an
+            ? 'Die Diashow läuft auf dem zweiten Bildschirm.'
+            : 'Diashow beendet.',
+      );
+    } catch (u) {
+      zeige(u instanceof Error ? u.message : 'Hat nicht geklappt.');
+    }
+  }
+
+  const leise = { fontSize: '0.82rem', color: 'var(--schrift-leise)' } as const;
+  return (
+    <div className="karte">
+      <h2>Diashow</h2>
+      <p style={{ ...leise, marginTop: 0 }}>
+        Die Fotos der Feier als Diashow – neue Fotos kommen sofort an die Reihe. Gezeigt wird nur, was auch in
+        der Galerie steht: kein Probelauf und nichts, was aus der Galerie genommen wurde. Beides ist
+        standardmäßig aus.
+      </p>
+      <div className="zeile">
+        <Schalter
+          an={e.diashowAufStart}
+          name="Am Startbildschirm, wenn niemand die Box benutzt"
+          beiWechsel={(an) => void beiAenderung({ diashowAufStart: an })}
+        />
+      </div>
+      {/* Gleich unter dem Haken, zu dem sie gehoert - die Zeit gilt nur am
+          Startbildschirm; auf dem zweiten Bildschirm laeuft die Diashow immer. */}
+      {e.diashowAufStart && (
+        <div className="zeile">
+          <ZahlFeld
+            name="Startet nach wie vielen Sekunden ohne Berührung?"
+            breit
+            wert={e.diashowNachSekunden}
+            grenzen={[15, 600]}
+            beiSpeichern={(n) => beiAenderung({ diashowNachSekunden: n })}
+          />
+        </div>
+      )}
+      <div className="zeile" style={{ marginTop: '0.6rem' }}>
+        <Schalter
+          an={e.diashowExtern}
+          name="Auf einem zweiten Bildschirm"
+          beiWechsel={(an) => void beiAenderung({ diashowExtern: an })}
+        />
+      </div>
+      {(e.diashowAufStart || e.diashowExtern) && (
+        <div className="zeile" style={{ marginTop: '0.9rem' }}>
+          <ZahlFeld
+            name={
+              e.diashowAufStart && e.diashowExtern
+                ? 'Für beide Diashows: Wie viele Sekunden bleibt jedes Foto stehen?'
+                : 'Wie viele Sekunden bleibt jedes Foto stehen?'
+            }
+            titel="Gilt für beide Diashows – am Startbildschirm und auf dem zweiten Bildschirm."
+            breit
+            wert={e.diashowWechselSekunden}
+            grenzen={[3, 30]}
+            beiSpeichern={(n) => beiAenderung({ diashowWechselSekunden: n })}
+          />
+        </div>
+      )}
+      {e.diashowExtern && (
+        <>
+          <p style={{ ...leise, marginBottom: '0.4rem' }}>
+            <strong>Zweiter Bildschirm am HDMI-Anschluss der Box</strong> (Beamer, Fernseher, Monitor):
+            anschließen, in Windows mit Windows-Taste + P auf „Erweitern“ stellen, dann hier öffnen.
+          </p>
+          <div className="zeile">
+            <button className="knopf knopf--neben" onClick={() => void fenster(true)}>
+              Auf zweitem Bildschirm zeigen
+            </button>
+            <button className="knopf knopf--neben" onClick={() => void fenster(false)}>
+              Diashow beenden
+            </button>
+            <DiashowVorschau />
+          </div>
+          <p style={{ ...leise, marginBottom: 0 }}>
+            <strong>Zweiter Bildschirm mit eigenem Browser im WLAN</strong> (z. B. Smart-TV):{' '}
+            {wlan?.wlan ? (
+              <>
+                dort <code>{wlan.wlan}</code> öffnen
+                {wlan.kurz ? ' – das Gerät dafür mit dem Fotobox-WLAN verbinden' : ''}.
+              </>
+            ) : (
+              'geht, sobald oben „Galerie im WLAN“ an ist.'
+            )}
+          </p>
+        </>
+      )}
+
+      <h2 style={{ marginTop: '1.4rem' }}>Gästebuch</h2>
+      <p style={{ ...leise, marginTop: 0 }}>
+        Eingeschaltet können Gäste nach dem Foto mit dem Finger einen Gruß schreiben, der im Gästebuch neben
+        ihrem Foto steht. In Galerie und Diashow erscheinen die Grüße nie. Das Gästebuch-PDF mit allen Fotos
+        der Feier bekommt der Gastgeber bei der Übergabe so oder so.
+      </p>
+      <div className="zeile">
+        <Schalter
+          an={e.gaestebuchAktiv}
+          name="Gästebuch einschalten"
+          beiWechsel={(an) => void beiAenderung({ gaestebuchAktiv: an })}
+        />
+        {e.gaestebuchAktiv && (
+          <Schalter
+            an={e.gaestebuchSymbole}
+            name="Symbole zum Einfügen (Herz, Ringe, Torte …)"
+            beiWechsel={(an) => void beiAenderung({ gaestebuchSymbole: an })}
+          />
+        )}
+        {gaestebuch !== null && gaestebuch.anzahl + gaestebuch.fotos > 0 && (
+          <PdfKnopf
+            href={`/api/admin/events/${eventId}/gaestebuch.pdf`}
+            beschriftung={`Gästebuch ansehen (${[
+              gaestebuch.anzahl > 0 ? `${gaestebuch.anzahl} ${gaestebuch.anzahl === 1 ? 'Gruß' : 'Grüße'}` : '',
+              // "ohne Gruss" nur, wenn es Gruesse gibt - sonst sind es einfach die Fotos der Feier.
+              gaestebuch.fotos > 0
+                ? `${gaestebuch.fotos} ${gaestebuch.fotos === 1 ? 'Foto' : 'Fotos'}${gaestebuch.anzahl > 0 ? ' ohne Gruß' : ''}`
+                : '',
+            ]
+              .filter(Boolean)
+              .join(', ')})`}
+          />
+        )}
+      </div>
+    </div>
   );
 }

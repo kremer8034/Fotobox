@@ -287,7 +287,6 @@ export type EventStatus =
   | 'entwurf'
   | 'startbereit'
   | 'aktiv'
-  | 'pausiert'
   | 'abgeschlossen'
   | 'archiviert';
 
@@ -301,8 +300,7 @@ export type EventStatus =
 export const UEBERGAENGE: Record<EventStatus, EventStatus[]> = {
   entwurf: ['startbereit', 'archiviert'],
   startbereit: ['aktiv', 'entwurf', 'archiviert'],
-  aktiv: ['pausiert', 'abgeschlossen'],
-  pausiert: ['aktiv', 'abgeschlossen'],
+  aktiv: ['abgeschlossen'],
   abgeschlossen: ['archiviert', 'aktiv'],
   archiviert: ['entwurf'],
 };
@@ -312,7 +310,6 @@ export const STATUS_NAME: Record<EventStatus, string> = {
   entwurf: 'Entwurf',
   startbereit: 'Startbereit',
   aktiv: 'Aktiv',
-  pausiert: 'Pausiert',
   abgeschlossen: 'Abgeschlossen',
   archiviert: 'Archiviert',
 };
@@ -322,7 +319,6 @@ export const STATUS_WECHSEL: Record<EventStatus, string> = {
   entwurf: 'Zurück in den Entwurf',
   startbereit: 'Als startbereit markieren',
   aktiv: 'Veranstaltung starten',
-  pausiert: 'Pause einlegen',
   abgeschlossen: 'Veranstaltung abschließen',
   archiviert: 'Archivieren',
 };
@@ -365,6 +361,26 @@ export interface EventEinstellungen {
   /** Freigegebene Vorlagen und Filter, in Anzeigereihenfolge. */
   vorlagen: string[];
   filter: string[];
+
+  /**
+   * Diashow am Startbildschirm: Steht die Box eine Weile unberuehrt, laufen
+   * dort die Fotos der Feier - das lockt die naechsten Gaeste an.
+   */
+  diashowAufStart: boolean;
+  /**
+   * Diashow fuer Beamer und Fernseher: am zweiten Bildschirm der Box und - mit
+   * Galerie im WLAN - auf Geraeten mit eigenem Browser.
+   */
+  diashowExtern: boolean;
+  /** Nach so vielen Sekunden ohne Beruehrung beginnt sie. */
+  diashowNachSekunden: number;
+  /** So lange steht jedes Bild - auch in der Diashow fuer Beamer und Fernseher. */
+  diashowWechselSekunden: number;
+
+  /** Gaestebuch: Nach dem Foto schreiben Gaeste mit dem Finger einen Gruss. */
+  gaestebuchAktiv: boolean;
+  /** Symbole (Herz, Ringe, Torte ...) zum Einfuegen auf der Schreibseite. */
+  gaestebuchSymbole: boolean;
 }
 
 export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
@@ -393,6 +409,13 @@ export const EINSTELLUNGEN_VORGABE: EventEinstellungen = {
   emailLoeschfristTage: 30,
   vorlagen: [],
   filter: [FILTER_OHNE, 'schwarzweiss', 'sepia', 'warm', 'pop'],
+  // Neue Funktionen sind aus, bis sie jemand bewusst einschaltet.
+  diashowAufStart: false,
+  diashowExtern: false,
+  diashowNachSekunden: 60,
+  diashowWechselSekunden: 7,
+  gaestebuchAktiv: false,
+  gaestebuchSymbole: false,
 };
 
 export interface Veranstaltung {

@@ -69,6 +69,12 @@ export const EINSTELLUNGEN_EINGABE = z
     emailLoeschfristTage: ganz('Adressen löschen nach', 1, 365),
     vorlagen: z.array(z.string().max(64)).max(50),
     filter: z.array(z.string().max(64)).max(50),
+    diashowAufStart: z.boolean(),
+    diashowExtern: z.boolean(),
+    diashowNachSekunden: ganz('Diashow startet nach Sekunden ohne Berührung', 15, 600),
+    diashowWechselSekunden: ganz('Sekunden je Foto in der Diashow', 3, 30),
+    gaestebuchAktiv: z.boolean(),
+    gaestebuchSymbole: z.boolean(),
   })
   .partial()
   .strict();

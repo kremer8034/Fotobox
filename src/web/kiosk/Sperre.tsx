@@ -216,7 +216,7 @@ export function Servicemenue({
   const [rueckfrage, setzeRueckfrage] = useState<Rueckfrage | null>(null);
   const [beruehrt, setzeBeruehrt] = useState(0);
   // Ein Handgriff zur Zeit: Ein Doppeltipp auf "Herunterfahren" oder
-  // "Pause" schickte den Befehl sonst zweimal.
+  // "Papier gewechselt" schickte den Befehl sonst zweimal.
   const beschaeftigt = useRef(false);
 
   useZeitgeber(beiSchliessen, 60_000, [beruehrt, rueckfrage]);
@@ -230,7 +230,6 @@ export function Servicemenue({
     return () => clearInterval(uhr);
   }, [meldung]);
 
-  const pausiert = zustand?.veranstaltung?.status === 'pausiert';
   const probelauf = zustand?.veranstaltung?.probelauf === true;
 
   return (
@@ -266,13 +265,6 @@ export function Servicemenue({
           </button>
 
           <p className="service__trenner">Alltag</p>
-          <Handgriff
-            titel={pausiert ? 'Pause beenden' : 'Pause einlegen'}
-            zeile={pausiert ? 'Gäste können wieder fotografieren' : 'Etwa während des Essens'}
-            beiTipp={() =>
-              void tue('/api/kiosk/service/pause', { an: !pausiert }, pausiert ? 'Es geht weiter.' : 'Pause läuft.')
-            }
-          />
           <Handgriff
             titel="Papier gewechselt"
             zeile="Wartende Fotos weiter drucken"
