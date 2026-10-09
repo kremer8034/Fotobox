@@ -667,12 +667,13 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
 
   /** Springt zu dem Reiter, auf dem der fehlgeschlagene Pruefpunkt behoben wird. */
   function beheben(schluessel: string): (() => void) | null {
+    // Die Besitzer-PIN gehoert zur Box, nicht zur Veranstaltung - also dorthin.
+    if (schluessel === 'besitzerPin') return () => navigiere('/admin/geraet');
     const ziel: Record<string, Reiter> = {
       vorlagen: 'vorlagen',
       betreuerPin: 'aussehen',
       galerie: 'ausgabe',
       unterlagen: 'unterlagen',
-      material: 'auslagen',
     };
     const reiterZiel = ziel[schluessel];
     return reiterZiel ? () => setzeReiter(reiterZiel) : null;
@@ -767,7 +768,7 @@ export function EventDetail({ id, navigiere }: { id: string; navigiere: (ziel: s
     return versuche(async () => {
       await api.sende(`/api/admin/events/${id}/galerie-token`, {});
       await lade();
-      zeige('Der alte Link ist jetzt tot. Den QR-Aushang neu erzeugen und austauschen.');
+      zeige('Der alte Link ist jetzt tot. Der QR-Code am Startbildschirm zeigt schon den neuen – eine ausgedruckte Kurzanleitung bitte neu erzeugen.');
     });
   }
 

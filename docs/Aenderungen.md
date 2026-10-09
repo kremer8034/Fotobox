@@ -22,6 +22,13 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
   und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
   erscheint er nie.
+- **Startbereit-Check verständlicher:** Besitzer-PIN und Betreuer-PIN sind
+  jetzt zwei getrennte Punkte. Die Besitzer-PIN gilt für die ganze Box
+  („Gerät“), die Betreuer-PIN für die einzelne Veranstaltung. Vorher stand
+  beides in einer Zeile – fehlte bei einer neuen Feier nur die Betreuer-PIN,
+  sah es aus, als fehle die Besitzer-PIN. „Beheben“ führt jeweils an die
+  richtige Stelle. Dazu stimmen die Hinweise zu Kurzanleitung und Aushang
+  wieder.
 
 ## 1.1.0
 
