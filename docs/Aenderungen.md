@@ -16,10 +16,10 @@ ohne Grüße.
   euer eigenes Foto!“. Ein Tipp holt den Start zurück. Neue Fotos kommen
   sofort an die Reihe („Gerade eben entstanden“). Schalter „Am
   Startbildschirm, wenn niemand die Box benutzt“.
-- **Diashow auf Beamer oder Fernseher:** am HDMI-Anschluss der Box per Knopf
+- **Diashow auf einem zweiten Bildschirm (Beamer, Fernseher):** am HDMI-Anschluss der Box per Knopf
   „Auf zweitem Bildschirm zeigen“ im Vollbild – oder auf jedem Fernseher mit
   Browser im WLAN. Mit Captive Portal genügt `192.168.254.1/diashow`. Eigener
-  Schalter „Für Beamer und Fernseher“.
+  Schalter „Auf einem zweiten Bildschirm“.
 - **Digitales Gästebuch:** Nach dem Foto können Gäste mit dem Finger einen
   Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
   und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
@@ -35,7 +35,7 @@ ohne Grüße.
   ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
   (Lochung, Spirale, Klebebindung – einseitig wie beidseitig gedruckt).
 - **Gästebuch bei jeder Übergabe – mit allen Fotos:** Das PDF entsteht immer,
-  auch wenn die Schreibfunktion aus war; dann ist es ein Album der Feier.
+  auch wenn das Gästebuch für die Feier aus war; dann ist es ein Album der Feier.
   Fotos ohne Gruß stehen hinter den Grüßen unter „Momente des Abends“, sechs
   je Seite, in der Reihenfolge der Aufnahme – nur, was auch in der Galerie
   steht. Hochformat-

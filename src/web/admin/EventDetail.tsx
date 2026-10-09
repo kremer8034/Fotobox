@@ -1363,7 +1363,7 @@ function MailHinweis() {
 
 /**
  * Diashow und Gaestebuch - beides fuer die Feier selbst: Die Diashow laeuft am
- * Startbildschirm im Leerlauf und auf Wunsch auf einem Beamer oder Fernseher,
+ * Startbildschirm im Leerlauf und auf Wunsch auf einem zweiten Bildschirm,
  * das Gaestebuch sammelt handgeschriebene Gruesse fuer den Gastgeber.
  */
 function DiashowGaestebuchKarte({
@@ -1431,7 +1431,7 @@ function DiashowGaestebuchKarte({
       <div className="zeile" style={{ marginTop: '0.6rem' }}>
         <Schalter
           an={e.diashowExtern}
-          name="Für Beamer und Fernseher"
+          name="Auf einem zweiten Bildschirm"
           beiWechsel={(an) => void beiAenderung({ diashowExtern: an })}
         />
       </div>
@@ -1458,8 +1458,8 @@ function DiashowGaestebuchKarte({
       {e.diashowExtern && (
         <>
           <p style={{ ...leise, marginBottom: '0.4rem' }}>
-            <strong>Beamer oder Fernseher am HDMI-Anschluss der Box:</strong> anschließen, in Windows mit
-            Windows-Taste + P auf „Erweitern“ stellen, dann hier öffnen.
+            <strong>Zweiter Bildschirm am HDMI-Anschluss der Box</strong> (Beamer, Fernseher, Monitor):
+            anschließen, in Windows mit Windows-Taste + P auf „Erweitern“ stellen, dann hier öffnen.
           </p>
           <div className="zeile">
             <button className="knopf knopf--neben" onClick={() => void fenster(true)}>
@@ -1471,7 +1471,7 @@ function DiashowGaestebuchKarte({
             <DiashowVorschau />
           </div>
           <p style={{ ...leise, marginBottom: 0 }}>
-            <strong>Fernseher oder Beamer mit eigenem Browser im WLAN:</strong>{' '}
+            <strong>Zweiter Bildschirm mit eigenem Browser im WLAN</strong> (z. B. Smart-TV):{' '}
             {wlan?.wlan ? (
               <>
                 dort <code>{wlan.wlan}</code> öffnen
@@ -1486,14 +1486,14 @@ function DiashowGaestebuchKarte({
 
       <h2 style={{ marginTop: '1.4rem' }}>Gästebuch</h2>
       <p style={{ ...leise, marginTop: 0 }}>
-        Das Gästebuch-PDF bekommt der Gastgeber bei jeder Übergabe – alle Fotos der Feier, gestaltet wie ein
-        Album. Mit dem Schalter können Gäste nach dem Foto zusätzlich mit dem Finger einen Gruß schreiben, der
-        dann neben ihrem Foto steht. In Galerie und Diashow erscheinen die Grüße nie.
+        Eingeschaltet können Gäste nach dem Foto mit dem Finger einen Gruß schreiben, der im Gästebuch neben
+        ihrem Foto steht. In Galerie und Diashow erscheinen die Grüße nie. Das Gästebuch-PDF mit allen Fotos
+        der Feier bekommt der Gastgeber bei der Übergabe so oder so.
       </p>
       <div className="zeile">
         <Schalter
           an={e.gaestebuchAktiv}
-          name="Knopf „Ins Gästebuch schreiben“ nach dem Foto"
+          name="Gästebuch einschalten"
           beiWechsel={(an) => void beiAenderung({ gaestebuchAktiv: an })}
         />
         {e.gaestebuchAktiv && (

@@ -987,7 +987,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
     const { an } = z.object({ an: z.boolean() }).parse(anfrage.body);
     if (an && !holeAktivesEvent()?.einstellungen.diashowExtern) {
       return antwort.code(409).send({
-        fehler: 'Erst bei der laufenden Veranstaltung „Diashow für Beamer und Fernseher“ einschalten.',
+        fehler: 'Erst bei der laufenden Veranstaltung die Diashow „Auf einem zweiten Bildschirm“ einschalten.',
       });
     }
     if (process.platform !== 'win32' || !konfig.echteHardware) {
@@ -1002,7 +1002,7 @@ export function registriereAdmin(app: FastifyInstance, betrieb: Betrieb, konfig:
       const ergebnis = await oeffneDiashowFenster(`http://localhost:${konfig.portLokal}/diashow?fenster=1`);
       if (ergebnis === 'kein-zweiter-bildschirm') {
         return antwort.code(409).send({
-          fehler: 'Windows meldet keinen zweiten Bildschirm. Beamer oder Fernseher per HDMI anschließen und unter „Anzeige“ auf „Erweitern“ stellen.',
+          fehler: 'Windows meldet keinen zweiten Bildschirm. Den zweiten Bildschirm per HDMI anschließen und unter „Anzeige“ auf „Erweitern“ stellen.',
         });
       }
       if (ergebnis === 'kein-browser') {

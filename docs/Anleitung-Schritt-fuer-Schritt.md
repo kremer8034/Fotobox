@@ -322,7 +322,7 @@ Weiter unten:
 - Bei **Ausgabe** einstellen, ob gedruckt werden darf und wie viele Kopien
   höchstens.
 - Ebenfalls bei **Ausgabe**: **Diashow** und **Gästebuch** (siehe unten
-  „Diashow auf Beamer oder Fernseher“ und „Das Gästebuch“).
+  „Diashow auf einem zweiten Bildschirm“ und „Das Gästebuch“).
 
 ## Schritt 20: Der Startbereit-Check
 
@@ -485,19 +485,19 @@ Die Handy-Galerie ist nur erreichbar, solange die Veranstaltung läuft. Nach dem
 Abschließen zeigt der alte Link nichts mehr — auch nicht, wenn ein Gast ihn auf
 der nächsten Feier wieder aufruft.
 
-## Diashow auf Beamer oder Fernseher
+## Diashow auf einem zweiten Bildschirm
 
 Die Fotos der Feier laufen als Diashow – neue Fotos kommen sofort an die
 Reihe. Ab Werk ist sie **aus**; es gibt zwei getrennte Schalter unter
-Veranstaltung → **Ausgabe** → **Diashow**: „Am Startbildschirm …“ und „Für
-Beamer und Fernseher“. Gezeigt wird nur, was auch in der Galerie steht: keine Testfotos aus
+Veranstaltung → **Ausgabe** → **Diashow**: „Am Startbildschirm …“ und „Auf
+einem zweiten Bildschirm“ (Beamer, Fernseher oder Monitor). Gezeigt wird nur, was auch in der Galerie steht: keine Testfotos aus
 dem Probelauf und nichts, was aus der Galerie genommen wurde.
 
 **Am Startbildschirm** läuft sie – eingeschaltet – von selbst, wenn eine Weile
 niemand die Box benutzt (Vorgabe: nach 60 Sekunden). Ein Tipp auf den
 Bildschirm holt den Start zurück.
 
-**Beamer oder Fernseher am HDMI-Anschluss der Box:**
+**Zweiter Bildschirm am HDMI-Anschluss der Box:**
 1. Kabel anstecken. In Windows mit **Windows-Taste + P** „**Erweitern**“
    wählen – nicht „Duplizieren“, sonst zeigt der Beamer den Touchscreen.
 2. In der Verwaltung: Veranstaltung → **Ausgabe** → **„Auf zweitem Bildschirm
@@ -514,7 +514,7 @@ Zwei Windows-Einstellungen, einmal pro Beamer bzw. Fernseher:
   „**Tablet PC-Einstellungen**“ → „Setup“ → „Toucheingabe“ und den Touchscreen
   antippen. Windows merkt sich das.
 
-**Fernseher oder Beamer mit eigenem Browser im WLAN** (nur mit „Galerie im
+**Zweiter Bildschirm mit eigenem Browser im WLAN** (z. B. Smart-TV; nur mit „Galerie im
 WLAN“): Das Gerät mit dem WLAN der Box verbinden und im Browser die Adresse
 öffnen, die bei **Diashow** in der Verwaltung steht. Mit Captive Portal ist das
 einfach `192.168.254.1/diashow`.
@@ -525,8 +525,8 @@ Das **Gästebuch-PDF bekommt der Gastgeber bei jeder Übergabe** – auch, wenn
 niemand etwas schreiben konnte. Dann ist es die Erinnerung an die Feier in
 Albumform: ein Deckblatt und alle Fotos unter **„Momente des Abends“**.
 
-Die **Schreibfunktion** ist ab Werk **aus**. Ist sie bei **Ausgabe**
-eingeschaltet, steht nach dem Foto der Knopf **„Ins
+Der Haken **„Gästebuch einschalten“** bei **Ausgabe** ist ab Werk **aus**.
+Ist er gesetzt, steht nach dem Foto der Knopf **„Ins
 Gästebuch schreiben“**. Die Gäste schreiben oder malen mit dem Finger einen
 Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
 
