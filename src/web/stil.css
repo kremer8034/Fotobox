@@ -2569,6 +2569,20 @@ html.diashow-seite body {
   text-align: center;
 }
 
+.diashow__einladung-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.diashow__einladung-text small {
+  font-size: 0.72em;
+  font-weight: 600;
+  opacity: 0.88;
+}
+
 .diashow__finger {
   width: 7vh;
   height: 7vh;

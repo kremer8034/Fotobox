@@ -204,7 +204,10 @@ export function KioskDiashow({
             {titel && <div className="diashow__titel">{titel}</div>}
             <div className="diashow__einladung">
               <span className="diashow__finger" aria-hidden="true" />
-              Tippt auf den Bildschirm – und macht euer eigenes Foto!
+              <span className="diashow__einladung-text">
+                Tippt auf den Bildschirm
+                <small>für euer eigenes Foto oder alle bisherigen Fotos</small>
+              </span>
             </div>
           </>
         }

@@ -12,8 +12,9 @@ das Gästebuch-PDF selbst entsteht immer – mit allen Fotos als Album, auch
 ohne Grüße.
 
 - **Diashow:** Steht die Box eine Weile unberührt, laufen am Startbildschirm
-  die Fotos der Feier – mit der Einladung „Tippt auf den Bildschirm und macht
-  euer eigenes Foto!“. Ein Tipp holt den Start zurück. Neue Fotos kommen
+  die Fotos der Feier – mit der Einladung „Tippt auf den Bildschirm – für
+  euer eigenes Foto oder alle bisherigen Fotos“. Ein Tipp holt den Start
+  zurück; dort geht es zum Foto oder in die Galerie. Neue Fotos kommen
   sofort an die Reihe („Gerade eben entstanden“). Schalter „Am
   Startbildschirm, wenn niemand die Box benutzt“.
 - **Diashow auf einem zweiten Bildschirm (Beamer, Fernseher):** am HDMI-Anschluss der Box per Knopf
