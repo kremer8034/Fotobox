@@ -21,7 +21,10 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
 - **Digitales Gästebuch:** Nach dem Foto können Gäste mit dem Finger einen
   Gruß schreiben. Den bekommt nur der Gastgeber – als Gästebuch-PDF mit Foto
   und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
-  erscheint er nie.
+  erscheint er nie. Auf Wunsch (eigener Schalter, ab Werk aus) gibt es neun
+  Symbole zum Einfügen – Herz, Ringe, Sektgläser, Torte, Geschenk,
+  Luftballons, Blume, Sterne, Smiley: antippen, mit dem Finger verschieben,
+  gezeichnet in der gewählten Tintenfarbe.
 - **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
   selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt
   immer nur ein Finger – eine zweite Hand auf dem Glas verschluckt keinen

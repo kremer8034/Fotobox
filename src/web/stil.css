@@ -2754,3 +2754,52 @@ html.diashow-seite body {
   right: 1rem;
   z-index: 80;
 }
+
+/* Symbole neben dem Papier: links eine Spalte zum Antippen. */
+.gaestebuch__flaeche--symbole {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  /* Feste Zeilenhoehe: Sonst hat das Papier keine Hoehe, an der es sich
+     ausrichten kann, und waechst ueber die Knoepfe hinaus. */
+  grid-template-rows: 100%;
+  align-items: center;
+  gap: var(--abstand);
+}
+
+.gaestebuch__symbole {
+  justify-self: end;
+  display: grid;
+  grid-template-columns: repeat(3, calc(16 * var(--mm)));
+  gap: calc(2.5 * var(--mm));
+}
+
+.gaestebuch__symbol {
+  width: calc(16 * var(--mm));
+  height: calc(16 * var(--mm));
+  border-radius: var(--radius);
+  border: 2px solid var(--kante);
+  background: #fdfaf3;
+  padding: calc(1.5 * var(--mm));
+  cursor: pointer;
+}
+
+.gaestebuch__symbol svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gaestebuch__symbol:active {
+  transform: scale(0.94);
+}
+
+.gaestebuch__markierung {
+  position: absolute;
+  border: 3px dashed var(--akzent);
+  border-radius: var(--radius-klein);
+  pointer-events: none;
+}

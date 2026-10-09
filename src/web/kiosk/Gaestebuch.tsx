@@ -2,6 +2,7 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useZeitgeber } from './zeitgeber.js';
+import { SYMBOLE } from './symbole.js';
 
 /** Die Schreibflaeche rechnet intern in dieser Groesse - unabhaengig vom Bildschirm. */
 const BREITE = 1500;
@@ -17,10 +18,37 @@ const FARBEN = [
   { name: 'Rot', wert: '#b8323a' },
 ];
 
+/** So gross steht ein Symbol auf der Schreibflaeche (Kantenlaenge, intern). */
+const SYMBOL_GROESSE = 210;
+/** Wo neue Symbole erscheinen - nacheinander versetzt, damit sie nicht aufeinander liegen. */
+const SYMBOL_PLAETZE = [
+  [0, 0],
+  [230, -160],
+  [-230, 160],
+  [230, 160],
+  [-230, -160],
+  [0, -260],
+  [0, 260],
+  [460, 0],
+  [-460, 0],
+] as const;
+
 interface Strich {
+  art: 'strich';
   farbe: string;
   punkte: { x: number; y: number }[];
 }
+
+interface Stempel {
+  art: 'symbol';
+  symbol: number;
+  farbe: string;
+  /** Mittelpunkt auf der Schreibflaeche. */
+  x: number;
+  y: number;
+}
+
+type Element = Strich | Stempel;
 
 /**
  * Gaestebuch: Nach dem Foto schreibt die Gruppe mit dem Finger einen Gruss.
@@ -33,16 +61,25 @@ interface Strich {
  */
 export function Gaestebuch({
   ausgabeId,
+  mitSymbolen = false,
   beiGespeichert,
   beiAbbruch,
 }: {
   ausgabeId: string;
+  /** Symbole zum Einfuegen anbieten (Schalter in der Verwaltung). */
+  mitSymbolen?: boolean;
   beiGespeichert: () => void;
   beiAbbruch: () => void;
 }) {
   const leinwand = useRef<HTMLCanvasElement>(null);
-  const striche = useRef<Strich[]>([]);
+  const striche = useRef<Element[]>([]);
   const aktiv = useRef<Strich | null>(null);
+  // Ein Symbol, das gerade mit dem Finger verschoben wird.
+  const geschoben = useRef<{ stempel: Stempel; dx: number; dy: number } | null>(null);
+  // Das zuletzt gesetzte oder verschobene Symbol bekommt einen Rahmen - nur
+  // auf dem Bildschirm, nicht im gespeicherten Gruss.
+  const [markiert, setzeMarkiert] = useState<{ x: number; y: number } | null>(null);
+  const symbolPfade = useRef(SYMBOLE.map((s) => new Path2D(s.pfad)));
   // Es schreibt immer nur ein Finger. Ein zweiter (die Hand auf dem Glas, ein
   // Kind daneben) verwarf sonst den angefangenen Strich des ersten.
   const finger = useRef<number | null>(null);
@@ -90,11 +127,51 @@ export function Gaestebuch({
     ctx.stroke();
   }
 
+  function zeichneStempel(ctx: CanvasRenderingContext2D, s: Stempel) {
+    const pfad = symbolPfade.current[s.symbol];
+    if (!pfad) return;
+    const massstab = SYMBOL_GROESSE / 100;
+    ctx.save();
+    ctx.translate(s.x - SYMBOL_GROESSE / 2, s.y - SYMBOL_GROESSE / 2);
+    ctx.scale(massstab, massstab);
+    // Dieselbe Strichstaerke wie die Schrift - das Symbol soll aussehen wie
+    // mit demselben Stift gemalt.
+    ctx.lineWidth = STRICH / massstab;
+    ctx.strokeStyle = s.farbe;
+    ctx.stroke(pfad);
+    ctx.restore();
+  }
+
   function zeichneAlles() {
     const ctx = kontext();
     if (!ctx) return;
     ctx.clearRect(0, 0, BREITE, HOEHE);
-    for (const s of striche.current) zeichneStrich(ctx, s);
+    for (const e of striche.current) {
+      if (e.art === 'strich') zeichneStrich(ctx, e);
+      else zeichneStempel(ctx, e);
+    }
+  }
+
+  /** Ein Symbol antippen: Es erscheint auf der Flaeche und laesst sich dann verschieben. */
+  function setzeSymbol(symbol: number) {
+    if (speichert) return;
+    const schon = striche.current.filter((e) => e.art === 'symbol').length;
+    const [dx, dy] = SYMBOL_PLAETZE[schon % SYMBOL_PLAETZE.length]!;
+    const stempel: Stempel = { art: 'symbol', symbol, farbe, x: BREITE / 2 + dx, y: HOEHE / 2 + dy };
+    striche.current.push(stempel);
+    setzeAnzahl(striche.current.length);
+    setzeMarkiert({ x: stempel.x, y: stempel.y });
+    zeichneAlles();
+  }
+
+  /** Liegt dieser Punkt auf einem Symbol? Das oberste (zuletzt gesetzte) gewinnt. */
+  function symbolUnter(p: { x: number; y: number }): Stempel | null {
+    const halb = SYMBOL_GROESSE / 2;
+    for (let i = striche.current.length - 1; i >= 0; i--) {
+      const e = striche.current[i]!;
+      if (e.art === 'symbol' && Math.abs(p.x - e.x) <= halb && Math.abs(p.y - e.y) <= halb) return e;
+    }
+    return null;
   }
 
   function punkt(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -107,14 +184,35 @@ export function Gaestebuch({
     finger.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     setzeBeruehrt((n) => n + 1);
-    aktiv.current = { farbe, punkte: [punkt(e)] };
+    const p = punkt(e);
+    // Auf einem Symbol angesetzt: verschieben statt schreiben.
+    const stempel = symbolUnter(p);
+    if (stempel) {
+      geschoben.current = { stempel, dx: p.x - stempel.x, dy: p.y - stempel.y };
+      setzeMarkiert({ x: stempel.x, y: stempel.y });
+      return;
+    }
+    setzeMarkiert(null);
+    aktiv.current = { art: 'strich', farbe, punkte: [p] };
     const ctx = kontext();
     if (ctx) zeichneStrich(ctx, aktiv.current);
   }
 
   function ziehe(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerId !== finger.current) return;
+    const schub = geschoben.current;
+    if (schub) {
+      const p = punkt(e);
+      const halb = SYMBOL_GROESSE / 2;
+      // Ganz auf der Flaeche halten - ein halb hinausgeschobenes Symbol fehlte sonst im Gruss.
+      schub.stempel.x = Math.min(BREITE - halb, Math.max(halb, p.x - schub.dx));
+      schub.stempel.y = Math.min(HOEHE - halb, Math.max(halb, p.y - schub.dy));
+      setzeMarkiert({ x: schub.stempel.x, y: schub.stempel.y });
+      zeichneAlles();
+      return;
+    }
     const s = aktiv.current;
-    if (!s || e.pointerId !== finger.current) return;
+    if (!s) return;
     const neu = punkt(e);
     const letzter = s.punkte[s.punkte.length - 1]!;
     // Kleinste Zitterbewegungen auslassen - sie machen die Linie nur krakelig.
@@ -132,6 +230,10 @@ export function Gaestebuch({
   function beende(e: React.PointerEvent<HTMLCanvasElement>) {
     if (e.pointerId !== finger.current) return;
     finger.current = null;
+    if (geschoben.current) {
+      geschoben.current = null;
+      return;
+    }
     if (!aktiv.current) return;
     striche.current.push(aktiv.current);
     aktiv.current = null;
@@ -142,12 +244,14 @@ export function Gaestebuch({
   }
 
   function rueckgaengig() {
+    setzeMarkiert(null);
     striche.current.pop();
     setzeAnzahl(striche.current.length);
     zeichneAlles();
   }
 
   function leeren() {
+    setzeMarkiert(null);
     striche.current = [];
     setzeAnzahl(0);
     zeichneAlles();
@@ -174,13 +278,33 @@ export function Gaestebuch({
         <div>
           <h1 className="gaestebuch__titel">Ein Gruß ins Gästebuch</h1>
           <p className="gaestebuch__unter">
-            Mit dem Finger schreiben oder malen. Das Gästebuch bekommt nur der Gastgeber – es erscheint in
-            keiner Galerie.
+            Mit dem Finger schreiben oder malen{mitSymbolen ? ' – Symbole antippen und mit dem Finger verschieben' : ''}.
+            Das Gästebuch bekommt nur der Gastgeber – es erscheint in keiner Galerie.
           </p>
         </div>
       </div>
 
-      <div className="gaestebuch__flaeche">
+      <div className={`gaestebuch__flaeche${mitSymbolen ? ' gaestebuch__flaeche--symbole' : ''}`}>
+        {mitSymbolen && (
+          <div className="gaestebuch__symbole" aria-label="Symbole">
+            {SYMBOLE.map((sym, i) => (
+              <button
+                key={sym.name}
+                className="gaestebuch__symbol"
+                // In der gewaehlten Farbe - so sieht man vorher, wie es aufs Papier kommt.
+                style={{ color: farbe }}
+                aria-label={sym.name}
+                title={sym.name}
+                disabled={speichert}
+                onClick={() => setzeSymbol(i)}
+              >
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <path d={sym.pfad} />
+                </svg>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="gaestebuch__papier">
           <canvas
             ref={leinwand}
@@ -192,6 +316,17 @@ export function Gaestebuch({
             onPointerCancel={beende}
           />
           {anzahl === 0 && <div className="gaestebuch__platzhalter">Hier mit dem Finger schreiben …</div>}
+          {markiert && (
+            <div
+              className="gaestebuch__markierung"
+              style={{
+                left: `${((markiert.x - SYMBOL_GROESSE / 2) / BREITE) * 100}%`,
+                top: `${((markiert.y - SYMBOL_GROESSE / 2) / HOEHE) * 100}%`,
+                width: `${(SYMBOL_GROESSE / BREITE) * 100}%`,
+                height: `${(SYMBOL_GROESSE / HOEHE) * 100}%`,
+              }}
+            />
+          )}
         </div>
       </div>
 

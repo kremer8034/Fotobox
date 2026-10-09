@@ -530,6 +530,11 @@ Gruß, wählen eine von vier Farben und tippen auf **„Ins Gästebuch“**.
 - Je Foto gibt es einen Gruß; neu geschrieben ersetzt er den alten.
 - Löscht die Gruppe ihr Foto, ist auch der Gruß weg.
 - Wer zwei Minuten nichts schreibt, kommt ohne Speichern zurück.
+- **Symbole** (eigener Schalter unter dem Gästebuch, ab Werk aus): Links neben
+  dem Papier stehen neun Symbole – Herz, Ringe, Sektgläser, Torte, Geschenk,
+  Luftballons, Blume, Sterne, Smiley. Antippen setzt das Symbol in der
+  gewählten Farbe aufs Papier, mit dem Finger lässt es sich verschieben,
+  „Rückgängig“ nimmt es wieder weg. Die Auswahl ist für jede Feier dieselbe.
 
 Anschauen kannst du das Gästebuch jederzeit in der Verwaltung bei **Ausgabe**
 → **„Gästebuch ansehen“**. Bei der Übergabe kommt es als PDF mit auf den Stick

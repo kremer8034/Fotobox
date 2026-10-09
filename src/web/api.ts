@@ -150,6 +150,8 @@ export interface KioskStart {
     druckRest?: number | null;
     /** Knopf "Ins Gästebuch schreiben" auf der Ergebnisseite. */
     gaestebuchAktiv?: boolean;
+    /** Symbole zum Einfuegen auf der Schreibseite. */
+    gaestebuchSymbole?: boolean;
   };
   vorlagen?: { id: string; name: string; fotos: number; canvas: { breiteMm: number; hoeheMm: number } }[];
   filter?: { id: string; name: string }[];

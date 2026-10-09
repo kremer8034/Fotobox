@@ -137,6 +137,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Blatt bis zum Druck-Limit, null ohne Limit - die Mengenwahl bietet nie mehr an.
         druckRest: druckRest(event.id),
         gaestebuchAktiv: event.einstellungen.gaestebuchAktiv,
+        gaestebuchSymbole: event.einstellungen.gaestebuchSymbole,
       },
       vorlagen: freigegeben.map((v) => ({
         id: v.id,

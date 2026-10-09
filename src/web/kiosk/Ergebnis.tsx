@@ -32,6 +32,7 @@ export function Ergebnis({
     druckLimitErreicht: boolean;
     druckRest?: number | null;
     gaestebuchAktiv?: boolean;
+    gaestebuchSymbole?: boolean;
   };
   rueckkehrSekunden: number;
   tonAn: boolean;
@@ -178,6 +179,7 @@ export function Ergebnis({
       {gaestebuchOffen && (
         <Gaestebuch
           ausgabeId={ausgabeId}
+          mitSymbolen={Boolean(ausgabe.gaestebuchSymbole)}
           beiAbbruch={() => setzeGaestebuchOffen(false)}
           beiGespeichert={() => {
             setzeGaestebuchOffen(false);

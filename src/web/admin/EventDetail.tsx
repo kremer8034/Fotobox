@@ -37,6 +37,7 @@ interface EventVoll {
     diashowNachSekunden: number;
     diashowWechselSekunden: number;
     gaestebuchAktiv: boolean;
+    gaestebuchSymbole: boolean;
   };
   auslagen: {
     sitzungen: number;
@@ -1494,6 +1495,13 @@ function DiashowGaestebuchKarte({
           name="Knopf „Ins Gästebuch schreiben“ nach dem Foto"
           beiWechsel={(an) => void beiAenderung({ gaestebuchAktiv: an })}
         />
+        {e.gaestebuchAktiv && (
+          <Schalter
+            an={e.gaestebuchSymbole}
+            name="Symbole zum Einfügen (Herz, Ringe, Torte …)"
+            beiWechsel={(an) => void beiAenderung({ gaestebuchSymbole: an })}
+          />
+        )}
         {gruesse !== null && gruesse > 0 && (
           <PdfKnopf
             href={`/api/admin/events/${eventId}/gaestebuch.pdf`}

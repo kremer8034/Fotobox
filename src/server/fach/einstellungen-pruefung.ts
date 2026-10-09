@@ -74,6 +74,7 @@ export const EINSTELLUNGEN_EINGABE = z
     diashowNachSekunden: ganz('Diashow beginnt nach', 15, 600),
     diashowWechselSekunden: ganz('Jedes Bild steht', 3, 30),
     gaestebuchAktiv: z.boolean(),
+    gaestebuchSymbole: z.boolean(),
   })
   .partial()
   .strict();

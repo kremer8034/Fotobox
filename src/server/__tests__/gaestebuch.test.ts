@@ -153,12 +153,14 @@ describe('Diashow-Einstellungen', () => {
     expect(EINSTELLUNGEN_VORGABE.diashowAufStart).toBe(false);
     expect(EINSTELLUNGEN_VORGABE.diashowExtern).toBe(false);
     expect(EINSTELLUNGEN_VORGABE.gaestebuchAktiv).toBe(false);
+    expect(EINSTELLUNGEN_VORGABE.gaestebuchSymbole).toBe(false);
     // Auch eine Veranstaltung aus der Zeit vor diesen Funktionen hat sie aus.
     const alt = erstelleEvent({ name: 'Alte Feier', datum: '2026-10-12' }, wurzel.events);
     expect(alt.einstellungen.diashowAufStart).toBe(false);
     expect(alt.einstellungen.diashowExtern).toBe(false);
     expect(alt.einstellungen.gaestebuchAktiv).toBe(false);
     expect(EINSTELLUNGEN_EINGABE.safeParse({ diashowExtern: true }).success).toBe(true);
+    expect(EINSTELLUNGEN_EINGABE.safeParse({ gaestebuchSymbole: true }).success).toBe(true);
   });
 
   it('haben Grenzen', () => {
