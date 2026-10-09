@@ -2639,21 +2639,14 @@ html.diashow-seite body {
   justify-content: center;
 }
 
-/* Papier mit feinen Linien - wer mit dem Finger schreibt, schreibt so gerader.
-   Die Linien gehoeren nur zur Anzeige, nicht ins gespeicherte Bild. */
+/* Unliniertes Papier, wie die Karte im Gaestebuch: Mit dem Finger trifft
+   niemand eine Zeile genau, und das soll man spaeter nicht sehen. */
 .gaestebuch__papier {
   aspect-ratio: 3 / 2;
   height: 100%;
   max-width: 100%;
   border-radius: var(--radius);
   background-color: #fdfaf3;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(16.666% - 1px),
-    rgba(120, 140, 180, 0.22) calc(16.666% - 1px),
-    rgba(120, 140, 180, 0.22) 16.666%
-  );
   box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.5);
   touch-action: none;
   position: relative;
@@ -2670,12 +2663,18 @@ html.diashow-seite body {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
   align-items: center;
   justify-content: center;
   color: rgba(60, 70, 90, 0.35);
   font-size: 1.3rem;
   font-style: italic;
   pointer-events: none;
+}
+
+.gaestebuch__platzhalter small {
+  font-size: 1rem;
 }
 
 .gaestebuch__leiste {
@@ -2781,6 +2780,8 @@ html.diashow-seite body {
   background: #fdfaf3;
   padding: calc(1.5 * var(--mm));
   cursor: pointer;
+  /* Sonst nimmt der Browser das Ziehen als Wischen und nicht als Ziehen. */
+  touch-action: none;
 }
 
 .gaestebuch__symbol svg {
@@ -2791,6 +2792,22 @@ html.diashow-seite body {
   stroke-width: 6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* Das Symbol unter dem Finger, waehrend es aufs Papier gezogen wird. */
+.gaestebuch__schwebt {
+  position: fixed;
+  width: calc(22 * var(--mm));
+  height: calc(22 * var(--mm));
+  transform: translate(-50%, -50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .gaestebuch__symbol:active {

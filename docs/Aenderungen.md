@@ -23,12 +23,14 @@ einzeln eingeschaltet: Veranstaltung → Ausgabe → Diashow bzw. Gästebuch.
   und Gruß bei der Übergabe (Ordner `05_gaestebuch`). In Galerie und Diashow
   erscheint er nie. Auf Wunsch (eigener Schalter, ab Werk aus) gibt es neun
   Symbole zum Einfügen – Herz, Ringe, Sektgläser, Torte, Geschenk,
-  Luftballons, Blume, Sterne, Smiley: antippen, mit dem Finger verschieben,
-  gezeichnet in der gewählten Tintenfarbe.
+  Luftballons, Blume, Sterne, Smiley: aufs Papier ziehen oder antippen,
+  danach mit dem Finger verschieben, gezeichnet in der gewählten Tintenfarbe.
 - **Gästebuch-PDF wie ein Erinnerungsalbum:** warmes Papier mit goldenem
   Rahmen und Eckverzierungen, Fotos als eingeklebte Sofortbilder, Grüße auf
-  liniertem Briefpapier mit Klebestreifen. Auf dem Deckblatt ein Fächer aus
-  den ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
+  einer Briefkarte mit Klebestreifen (ohne Linien – mit dem Finger trifft
+  niemand eine Zeile genau, deshalb ist auch die Schreibseite unliniert). Auf
+  dem Deckblatt der Name der Feier in Schreibschrift und ein Fächer aus den
+  ersten Fotos. DIN A4 quer, links und rechts je 20 mm Bindungsrand
   (Lochung, Spirale, Klebebindung – einseitig wie beidseitig gedruckt).
 - **Kleinigkeiten aus der Durchsicht:** Das Diashow-Fenster schließt sich von
   selbst, wenn der Beamer abgezogen wird. Auf der Gästebuch-Seite schreibt

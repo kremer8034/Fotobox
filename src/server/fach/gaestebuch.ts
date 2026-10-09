@@ -204,12 +204,10 @@ async function baue(event: Veranstaltung): Promise<{ daten: Buffer; anzahl: numb
   d.font(schrift).fontSize(schrift === 'Skript' ? 92 : 56).fillColor(FARBE.gold)
     .text('Gästebuch', 0, 62, { width: B, align: 'center' });
   schnoerkel(d, B / 2, 182, 150);
-  d.font('Helvetica-Bold').fontSize(24).fillColor(FARBE.text).text(event.name, 80, 200, { width: B - 160, align: 'center' });
-  d.font('Helvetica').fontSize(13).fillColor(FARBE.leise)
-    .text(`${datum(event.datum)} · ${gruesse.length} ${gruesse.length === 1 ? 'Gruß' : 'Grüße'}`, 0, 236, {
-      width: B,
-      align: 'center',
-    });
+  // Der Name in derselben Schreibschrift wie der Titel - ohne Datum und
+  // Zahl der Gruesse: Das Deckblatt ist eine Erinnerung, keine Statistik.
+  d.font(schrift).fontSize(schrift === 'Skript' ? 44 : 28).fillColor(FARBE.text)
+    .text(event.name, BUND + 30, 196, { width: B - 2 * BUND - 60, align: 'center' });
   // Ein Faecher aus den ersten Fotos - wie auf den Tisch gelegt.
   const titelFotos = (await Promise.all(gruesse.slice(0, 3).map(foto))).filter((f): f is Buffer => f !== null);
   const faecher = titelFotos.length === 1 ? [0] : titelFotos.length === 2 ? [-6, 6] : [-9, 0, 9];
@@ -283,8 +281,6 @@ const FARBE = {
   gold: '#b8862f',
   goldHell: '#d9b86a',
   text: '#2b2620',
-  leise: '#8a8174',
-  linie: '#e7dccb',
   band: '#e8d6a2',
 };
 
@@ -350,7 +346,7 @@ function sofortbild(d: PDFKit.PDFDocument, bild: Buffer, mx: number, my: number,
   d.restore();
 }
 
-/** Der Gruss auf liniertem Briefpapier mit zwei Klebestreifen. */
+/** Der Gruss auf einer Briefkarte mit zwei Klebestreifen. */
 function briefkarte(
   d: PDFKit.PDFDocument,
   pfad: string,
@@ -364,10 +360,9 @@ function briefkarte(
   const y = my - hoehe / 2;
   d.save().rotate(winkel, { origin: [mx, my] });
   d.save().fillOpacity(0.07).rect(x + 4, y + 5, breite, hoehe).fill('#3a2a10').restore();
+  // Bewusst ohne Linien: Mit dem Finger trifft niemand eine Zeile genau,
+  // und schraeg ueber Linien geschrieben sieht der Gruss krumm aus.
   d.rect(x, y, breite, hoehe).fill('#fffdf7');
-  d.save().lineWidth(0.4).strokeColor(FARBE.linie);
-  for (let ly = y + hoehe / 6; ly < y + hoehe - 4; ly += hoehe / 6) d.moveTo(x + 10, ly).lineTo(x + breite - 10, ly).stroke();
-  d.restore();
   d.image(pfad, x + 6, y + 6, { fit: [breite - 12, hoehe - 12], align: 'center', valign: 'center' });
   klebeband(d, x - 6, y - 4, -35);
   klebeband(d, x + breite - 34, y - 4, 35);
@@ -381,11 +376,6 @@ function klebeband(d: PDFKit.PDFDocument, x: number, y: number, winkel: number):
     .rect(x, y, 40, 14)
     .fill(FARBE.band)
     .restore();
-}
-
-function datum(iso: string): string {
-  const [j, m, t] = iso.split('-');
-  return j && m && t ? `${t}.${m}.${j}` : iso;
 }
 
 function dateiZeit(iso: string): string {
