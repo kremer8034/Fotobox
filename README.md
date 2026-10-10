@@ -14,8 +14,7 @@ je Veranstaltung zuschaltbar und standardmäßig aus.
 
 [![Fotobox-Vorstellungsvideo ansehen](docs/video/Fotobox-Vorstellung-Vorschau.jpg)](docs/video/Fotobox-Vorstellung.mp4)
 
-In 53 Sekunden vom Antippen bis zum fertigen Druck – mit Filtern, Gästebuch, Handy-Galerie und
-Diashow: [Video im Querformat](docs/video/Fotobox-Vorstellung.mp4)
+In 44 Sekunden vom Antippen bis zum fertigen Druck: [Video im Querformat](docs/video/Fotobox-Vorstellung.mp4)
 · [Video im Hochformat](docs/video/Fotobox-Vorstellung-Hochformat.mp4) für WhatsApp-Status und
 Instagram-Stories. Die Musik ist eigens erzeugt und frei von Rechten Dritter.
 
