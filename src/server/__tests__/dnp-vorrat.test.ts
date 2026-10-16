@@ -39,10 +39,13 @@ describe('CspStat.dll von DNP PrinterInfo', () => {
   });
 
   it('deutet die Antwort der Abfrage', () => {
-    // So wie auf der Box: ein RX1, 461 von 700 Blatt, bereit.
-    expect(deuteDnpAntwort('1;0;461;700;65537\r\n')).toEqual({ rest: 461, gesamt: 700, status: 0x10001, port: 0 });
+    // Echte Werte von der Box: GetMediaCounter 403, volle Rolle 750 - PrinterInfo
+    // zeigte 353. Beide Zaehler enthalten 50 Blatt Reserve.
+    expect(deuteDnpAntwort('1;0;403;750;65537\r\n')).toEqual({ rest: 353, gesamt: 700, status: 0x10001, port: 0 });
     // Aeltere DLL ohne GetInitialMediaCount und GetStatus.
-    expect(deuteDnpAntwort('1;0;120;-1;-1')).toEqual({ rest: 120, gesamt: null, status: null, port: 0 });
+    expect(deuteDnpAntwort('1;0;120;-1;-1')).toEqual({ rest: 70, gesamt: null, status: null, port: 0 });
+    // In der Reserve: Der Drucker meldet schon "Papier zu Ende" - also 0, nicht 30.
+    expect(deuteDnpAntwort('1;0;30;750;65544').rest).toBe(0);
     expect(() => deuteDnpAntwort('1;0;-1;-1;-1')).toThrow(/keinen Vorrat/);
     expect(() => deuteDnpAntwort('Kauderwelsch')).toThrow(/Unerwartete Antwort/);
   });

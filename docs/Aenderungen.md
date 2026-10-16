@@ -4,6 +4,16 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.1.2 (in Arbeit)
+
+- **Papiervorrat stimmt jetzt mit PrinterInfo überein:** Der DNP-Drucker zählt
+  50 Blatt Reserve für das Rollenende mit. Die Fotobox zeigte deshalb 50 Blatt
+  zu viel (z. B. 403 statt 353, „von 750“ statt „von 700“) und warnte erst,
+  wenn die Rolle praktisch leer war. Jetzt zieht sie die Reserve ab – wie
+  DNPs PrinterInfo.
+- **Bildschirm 16:10:** Die Vorschau des Hintergrundbilds unter „Aussehen &
+  PIN“ zeigt jetzt den Ausschnitt des 1920 × 1200-Bildschirms der Box.
+
 ## 1.1.1
 
 Alle drei neuen Funktionen sind **ab Werk aus** und werden je Veranstaltung

@@ -18,8 +18,14 @@ const fuehreAus = promisify(execFile);
  *
  * Belegte Funktionen (aus Programmen, die CspStat.dll bereits nutzen):
  *   GetPrinterPortNum(byte[])  zaehlt die angeschlossenen DNP-Drucker
- *   GetMediaCounter(port)      Restblaetter, negativ bei Fehler
- *   GetInitialMediaCount(port) Blatt einer vollen Rolle (nicht in jeder Fassung)
+ *   GetMediaCounter(port)      Restblaetter plus Reserve, negativ bei Fehler
+ *   GetInitialMediaCount(port) Blatt einer vollen Rolle plus Reserve (nicht in jeder Fassung)
+ *
+ * Die Reserve: Beide Zaehler enthalten 50 Blatt, die der Drucker fuer das
+ * Rollenende zurueckhaelt - bei 50 meldet er "Papier zu Ende". DNPs
+ * PrinterInfo zieht sie ab; an der Box zeigte PrinterInfo 353, wo
+ * GetMediaCounter 403 lieferte, und eine volle 700er-Rolle meldete sich mit
+ * 750. Die Fotobox zieht die Reserve deshalb genauso ab (DNP_RESERVE).
  *   GetStatus(port)            Zustand als Bitfeld (siehe deuteDnpStatus)
  *
  * Wichtig laut DNP: Waehrend der Drucker druckt, kann eine Abfrage ihn
@@ -163,7 +169,10 @@ public static class FotoboxDnp {
 }
 `;
 
-/** Die Ausgabezeile der Abfrage deuten. */
+/** Blatt, die beide DNP-Zaehler zusaetzlich enthalten (siehe oben). */
+export const DNP_RESERVE = 50;
+
+/** Die Ausgabezeile der Abfrage deuten - mit abgezogener Reserve, wie in PrinterInfo. */
 export function deuteDnpAntwort(zeile: string): DnpVorrat {
   const teile = zeile.trim().split(';').map((t) => Number(t.trim()));
   if (teile.length < 5 || teile.some((t) => !Number.isFinite(t))) {
@@ -172,8 +181,8 @@ export function deuteDnpAntwort(zeile: string): DnpVorrat {
   const [, port, rest, gesamt, status] = teile as [number, number, number, number, number];
   if (rest < 0) throw new Error('Der Drucker hat keinen Vorrat gemeldet.');
   return {
-    rest,
-    gesamt: gesamt > 0 ? gesamt : null,
+    rest: Math.max(0, rest - DNP_RESERVE),
+    gesamt: gesamt > DNP_RESERVE ? gesamt - DNP_RESERVE : null,
     status: status >= 0 ? status : null,
     port,
   };
