@@ -62,6 +62,13 @@ etwas klemmt, findest du es so in Minuten statt in Stunden.
   stehen. Der Kontrast-Autofokus der 600D ist im Live-View träge.
 - **M-Modus** mit festen Werten für ISO, Blende und Zeit. Mit LED-Dauerlicht
   bleiben die Bilder so den ganzen Abend gleich hell.
+- **Automatische Abschaltung der Kamera aus:** Menü → gelber Schraubenschlüssel
+  (Einstellung 1) → „Auto.Abschalt.“ → **Aus**. Ab Werk schläft die 600D nach
+  einer Minute ohne Bedienung ein. Die Box schaltet den Live-View im Leerlauf
+  ab (Vorgabe: nach zehn Minuten). Danach schläft die Kamera, und der nächste
+  Gast steht vor „Die Kamera macht sich bereit“, oft ohne Fehlermeldung, denn
+  digiCamControl hält sie noch für verbunden. Genau das passiert typisch zu
+  Beginn einer Feier, wenn die Box nach dem Aufbau eine Weile steht.
 - SD-Karte drin lassen — sie ist die zweite Sicherung.
 - USB-Kabel an einen **rückseitigen** Port des PCs, nicht an einen langen
   passiven Hub.

@@ -83,6 +83,18 @@ function Richte-SystemEin {
   powercfg /change hibernate-timeout-ac 0
   Gut 'Bildschirm, Standby und Ruhezustand abgeschaltet (am Netzteil)'
 
+  # USB-Energiesparen aus. Sonst darf Windows einen USB-Anschluss schlafen
+  # legen, auf dem gerade nichts los ist - etwa die Kamera, wenn der Live-View
+  # im Leerlauf aus ist. Danach meldet digiCamControl sie mitunter noch als
+  # verbunden, sie loest aber nicht mehr aus. Die Kennungen sind die festen
+  # Windows-GUIDs fuer "USB-Einstellungen" und "Selektives USB-Energiesparen".
+  $usb = '2a737441-1930-4402-8d77-b2bebba308a3'
+  $selektiv = '48e6b7a6-50f5-4782-a5d4-53bb8f07e226'
+  powercfg /setacvalueindex SCHEME_CURRENT $usb $selektiv 0
+  powercfg /setdcvalueindex SCHEME_CURRENT $usb $selektiv 0
+  powercfg /setactive SCHEME_CURRENT
+  Gut 'Selektives USB-Energiesparen abgeschaltet (Kamera bleibt erreichbar)'
+
   # Kein Neustart fuer Updates, solange jemand angemeldet ist - sonst startet
   # Windows mitten in der Feier neu. Wirkt voll unter Windows Pro; Windows Home
   # beachtet es nur teilweise, dort zusaetzlich die Nutzungszeit einstellen.

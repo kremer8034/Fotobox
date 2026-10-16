@@ -29,6 +29,21 @@ ihn auf der Box verstehst.
   Schatten und einer hauchdünnen Kante zum Papier.
 - **Bildschirm 16:10:** Die Vorschau des Hintergrundbilds unter „Aussehen &
   PIN“ zeigt jetzt den Ausschnitt des 1920 × 1200-Bildschirms der Box.
+- **Kamera hängt nicht mehr fest:** Lieferte die Kamera kein frisches
+  Live-Bild, wartete der Kiosk bisher 90 Sekunden bei „Die Kamera macht sich
+  bereit“ und gab dann auf – ohne selbst etwas zu versuchen. Jetzt startet die
+  Box den Live-View nach acht Sekunden ohne Bild neu, ebenso nach jedem Foto,
+  das nicht ankam. Im Protokoll steht dazu, wie es der Kamera ging (verbunden,
+  Kabel ab, digiCamControl stumm, wann das letzte Live-Bild kam).
+- **Startbereit-Check prüft das Live-Bild wirklich:** Der Haken „Kamera
+  verbunden, Live-View liefert ein Bild“ wartet jetzt auf ein echtes Bild. Bisher
+  genügte, dass digiCamControl die Kamera kannte – auch wenn sie nichts lieferte.
+- **USB-Energiesparen aus:** Das Setup verbietet Windows, den USB-Anschluss
+  der Kamera im Leerlauf schlafen zu legen.
+- **Bitte einmal an der Kamera einstellen:** automatische Abschaltung aus
+  (Menü → gelber Schraubenschlüssel → „Auto.Abschalt.“ → Aus). Sonst schläft
+  die 600D ein, sobald die Box den Live-View im Leerlauf abschaltet, und lässt
+  sich nicht mehr fernauslösen.
 - **Diashow mit dem Raspberry Pi:** Ein Raspberry Pi am Fernseher oder Beamer
   verbindet sich von selbst mit dem WLAN „Fotobox“ und zeigt die Diashow im
   Vollbild. Ist die Box noch nicht erreichbar, wartet er mit einer Hinweisseite.

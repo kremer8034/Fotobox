@@ -160,6 +160,10 @@ einzeln, bevor die Fotobox ins Spiel kommt.
 6. USB-Kabel in die Kamera und in einen Anschluss **auf der Rückseite** des PCs
    (nicht vorne, nicht in einen Verteiler).
 7. Kamera einschalten.
+8. **Automatische Abschaltung aus** (einmalig, die Kamera merkt es sich): Menü →
+   gelber Schraubenschlüssel (Einstellung 1) → „Auto.Abschalt.“ → **Aus**.
+   Sonst schläft die Kamera ein, wenn die Box eine Weile nicht benutzt wird,
+   und der nächste Gast kann nicht auslösen.
 
 ## Schritt 10: Prüfen, ob digiCamControl die Kamera sieht
 

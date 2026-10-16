@@ -61,13 +61,21 @@ export async function startbereitPruefung(
       : 'Fotos und Drucke zählen ganz normal.',
   });
 
+  // "Verbunden" allein reichte nicht: digiCamControl meldete die Kamera auch
+  // dann, wenn sie kein Bild lieferte - der Haken war gruen, und erst die
+  // ersten Gaeste merkten, dass nichts ausloeste. Deshalb wird hier wirklich
+  // auf ein frisches Live-Bild gewartet.
+  const kameraVerbunden = status.kamera === 'bereit';
+  const liveBild = kameraVerbunden && (await betrieb.liveViewLiefert());
   punkte.push({
     schluessel: 'kamera',
     titel: 'Kamera verbunden, Live-View liefert ein Bild',
-    bestanden: status.kamera === 'bereit',
-    hinweis:
-      status.kamera === 'bereit'
-        ? 'Kamera antwortet.'
+    bestanden: liveBild,
+    hinweis: liveBild
+      ? 'Kamera antwortet und liefert ein Live-Bild.'
+      : kameraVerbunden
+        ? 'Die Kamera ist verbunden, liefert aber kein Live-Bild. Kamera aus- und wieder einschalten. ' +
+          'Prüfen, ob an der Kamera die automatische Abschaltung aus ist.'
         : (status.kameraHinweis ?? 'Kamera meldet sich nicht. USB-Kabel und digiCamControl prüfen.'),
   });
 

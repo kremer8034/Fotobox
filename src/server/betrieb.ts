@@ -274,7 +274,99 @@ export class Betrieb {
    */
   async starteLiveView(): Promise<void> {
     this.liveViewGewuenscht = true;
+    this.liveViewAngefordert = Date.now();
     await this.kamera.starteLiveView().catch(() => undefined);
+  }
+
+  /*
+   * Live-View neu aufbauen, wenn er haengt.
+   *
+   * Auf zwei Veranstaltungen blieb der Kiosk zu Beginn bei "Die Kamera macht
+   * sich bereit" stehen: digiCamControl meldete die Kamera als verbunden, aber
+   * es kam kein frisches Live-Bild - und ohne Live-Bild startet kein Countdown.
+   * Der Live-View galt fuer die Box trotzdem als laufend, deshalb versuchte
+   * sie nie, ihn neu zu starten; nach 90 Sekunden gab der Kiosk auf. Typisch
+   * ist das nach dem Wiedereinschalten aus dem Leerlauf: Die 600D nimmt den
+   * Start-Befehl nicht an, solange sie noch beschaeftigt ist, und
+   * digiCamControl zeigt dann ein leeres Fenster statt eines Fehlers.
+   *
+   * Jetzt gilt: Kommt waehrend des Wartens laenger kein frisches Bild, wird
+   * der Live-View aus- und wieder eingeschaltet - hoechstens alle zehn
+   * Sekunden, damit die Kamera zwischen den Versuchen zur Ruhe kommt.
+   */
+  private liveViewAngefordert = 0;
+  private letzteBelebung = 0;
+  private belebung: Promise<void> | null = null;
+
+  /**
+   * Live-View aus- und wieder einschalten. Mit "sofort" auch dann, wenn der
+   * letzte Versuch noch keine zehn Sekunden her ist - etwa nach einem Foto,
+   * das nicht ankam.
+   */
+  async belebeLiveView(grund: string, sofort = false): Promise<void> {
+    if (this.belebung) return this.belebung;
+    if (!sofort && Date.now() - this.letzteBelebung < BELEBEN_ABSTAND_MS) return;
+    this.letzteBelebung = Date.now();
+    protokolliere('warnung', 'kamera', `Live-View wird neu gestartet: ${grund}`);
+    this.belebung = (async () => {
+      await this.kamera.stoppeLiveView().catch(() => undefined);
+      // Die 600D braucht einen Moment, bis sie den Spiegel wieder abgesenkt
+      // hat; ein sofortiger Neustart traf sie noch beschaeftigt an.
+      await pause(1500);
+      this.liveViewGewuenscht = true;
+      this.liveViewAngefordert = Date.now();
+      this.letzteBelebung = Date.now();
+      await this.kamera.starteLiveView().catch(() => undefined);
+    })().finally(() => {
+      this.belebung = null;
+    });
+    return this.belebung;
+  }
+
+  /** Haengt der Live-View? Dann im Hintergrund neu starten. */
+  private belebeWennStill(): void {
+    if (!this.liveViewGewuenscht || this.belebung) return;
+    const stillSeit = Math.max(this.letztesLiveBildZeit, this.liveViewAngefordert, this.letzteBelebung);
+    const stillMs = Date.now() - stillSeit;
+    if (stillMs < LIVE_STILL_MS) return;
+    void this.belebeLiveView(`seit ${Math.round(stillMs / 1000)} s kein frisches Live-Bild.`);
+  }
+
+  /**
+   * Liefert die Kamera wirklich Bilder? Fuer den Startbereit-Check: Verbunden
+   * heisst noch nicht, dass ein Foto gelingt - genau dieser Unterschied fiel
+   * vorher erst den ersten Gaesten auf.
+   */
+  async liveViewLiefert(zeitlimitMs = 12_000): Promise<boolean> {
+    if (!this.liveViewGewuenscht) await this.starteLiveView();
+    const bis = Date.now() + zeitlimitMs;
+    while (Date.now() < bis) {
+      if (await this.liveBildDa()) return true;
+      await pause(300);
+    }
+    return false;
+  }
+
+  /**
+   * Nach einem Foto, das nicht ankam: festhalten, wie es der Kamera ging, und
+   * den Live-View neu aufbauen. Der Kiosk wartet vor dem naechsten Versuch
+   * ohnehin auf ein frisches Live-Bild - so trifft der zweite Versuch eine
+   * Kamera, die wieder bereit ist, statt denselben haengenden Zustand.
+   */
+  async nachFehlaufnahme(): Promise<string> {
+    const status = await this.kamera.pruefe().catch(() => null);
+    const bildAlter = this.letztesLiveBildZeit > 0 ? Date.now() - this.letztesLiveBildZeit : null;
+    const zustand = !status
+      ? 'Kamerazustand nicht lesbar'
+      : !status.antwortet
+        ? 'digiCamControl antwortet nicht'
+        : !status.verbunden
+          ? kameraHinweis(status.grund ?? 'antwortet-nicht').replace(/\.$/, '')
+          : 'digiCamControl meldet die Kamera als verbunden';
+    const live =
+      bildAlter === null ? 'noch kein Live-Bild' : `letztes Live-Bild vor ${(bildAlter / 1000).toFixed(1)} s`;
+    if (status?.verbunden) void this.belebeLiveView('Foto kam nicht an.', true);
+    return `${zustand}, ${live}.`;
   }
 
   async stoppeLiveView(): Promise<void> {
@@ -294,12 +386,17 @@ export class Betrieb {
    */
   async liveBildDa(): Promise<boolean> {
     if (Date.now() - this.letztesLiveBildZeit < 1500) return true;
-    if (this.abholerLaeuft) return false;
-    const bild = await this.kamera.liveBild().catch(() => null);
-    if (!bild || (this.letztesLiveBild && bild.equals(this.letztesLiveBild))) return false;
-    this.letztesLiveBild = bild;
-    this.letztesLiveBildZeit = Date.now();
-    return true;
+    if (!this.abholerLaeuft) {
+      const bild = await this.kamera.liveBild().catch(() => null);
+      if (bild && !(this.letztesLiveBild && bild.equals(this.letztesLiveBild))) {
+        this.letztesLiveBild = bild;
+        this.letztesLiveBildZeit = Date.now();
+        return true;
+      }
+    }
+    // Wer hier fragt, wartet auf die Kamera - haengt sie, nicht nur warten.
+    this.belebeWennStill();
+    return false;
   }
 
   /*
@@ -499,7 +596,7 @@ export class Betrieb {
 
         // Verbindung war weg und ist wieder da: Live-View neu aufbauen.
         if (!warVerbunden && this.kameraOk && this.liveViewGewuenscht) {
-          await this.kamera.starteLiveView().catch(() => undefined);
+          await this.starteLiveView();
           protokolliere('info', 'kamera', 'Kamera ist wieder verbunden.');
         }
 
@@ -652,6 +749,10 @@ const SPEICHER_KNAPP_GB = 2;
 /** Zehn Bilder je Sekunde: genug zum Ausrichten, und mehr liefert die 600D
  *  ueber USB ohnehin kaum. */
 const LIVE_TAKT_MS = 100;
+/** So lange darf der Live-View ohne frisches Bild bleiben, waehrend jemand wartet. */
+const LIVE_STILL_MS = 8000;
+/** Mindestabstand zwischen zwei Neustarts des Live-Views. */
+const BELEBEN_ABSTAND_MS = 10_000;
 
 function pause(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

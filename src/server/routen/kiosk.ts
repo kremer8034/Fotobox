@@ -277,7 +277,12 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       } catch (fehler) {
         abbruch.abort();
         const text = fehler instanceof Error ? fehler.message : String(fehler);
-        protokolliere('warnung', 'aufnahme', `Foto ${koerper.index}: ${text}`);
+        // Wie es der Kamera dabei ging, gehoert mit ins Protokoll - "keine
+        // Datei" allein sagt nicht, ob Kabel, digiCamControl oder ein
+        // haengender Live-View schuld war. Dabei wird der Live-View neu
+        // aufgebaut, damit der naechste Versuch nicht in denselben Zustand laeuft.
+        const zustand = await betrieb.nachFehlaufnahme().catch(() => '');
+        protokolliere('warnung', 'aufnahme', `Foto ${koerper.index}: ${text} ${zustand}`.trim());
         // Der Kiosk versucht es noch einmal; die Sitzung bleibt bestehen.
         return antwort.code(503).send({ fehler: 'Das Foto hat nicht geklappt.', wiederholbar: true });
       }

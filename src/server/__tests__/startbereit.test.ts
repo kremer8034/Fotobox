@@ -29,6 +29,7 @@ const betrieb = {
     druckerVorrat: { rest: 300 },
     speicherFreiGb: 100,
   }),
+  liveViewLiefert: async () => true,
 } as unknown as Betrieb;
 
 beforeAll(() => {
