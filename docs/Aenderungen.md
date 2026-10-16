@@ -4,7 +4,7 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
-## 1.1.2 (in Arbeit)
+## 1.1.2
 
 - **Papiervorrat stimmt jetzt mit PrinterInfo überein:** Der DNP-Drucker zählt
   50 Blatt Reserve für das Rollenende mit. Die Fotobox zeigte deshalb 50 Blatt
@@ -29,6 +29,10 @@ ihn auf der Box verstehst.
   Schatten und einer hauchdünnen Kante zum Papier.
 - **Bildschirm 16:10:** Die Vorschau des Hintergrundbilds unter „Aussehen &
   PIN“ zeigt jetzt den Ausschnitt des 1920 × 1200-Bildschirms der Box.
+- **Diashow mit dem Raspberry Pi:** Ein Raspberry Pi am Fernseher oder Beamer
+  verbindet sich von selbst mit dem WLAN „Fotobox“ und zeigt die Diashow im
+  Vollbild. Ist die Box noch nicht erreichbar, wartet er mit einer Hinweisseite.
+  Einrichtung in drei Schritten: `raspberry-pi/ANLEITUNG.md`.
 
 ## 1.1.1
 
