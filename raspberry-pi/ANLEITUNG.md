@@ -24,7 +24,8 @@ Fotobox und zeigt die Diashow im Vollbild. Ist die Box noch nicht da, steht
    „Einstellungen bearbeiten“):
    - Benutzername und Passwort festlegen (z. B. `fotobox`)
    - WLAN-Land: **DE**, Zeitzone: **Europe/Berlin**, Tastatur: **de**
-   - WLAN kann leer bleiben – das fragt das Skript in Schritt 3.
+   - WLAN kann leer bleiben – das Skript verbindet den Pi in Schritt 3 mit
+     dem WLAN „Fotobox“.
 4. Schreiben lassen.
 
 ### 2. Skript auf die Karte legen (am PC)
@@ -43,13 +44,12 @@ Nach dem Schreiben erscheint am PC ein Laufwerk **„bootfs“**. Die Datei
    sudo bash /boot/firmware/fotobox-diashow.sh
    ```
 
-4. Zwei Fragen beantworten:
-   - **WLAN-Name der Fotobox** – steht in der Verwaltung der Fotobox unter
-     *Gerät → WLAN*. Danach das Passwort; bei offenem WLAN (Captive Portal)
-     einfach Enter.
-   - **Adresse der Diashow** – mit Captive Portal einfach Enter
-     (`http://192.168.254.1/diashow`).
-5. „Jetzt neu starten?“ mit Enter bestätigen. Tastatur und Maus abziehen.
+4. Alle Fragen einfach mit **Enter** bestätigen:
+   - **WLAN-Name** – Enter nimmt das WLAN **„Fotobox“**.
+   - **Passwort** – Enter für das offene WLAN (Captive Portal).
+   - **Adresse der Diashow** – Enter nimmt `http://192.168.254.1/diashow`.
+   - **„Jetzt neu starten?“** – Enter.
+5. Tastatur und Maus abziehen.
 
 Fertig. Ab jetzt startet die Diashow bei jedem Einschalten von selbst.
 

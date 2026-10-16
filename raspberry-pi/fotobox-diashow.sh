@@ -19,6 +19,7 @@ NAME=fotobox-diashow
 PROGRAMM=/usr/local/bin/$NAME
 DATEN=/usr/local/share/$NAME
 STANDARD_ADRESSE=http://192.168.254.1/diashow
+STANDARD_WLAN=Fotobox
 
 boot_ordner() { if [ -d /boot/firmware ]; then echo /boot/firmware; else echo /boot; fi; }
 # Die Adresse steht auf der Boot-Partition: Die ist auch am Windows-PC lesbar,
@@ -133,10 +134,9 @@ einrichten() {
   # --- WLAN der Fotobox
   local wlan passwort
   echo "1) WLAN der Fotobox"
-  echo "   Den Namen findest du in der Verwaltung der Fotobox unter Gerät → WLAN."
-  wlan=$(frage "   WLAN-Name (Enter = nicht ändern):" "")
+  wlan=$(frage "   WLAN-Name (Enter = $STANDARD_WLAN):" "$STANDARD_WLAN")
   if [ -n "$wlan" ]; then
-    passwort=$(frage "   Passwort (Enter = offenes WLAN, z. B. mit Captive Portal):" "")
+    passwort=$(frage "   Passwort (Enter = offenes WLAN wie beim Captive Portal):" "")
     raspi-config nonint do_wifi_country DE > /dev/null 2>&1 || true
     nmcli radio wifi on > /dev/null 2>&1 || true
     nmcli connection delete Fotobox > /dev/null 2>&1 || true
@@ -148,6 +148,12 @@ einrichten() {
       nmcli connection add type wifi ifname wlan0 con-name Fotobox ssid "$wlan" \
         connection.autoconnect yes connection.autoconnect-priority 100 > /dev/null
     fi && echo "   ✓ WLAN „$wlan“ gespeichert - der Pi verbindet sich ab jetzt von selbst."
+    # Gleich verbinden, wenn die Box schon in der Nähe ist - sonst später von selbst.
+    if nmcli --wait 20 connection up Fotobox > /dev/null 2>&1; then
+      echo "   ✓ Mit „$wlan“ verbunden."
+    else
+      echo "   (Gerade nicht in Reichweite - der Pi verbindet sich, sobald die Box läuft.)"
+    fi
   fi
   # WLAN-Stromsparen aus: Sonst reißt die Verbindung gern nach ein paar Minuten ab.
   mkdir -p /etc/NetworkManager/conf.d
