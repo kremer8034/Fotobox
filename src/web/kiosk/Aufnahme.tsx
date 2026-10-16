@@ -338,7 +338,7 @@ export function Aufnahme({
 /**
  * Der sichtbare Ausschnitt im Seitenverhaeltnis der aktuellen Foto-Ebene.
  *
- * Die Fotos sind 3:2, der Bildschirm ist 16:9. Auf volle Hoehe skaliert bleibt
+ * Die Fotos sind 3:2, der Bildschirm ist 16:10. Auf volle Hoehe skaliert bleibt
  * links und rechts Platz - genau dort steht die Zeile "Foto 2 von 3", ohne das
  * Bild zu ueberdecken.
  */

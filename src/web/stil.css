@@ -1,8 +1,10 @@
 /*
  * Gestaltungsraster der Fotobox.
  *
- * Der Touchscreen hat 1920x1080 auf 14 Zoll, also rund 157 Pixel pro Zoll und
- * eine nutzbare Flaeche von etwa 310 x 174 mm. Ein Standard-Webknopf von 44
+ * Der Touchscreen hat 1920x1200 (16:10) bei rund 157 Pixeln pro Zoll, also
+ * eine nutzbare Flaeche von etwa 310 x 194 mm. Die Hoehen der Seiten sind fuer
+ * mindestens 174 mm (ein 16:9-Bildschirm gleicher Breite) gerechnet - auf dem
+ * 16:10-Bildschirm bleibt also Luft, auf 16:9 passt es auch noch. Ein Standard-Webknopf von 44
  * Pixeln waere darauf nur 7 mm hoch - zu klein fuer einen Finger. Deshalb wird
  * hier in Millimetern entworfen, nicht in Bildschirmpixeln.
  *
@@ -10,7 +12,7 @@
  * aendert sich genau diese Zahl und die ganze Oberflaeche passt sich mit.
  *
  * Voraussetzung: Windows-Anzeigeskalierung auf 100 %. Bei 150 % meldet der
- * Browser nur 1280x720 und alle Masse verschieben sich.
+ * Browser nur 1280x800 und alle Masse verschieben sich.
  */
 
 :root {
@@ -166,11 +168,11 @@ button {
   border-color: var(--akzent);
 }
 
-/* Vorschau des Startbildschirms in der Verwaltung, im Format des Touchscreens. */
+/* Vorschau des Startbildschirms in der Verwaltung, im Format des Touchscreens (16:10). */
 .hintergrund-vorschau {
   width: 22rem;
   max-width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 10;
   border-radius: 0.5rem;
   border: 1px solid var(--kante);
   background: var(--flaeche) center / cover no-repeat;
@@ -2426,7 +2428,7 @@ html.handy-ansicht body {
 /* ------------------------------------------------------------------ Diashow
  * Ein Foto nach dem anderen: unscharf und abgedunkelt fuellt es den ganzen
  * Schirm, scharf und vollstaendig liegt es darueber - Layouts im Querformat
- * 3:2 lassen auf 16:9 sonst schwarze Streifen. Jedes Bild zoomt langsam heran.
+ * 3:2 lassen auf 16:10 sonst schwarze Streifen. Jedes Bild zoomt langsam heran.
  */
 .diashow {
   position: fixed;
