@@ -135,6 +135,136 @@ export function fotosOhneGruss(eventId: string): { ausgabeId: string; pfadLayout
   ).map((z) => ({ ausgabeId: z.id, pfadLayout: z.pfad_layout, erstellt: z.erstellt }));
 }
 
+// ---------------------------------------------------------------- Deckblatt
+
+/** Was die Box zu einem Foto weiss - Grundlage fuer die Auswahl des Deckblatts. */
+export interface TitelKandidat {
+  ausgabeId: string;
+  pfadLayout: string;
+  /** Aufnahmezeit in Millisekunden. */
+  zeit: number;
+  /** Kopien direkt am Ergebnis gedruckt. */
+  kopien: number;
+  /** Spaeter aus der Galerie nachgedruckt (Zahl der Auftraege). */
+  nachdrucke: number;
+  /** Per Mail verschickt (Zahl der Versuche). */
+  mails: number;
+  gruss: boolean;
+  /** Layout im Querformat. */
+  quer: boolean;
+}
+
+const MINUTE = 60_000;
+/** Eine Pause so lang trennt den Aufbau von der Feier ... */
+const AUFBAU_PAUSE = 20 * MINUTE;
+/** ... wenn davor hoechstens so viele Fotos liegen. */
+const AUFBAU_HOECHSTENS = 10;
+/** Ohne solche Pause gelten die ersten Minuten als Aufbau. */
+const AUFBAU_ANFANG = 10 * MINUTE;
+/** Unter so vielen Fotos wird nichts als Aufbau aussortiert. */
+const AUFBAU_AB = 6;
+
+/** Punkte eines Fotos: Wie sehr haben die Gaeste es gemocht? */
+export function titelPunkte(k: TitelKandidat): number {
+  return k.kopien + (k.nachdrucke > 0 ? 3 : 0) + (k.mails > 0 ? 2 : 0) + (k.gruss ? 3 : 0);
+}
+
+/**
+ * Die Fotos fuers Deckblatt - nur aus Daten, ohne ein Bild anzusehen:
+ *
+ * 1. Den Aufbau weglassen: alles vor der ersten Pause von 20 Minuten, wenn
+ *    davor hoechstens 10 Fotos liegen - sonst die ersten 10 Minuten. Erst ab
+ *    6 Fotos, und nur, wenn danach noch 3 uebrig sind.
+ * 2. Den Rest nach Anzahl in Anfang, Hoehepunkt und Ende teilen; aus jedem
+ *    Drittel das Foto mit den meisten Punkten (titelPunkte). Bei Gleichstand
+ *    zuerst ein Querformat - das wirkt im Faecher besser -, dann das Foto
+ *    naeher an der Mitte seines Drittels.
+ *
+ * Gleiche Daten, gleiche Auswahl - ohne Zufall. In zeitlicher Reihenfolge.
+ */
+export function waehleTitelfotos(alle: TitelKandidat[]): TitelKandidat[] {
+  const fotos = [...alle].sort((a, b) => a.zeit - b.zeit || a.ausgabeId.localeCompare(b.ausgabeId));
+  const feier = ohneAufbau(fotos);
+  if (feier.length <= 3) return feier;
+  const auswahl: TitelKandidat[] = [];
+  for (let drittel = 0; drittel < 3; drittel++) {
+    const teil = feier.slice(Math.floor((drittel * feier.length) / 3), Math.floor(((drittel + 1) * feier.length) / 3));
+    const mitte = (teil[0]!.zeit + teil[teil.length - 1]!.zeit) / 2;
+    const bestes = [...teil].sort(
+      (a, b) =>
+        titelPunkte(b) - titelPunkte(a) ||
+        Number(b.quer) - Number(a.quer) ||
+        Math.abs(a.zeit - mitte) - Math.abs(b.zeit - mitte) ||
+        a.zeit - b.zeit,
+    )[0]!;
+    auswahl.push(bestes);
+  }
+  return auswahl;
+}
+
+function ohneAufbau(fotos: TitelKandidat[]): TitelKandidat[] {
+  if (fotos.length < AUFBAU_AB) return fotos;
+  let ab = -1;
+  for (let i = 1; i < fotos.length; i++) {
+    if (fotos[i]!.zeit - fotos[i - 1]!.zeit >= AUFBAU_PAUSE) {
+      if (i <= AUFBAU_HOECHSTENS) ab = i;
+      break;
+    }
+  }
+  const rest = ab >= 0 ? fotos.slice(ab) : fotos.filter((f) => f.zeit >= fotos[0]!.zeit + AUFBAU_ANFANG);
+  return rest.length >= 3 ? rest : fotos;
+}
+
+/**
+ * Die Kandidaten fuers Deckblatt: dieselben Fotos wie in der Galerie (kein
+ * Probelauf, nichts Herausgenommenes), dazu, was die Box ueber sie weiss.
+ * Nachdrucke ueber das Servicemenue zaehlen nicht - das sind meist Fehldrucke.
+ */
+export function titelKandidaten(eventId: string): TitelKandidat[] {
+  const zeilen = holeDb()
+    .prepare(
+      `SELECT a.id, a.pfad_layout, a.erstellt, v.canvas,
+              (SELECT COALESCE(SUM(d.kopien), 0) FROM druckauftraege d WHERE d.ausgabe_id = a.id AND d.quelle = 'kiosk') AS kopien,
+              (SELECT COUNT(*) FROM druckauftraege d WHERE d.ausgabe_id = a.id AND d.quelle = 'galerie') AS nachdrucke,
+              (SELECT COUNT(*) FROM versand m WHERE m.ausgabe_id = a.id) AS mails,
+              EXISTS (SELECT 1 FROM gaestebuch g WHERE g.ausgabe_id = a.id AND g.ist_test = 0) AS gruss
+         FROM ausgaben a
+         JOIN sitzungen s ON s.id = a.sitzung_id
+         LEFT JOIN vorlagen v ON v.id = s.vorlage_id
+        WHERE s.event_id = ? AND s.ist_test = 0 AND a.verborgen = 0`,
+    )
+    .all(eventId) as {
+    id: string;
+    pfad_layout: string;
+    erstellt: string;
+    canvas: string | null;
+    kopien: number;
+    nachdrucke: number;
+    mails: number;
+    gruss: number;
+  }[];
+  return zeilen.map((z) => ({
+    ausgabeId: z.id,
+    pfadLayout: z.pfad_layout,
+    zeit: Date.parse(z.erstellt),
+    kopien: z.kopien,
+    nachdrucke: z.nachdrucke,
+    mails: z.mails,
+    gruss: z.gruss === 1,
+    quer: istQuer(z.canvas),
+  }));
+}
+
+function istQuer(canvas: string | null): boolean {
+  if (!canvas) return false;
+  try {
+    const c = JSON.parse(canvas) as { breiteMm?: number; hoeheMm?: number };
+    return (c.breiteMm ?? 0) > (c.hoeheMm ?? 0);
+  } catch {
+    return false;
+  }
+}
+
 /** Gibt es zu diesem Foto schon einen Gruss? */
 export function hatGruss(ausgabeId: string): boolean {
   return holeDb().prepare('SELECT 1 FROM gaestebuch WHERE ausgabe_id = ?').get(ausgabeId) !== undefined;
@@ -266,8 +396,11 @@ async function baue(event: Veranstaltung): Promise<GaestebuchPdf | null> {
   // Zahl der Gruesse: Das Deckblatt ist eine Erinnerung, keine Statistik.
   d.font(schrift).fontSize(schrift === 'Skript' ? 44 : 28).fillColor(FARBE.text)
     .text(event.name, BUND + 30, 196, { width: B - 2 * BUND - 60, align: 'center' });
-  // Ein Faecher aus den ersten Fotos - wie auf den Tisch gelegt.
-  const titelPfade = [...gruesse.map((g) => g.pfadLayout), ...ohneGruss.map((f) => f.pfadLayout)].slice(0, 3);
+  // Ein Faecher aus Anfang, Hoehepunkt und Ende der Feier - wie auf den Tisch
+  // gelegt. Welche Fotos, entscheidet waehleTitelfotos.
+  const titelPfade = waehleTitelfotos(titelKandidaten(event.id).filter((k) => vorhanden(k.pfadLayout))).map(
+    (k) => k.pfadLayout,
+  );
   const titelFotos = (await Promise.all(titelPfade.map((p) => foto(p)))).filter((f): f is Foto => f !== null);
   const faecher = titelFotos.length === 1 ? [0] : titelFotos.length === 2 ? [-6, 6] : [-9, 0, 9];
   titelFotos.forEach((bild, i) => {

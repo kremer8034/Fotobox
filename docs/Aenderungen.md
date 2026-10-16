@@ -11,6 +11,19 @@ ihn auf der Box verstehst.
   zu viel (z. B. 403 statt 353, „von 750“ statt „von 700“) und warnte erst,
   wenn die Rolle praktisch leer war. Jetzt zieht sie die Reserve ab – wie
   DNPs PrinterInfo.
+- **Bessere Fotos auf dem Deckblatt des Gästebuchs:** Statt der ersten drei
+  Fotos (oft Aufbau- und Testbilder) wählt die Box jetzt je ein Foto aus
+  Anfang, Höhepunkt und Ende der Feier – nur anhand ihrer Daten, ohne die
+  Bilder auszuwerten:
+  - Aufbau weglassen: alles vor der ersten Pause von 20 Minuten, wenn davor
+    höchstens 10 Fotos liegen – sonst die ersten 10 Minuten.
+  - Punkte je Foto: 1 je gedruckter Kopie (viele Kopien = viele Leute),
+    +3 für einen Nachdruck aus der Galerie, +2 für Mailversand, +3 für einen
+    Gruß im Gästebuch.
+  - Aus jedem Drittel des Abends das Foto mit den meisten Punkten; bei
+    Gleichstand ein Querformat, dann das Foto aus der Mitte des Drittels.
+  - Tipp: Testfotos beim Aufbau im **Probelauf** machen – die kommen nie ins
+    Gästebuch.
 - **Gästebuch-PDF ohne weißen Rahmen:** Die Fotos kleben jetzt randlos im
   Album, so wie sie gedruckt wurden – nur noch mit Klebestreifen, weichem
   Schatten und einer hauchdünnen Kante zum Papier.
