@@ -251,6 +251,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
       const pfade = eventpfade(event.ordner, sitzung.istTest);
 
       const abbruch = new AbortController();
+      let ausgeloestUm = Date.now();
       try {
         // Den Zielordner vor jedem Foto neu setzen, nicht nur zu Beginn der
         // Sitzung: Startet digiCamControl zwischendurch neu, vergisst es ihn
@@ -266,10 +267,12 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         });
         // Erst ausloesen, wenn der Waechter zuschaut - hoechstens 3 s warten.
         await Promise.race([wartet.bereit, new Promise((r) => setTimeout(r, 3000))]);
+        ausgeloestUm = Date.now();
         await betrieb.kamera.ausloesen();
         const datei = await wartet;
         await warteAufStabileDatei(datei);
         await verbucheFoto(sitzung, event, datei, koerper.index);
+        betrieb.aufnahmeGeklappt();
         sitzung.gemachteFotos = koerper.index;
         betrieb.letzteBeruehrung = Date.now();
 
@@ -281,7 +284,7 @@ export function registriereKiosk(app: FastifyInstance, betrieb: Betrieb, konfig:
         // Datei" allein sagt nicht, ob Kabel, digiCamControl oder ein
         // haengender Live-View schuld war. Dabei wird der Live-View neu
         // aufgebaut, damit der naechste Versuch nicht in denselben Zustand laeuft.
-        const zustand = await betrieb.nachFehlaufnahme().catch(() => '');
+        const zustand = await betrieb.nachFehlaufnahme(ausgeloestUm).catch(() => '');
         protokolliere('warnung', 'aufnahme', `Foto ${koerper.index}: ${text} ${zustand}`.trim());
         // Der Kiosk versucht es noch einmal; die Sitzung bleibt bestehen.
         return antwort.code(503).send({ fehler: 'Das Foto hat nicht geklappt.', wiederholbar: true });

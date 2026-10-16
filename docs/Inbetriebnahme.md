@@ -215,6 +215,8 @@ weiter drucken"** wählen. Die wartenden Aufträge laufen dann durch.
 | Oberfläche winzig oder riesig | Windows-Anzeigeskalierung steht nicht auf 100 % |
 | Kamera „meldet sich nicht" | digiCamControl läuft nicht, oder EOS Utility hat die Kamera belegt |
 | Live-View schwarz | Live-View in digiCamControl nicht gestartet, oder Objektivdeckel drauf |
+| Live-Bild da, aber kein Foto | Grund steht in der Verwaltung unter dem Status und im Protokoll („Die Kamera hat nicht ausgelöst …“). Meist: Objektiv auf AF statt MF, Speicherkarte voll, gesperrt oder nicht drin. Ohne erkennbaren Grund startet die Box digiCamControl nach zwei Fehlschüssen selbst neu |
+| „Die Kamera macht sich bereit" bleibt stehen | Kamera eingeschlafen: an der Kamera die automatische Abschaltung auf **Aus** stellen; Auslöser kurz antippen weckt sie |
 | Druck kommt nicht | Grund unter Gerät → Druckwarteschlange ansehen; meist ist der falsche Drucker gewählt |
 | Ausdruck beschnitten | Kalibrierung fehlt, oder der Treiber skaliert trotz `noscale` |
 | Galerie am Handy nicht erreichbar | Galerie im Event nicht eingeschaltet, oder Handy hängt in einem anderen WLAN |

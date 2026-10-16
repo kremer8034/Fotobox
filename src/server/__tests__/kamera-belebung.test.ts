@@ -29,7 +29,7 @@ class HaengendeKamera implements KameraTreiber {
   async stoppeLiveView() {
     this.stopps += 1;
   }
-  async liveBild() {
+  async liveBild(): Promise<Buffer | null> {
     if (this.haengt) return Buffer.from('immer dasselbe Bild');
     this.zaehler += 1;
     return Buffer.from(`frisches Bild ${this.zaehler}`);

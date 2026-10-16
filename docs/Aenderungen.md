@@ -35,6 +35,17 @@ ihn auf der Box verstehst.
   Box den Live-View nach acht Sekunden ohne Bild neu, ebenso nach jedem Foto,
   das nicht ankam. Im Protokoll steht dazu, wie es der Kamera ging (verbunden,
   Kabel ab, digiCamControl stumm, wann das letzte Live-Bild kam).
+- **Live-Bild da, aber kein Foto – jetzt mit Grund:** digiCamControl
+  antwortet auf den Auslöser immer mit „OK“, auch wenn die Kamera dann gar
+  nicht auslöst. Die Box wartete auf ein Foto, das nie kam, und nach drei
+  Versuchen ging es zurück zum Start – ohne Grund. Jetzt liest sie nach einem
+  Fehlschuss digiCamControls eigenes Protokoll und nennt den Grund in der
+  Verwaltung unter dem Status und im Protokoll: Autofokus fand nichts
+  (Objektiv auf MF stellen), Speicherkarte fehlt, ist voll oder gesperrt,
+  Kamera beschäftigt. Ohne erkennbaren Grund startet sie digiCamControl nach
+  zwei Fehlschüssen in Folge selbst neu (höchstens alle drei Minuten) – das
+  Programm bleibt sonst gelegentlich auf „Kamera beschäftigt“ hängen, bis
+  jemand die Box neu startet.
 - **Startbereit-Check prüft das Live-Bild wirklich:** Der Haken „Kamera
   verbunden, Live-View liefert ein Bild“ wartet jetzt auf ein echtes Bild. Bisher
   genügte, dass digiCamControl die Kamera kannte – auch wenn sie nichts lieferte.

@@ -46,4 +46,9 @@ export interface KameraTreiber {
   /** Zielordner setzen, in den die Kamera-Software die Aufnahmen ablegt. */
   setzeZielordner(pfad: string): Promise<void>;
   setzeBelichtung(werte: { iso?: string; blende?: string; verschlusszeit?: string }): Promise<void>;
+  /**
+   * Warum hat die Kamera seit diesem Zeitpunkt nicht ausgeloest? Nur, wenn die
+   * Kamera-Software das irgendwo festhaelt; null, wenn nichts bekannt ist.
+   */
+  fehlerSeit?(seitMs: number): Promise<{ hinweis: string | null; zeile: string } | null>;
 }

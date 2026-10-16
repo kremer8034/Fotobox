@@ -57,7 +57,7 @@ export class Betrieb {
   private beobachtungLaeuft = false;
   private beendet = false;
   /** Nur mit echter Hardware unter Windows: haelt digiCamControl am Leben. */
-  private readonly kameraProgramm: DigiCamControlWaechter | null;
+  private kameraProgramm: Pick<DigiCamControlWaechter, 'pruefe' | 'erzwingeNeustart'> | null;
   private letzteMassnahme: Massnahme = 'nichts';
   private letzteDruckMeldung = '';
 
@@ -347,13 +347,36 @@ export class Betrieb {
     return false;
   }
 
+  /** Fotos, die nacheinander nicht ankamen - ueber Sitzungen hinweg. */
+  private fehlaufnahmenInFolge = 0;
+  private letzterProgrammNeustart = Number.NEGATIVE_INFINITY;
+  private letzterKamerahinweis = '';
+
+  /** Ein Foto ist angekommen - die Kamera loest wieder aus. */
+  aufnahmeGeklappt(): void {
+    this.fehlaufnahmenInFolge = 0;
+    this.letzterKamerahinweis = '';
+  }
+
   /**
-   * Nach einem Foto, das nicht ankam: festhalten, wie es der Kamera ging, und
-   * den Live-View neu aufbauen. Der Kiosk wartet vor dem naechsten Versuch
-   * ohnehin auf ein frisches Live-Bild - so trifft der zweite Versuch eine
-   * Kamera, die wieder bereit ist, statt denselben haengenden Zustand.
+   * Nach einem Foto, das nicht ankam: festhalten, wie es der Kamera ging und
+   * warum sie nicht ausgeloest hat, und etwas dagegen tun.
+   *
+   *  - Nennt digiCamControl einen Grund, den nur ein Mensch beheben kann
+   *    (Autofokus, Speicherkarte), kommt er als Fehler ins Protokoll - mit dem
+   *    Satz, was zu tun ist. Ein Neustart wuerde daran nichts aendern.
+   *  - Sonst wird der Live-View neu aufgebaut. Der Kiosk wartet vor dem
+   *    naechsten Versuch ohnehin auf ein frisches Live-Bild - so trifft der
+   *    zweite Versuch eine Kamera, die wieder bereit ist.
+   *  - Scheitert auch das, obwohl Live-Bild und Verbindung stehen, haengt
+   *    digiCamControl selbst: Es wird neu gestartet (hoechstens alle drei
+   *    Minuten). Vorher half dann nur, die Box neu zu starten.
+   *
+   * @param ausgeloestUm wann ausgeloest wurde - ab da wird in digiCamControls
+   *   Protokoll nach dem Grund gesucht.
    */
-  async nachFehlaufnahme(): Promise<string> {
+  async nachFehlaufnahme(ausgeloestUm = Date.now()): Promise<string> {
+    this.fehlaufnahmenInFolge += 1;
     const status = await this.kamera.pruefe().catch(() => null);
     const bildAlter = this.letztesLiveBildZeit > 0 ? Date.now() - this.letztesLiveBildZeit : null;
     const zustand = !status
@@ -365,8 +388,33 @@ export class Betrieb {
           : 'digiCamControl meldet die Kamera als verbunden';
     const live =
       bildAlter === null ? 'noch kein Live-Bild' : `letztes Live-Bild vor ${(bildAlter / 1000).toFixed(1)} s`;
-    if (status?.verbunden) void this.belebeLiveView('Foto kam nicht an.', true);
-    return `${zustand}, ${live}.`;
+
+    const ursache = await this.kamera.fehlerSeit?.(ausgeloestUm).catch(() => null);
+    if (ursache?.hinweis && ursache.hinweis !== this.letzterKamerahinweis) {
+      this.letzterKamerahinweis = ursache.hinweis;
+      protokolliere('fehler', 'kamera', `Die Kamera hat nicht ausgelöst. ${ursache.hinweis}`);
+    }
+    const teile = [`${zustand}, ${live}.`];
+    if (ursache) teile.push(`digiCamControl: ${ursache.zeile}`);
+
+    // Autofokus und Speicherkarte behebt kein Neustart - nur jemand an der Kamera.
+    const menschNoetig = !!ursache?.hinweis && !/beschäftigt/.test(ursache.hinweis);
+    if (status?.verbunden && !menschNoetig) {
+      const lange = Date.now() - this.letzterProgrammNeustart >= PROGRAMM_NEUSTART_ABSTAND_MS;
+      if (this.fehlaufnahmenInFolge >= 2 && this.kameraProgramm && lange) {
+        this.letzterProgrammNeustart = Date.now();
+        protokolliere(
+          'warnung',
+          'kamera',
+          `${this.fehlaufnahmenInFolge} Fotos nacheinander nicht angekommen, obwohl die Kamera verbunden ist - ` +
+            'digiCamControl wird neu gestartet.',
+        );
+        void this.kameraProgramm.erzwingeNeustart().catch(() => false);
+      } else {
+        void this.belebeLiveView('Foto kam nicht an.', true);
+      }
+    }
+    return teile.join(' ');
   }
 
   async stoppeLiveView(): Promise<void> {
@@ -687,7 +735,9 @@ export class Betrieb {
     const geraet = leseGeraet();
     return {
       kamera: this.kameraOk ? 'bereit' : 'gestoert',
-      kameraHinweis: this.kameraOk ? null : kameraHinweis(this.kameraGrund),
+      // Verbunden heisst nicht, dass sie ausloest: Den letzten Grund, warum
+      // sie es nicht tat, zeigen, bis wieder ein Foto ankommt.
+      kameraHinweis: this.kameraOk ? this.letzterKamerahinweis || null : kameraHinweis(this.kameraGrund),
       drucker: this.druckerStoerung ? 'gestoert' : 'bereit',
       liveViewLaeuft: this.liveViewGewuenscht,
       stoerung: this.aktuelleStoerung(),
@@ -753,6 +803,8 @@ const LIVE_TAKT_MS = 100;
 const LIVE_STILL_MS = 8000;
 /** Mindestabstand zwischen zwei Neustarts des Live-Views. */
 const BELEBEN_ABSTAND_MS = 10_000;
+/** Mindestabstand zwischen zwei Neustarts von digiCamControl wegen Fotos, die nicht ankamen. */
+const PROGRAMM_NEUSTART_ABSTAND_MS = 180_000;
 
 function pause(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

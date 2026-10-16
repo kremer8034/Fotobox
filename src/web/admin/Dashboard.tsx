@@ -82,7 +82,9 @@ export function Dashboard({ navigiere }: { navigiere: (ziel: string) => void }) 
             ton={status.speicherFreiGb < 10 ? 'warnung' : 'gut'}
           />
         </div>
-        {status.kamera !== 'bereit' && status.kameraHinweis && (
+        {/* Auch bei verbundener Kamera: Lehnt sie das Ausloesen ab
+            (Autofokus, Speicherkarte), steht der Grund hier. */}
+        {status.kameraHinweis && (
           <p style={{ color: 'var(--warnung)', marginBottom: 0 }}>Kamera: {status.kameraHinweis}</p>
         )}
         {status.stoerung && (

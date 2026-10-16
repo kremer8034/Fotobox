@@ -1,5 +1,6 @@
 import { connect } from 'node:net';
 import type { KameraStatus, KameraTreiber } from './kamera.js';
+import { leseKamerafehler, type Kamerafehler } from './digicamcontrol-protokoll.js';
 
 /**
  * Anbindung an digiCamControl ueber dessen HTTP-Schnittstelle auf Port 5513.
@@ -158,6 +159,11 @@ export class DigiCamControlKamera implements KameraTreiber {
 
   async ausloesen(): Promise<void> {
     await this.befehl('Capture');
+  }
+
+  /** "Capture" antwortet immer mit OK - den Grund einer Ablehnung kennt nur digiCamControls Protokoll. */
+  async fehlerSeit(seitMs: number): Promise<Kamerafehler | null> {
+    return leseKamerafehler(seitMs);
   }
 
   async setzeZielordner(pfad: string): Promise<void> {
