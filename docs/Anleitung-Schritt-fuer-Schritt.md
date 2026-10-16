@@ -522,6 +522,10 @@ WLAN“): Das Gerät mit dem WLAN der Box verbinden und im Browser die Adresse
 öffnen, die bei **Diashow** in der Verwaltung steht. Mit Captive Portal ist das
 einfach `192.168.254.1/diashow`.
 
+**Zweiter Bildschirm mit Raspberry Pi:** Ein Raspberry Pi am Fernseher oder
+Beamer startet die Diashow beim Einschalten von selbst. Skript und Anleitung
+liegen im Ordner [`raspberry-pi`](../raspberry-pi/ANLEITUNG.md).
+
 ## Das Gästebuch
 
 Das **Gästebuch-PDF bekommt der Gastgeber bei jeder Übergabe** – auch, wenn
