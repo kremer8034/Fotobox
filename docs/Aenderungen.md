@@ -11,6 +11,9 @@ ihn auf der Box verstehst.
   zu viel (z. B. 403 statt 353, „von 750“ statt „von 700“) und warnte erst,
   wenn die Rolle praktisch leer war. Jetzt zieht sie die Reserve ab – wie
   DNPs PrinterInfo.
+- **Gästebuch-PDF ohne weißen Rahmen:** Die Fotos kleben jetzt randlos im
+  Album, so wie sie gedruckt wurden – nur noch mit Klebestreifen, weichem
+  Schatten und einer hauchdünnen Kante zum Papier.
 - **Bildschirm 16:10:** Die Vorschau des Hintergrundbilds unter „Aussehen &
   PIN“ zeigt jetzt den Ausschnitt des 1920 × 1200-Bildschirms der Box.
 

@@ -440,11 +440,12 @@ interface Foto {
 }
 
 /**
- * Ein Foto wie ein eingeklebtes Sofortbild: weisser Rand, weicher Schatten,
- * leicht schraeg. Der Rahmen folgt dem Layout - quer oder hoch - und passt in
- * maxBreite x maxHoehe.
+ * Ein eingeklebtes Foto: ohne weissen Rand, damit das Layout so aussieht wie
+ * gedruckt. Vom Papier hebt es sich durch einen weichen Schatten und eine
+ * hauchduenne Kante ab - die braucht es bei Layouts mit hellem Grund. Oben
+ * haelt es ein Klebestreifen, leicht schraeg. Passt in maxBreite x maxHoehe.
  *
- * @returns die Breite des Rahmens
+ * @returns die Breite des Fotos
  */
 function sofortbild(
   d: PDFKit.PDFDocument,
@@ -455,17 +456,13 @@ function sofortbild(
   maxHoehe: number,
   winkel: number,
 ): number {
-  const rand = 9;
-  const unten = 14;
   const verhaeltnis = bild.breite / bild.hoehe;
-  let bildB = maxBreite - 2 * rand;
-  let bildH = bildB / verhaeltnis;
-  if (bildH > maxHoehe - 2 * rand - unten) {
-    bildH = maxHoehe - 2 * rand - unten;
-    bildB = bildH * verhaeltnis;
+  let breite = maxBreite;
+  let hoehe = breite / verhaeltnis;
+  if (hoehe > maxHoehe) {
+    hoehe = maxHoehe;
+    breite = hoehe * verhaeltnis;
   }
-  const breite = bildB + 2 * rand;
-  const hoehe = bildH + 2 * rand + unten;
   const x = mx - breite / 2;
   const y = my - hoehe / 2;
   d.save().rotate(winkel, { origin: [mx, my] });
@@ -476,9 +473,9 @@ function sofortbild(
   ] as const) {
     d.save().fillOpacity(deckung).rect(x + versatz, y + versatz + 2, breite, hoehe).fill('#3a2a10').restore();
   }
-  d.rect(x, y, breite, hoehe).fill('#ffffff');
-  d.image(bild.daten, x + rand, y + rand, { width: bildB, height: bildH });
-  klebeband(d, mx - 18, y - 5, -6);
+  d.image(bild.daten, x, y, { width: breite, height: hoehe });
+  d.save().lineWidth(0.6).strokeOpacity(0.35).rect(x, y, breite, hoehe).stroke('#7a6a4a').restore();
+  klebeband(d, mx - 18, y - 7, -6);
   d.restore();
   return breite;
 }
