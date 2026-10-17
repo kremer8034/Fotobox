@@ -1218,7 +1218,7 @@ function VoreinstellungKarte({ eventId }: { eventId: string }) {
 /**
  * Hintergrundbild des Startbildschirms. Ausgewaehlt ueber den normalen
  * Dateidialog; der Server verkleinert es und legt es ab. Die kleine Vorschau
- * zeigt den Startbildschirm im Seitenverhaeltnis des Touchscreens (16:9) - so
+ * zeigt den Startbildschirm im Seitenverhaeltnis des Touchscreens (16:10) - so
  * sieht man vorher, welcher Ausschnitt bleibt und ob die Schrift lesbar ist.
  */
 function HintergrundKarte({
@@ -1314,8 +1314,8 @@ function HintergrundKarte({
           )}
           <p style={{ fontSize: '0.78rem', color: 'var(--schrift-leise)' }}>
             PNG, JPEG oder WEBP. Das Bild füllt den ganzen Bildschirm und liegt hinter Titel und
-            Knöpfen; was nicht ins Format 16:9 passt, wird oben und unten bzw. links und rechts
-            abgeschnitten. Am besten ein Querformat mit mindestens 1920 × 1080 Pixeln. Abdunkeln hält
+            Knöpfen; was nicht ins Format 16:10 passt, wird oben und unten bzw. links und rechts
+            abgeschnitten. Am besten genau 1920 × 1200 Pixel, wie der Bildschirm der Box. Abdunkeln hält
             Schrift und Knöpfe lesbar.
           </p>
         </div>

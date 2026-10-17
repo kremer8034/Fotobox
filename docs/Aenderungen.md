@@ -4,6 +4,62 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.1.2
+
+- **Papiervorrat stimmt jetzt mit PrinterInfo überein:** Der DNP-Drucker zählt
+  50 Blatt Reserve für das Rollenende mit. Die Fotobox zeigte deshalb 50 Blatt
+  zu viel (z. B. 403 statt 353, „von 750“ statt „von 700“) und warnte erst,
+  wenn die Rolle praktisch leer war. Jetzt zieht sie die Reserve ab – wie
+  DNPs PrinterInfo.
+- **Bessere Fotos auf dem Deckblatt des Gästebuchs:** Statt der ersten drei
+  Fotos (oft Aufbau- und Testbilder) wählt die Box jetzt je ein Foto aus
+  Anfang, Höhepunkt und Ende der Feier – nur anhand ihrer Daten, ohne die
+  Bilder auszuwerten:
+  - Aufbau weglassen: alles vor der ersten Pause von 20 Minuten, wenn davor
+    höchstens 10 Fotos liegen – sonst die ersten 10 Minuten.
+  - Punkte je Foto: 1 je gedruckter Kopie (viele Kopien = viele Leute),
+    +3 für einen Nachdruck aus der Galerie, +2 für Mailversand, +3 für einen
+    Gruß im Gästebuch.
+  - Aus jedem Drittel des Abends das Foto mit den meisten Punkten; bei
+    Gleichstand ein Querformat, dann das Foto aus der Mitte des Drittels.
+  - Tipp: Testfotos beim Aufbau im **Probelauf** machen – die kommen nie ins
+    Gästebuch.
+- **Gästebuch-PDF ohne weißen Rahmen:** Die Fotos kleben jetzt randlos im
+  Album, so wie sie gedruckt wurden – nur noch mit Klebestreifen, weichem
+  Schatten und einer hauchdünnen Kante zum Papier.
+- **Bildschirm 16:10:** Die Vorschau des Hintergrundbilds unter „Aussehen &
+  PIN“ zeigt jetzt den Ausschnitt des 1920 × 1200-Bildschirms der Box.
+- **Kamera hängt nicht mehr fest:** Lieferte die Kamera kein frisches
+  Live-Bild, wartete der Kiosk bisher 90 Sekunden bei „Die Kamera macht sich
+  bereit“ und gab dann auf – ohne selbst etwas zu versuchen. Jetzt startet die
+  Box den Live-View nach acht Sekunden ohne Bild neu, ebenso nach jedem Foto,
+  das nicht ankam. Im Protokoll steht dazu, wie es der Kamera ging (verbunden,
+  Kabel ab, digiCamControl stumm, wann das letzte Live-Bild kam).
+- **Live-Bild da, aber kein Foto – jetzt mit Grund:** digiCamControl
+  antwortet auf den Auslöser immer mit „OK“, auch wenn die Kamera dann gar
+  nicht auslöst. Die Box wartete auf ein Foto, das nie kam, und nach drei
+  Versuchen ging es zurück zum Start – ohne Grund. Jetzt liest sie nach einem
+  Fehlschuss digiCamControls eigenes Protokoll und nennt den Grund in der
+  Verwaltung unter dem Status und im Protokoll: Autofokus fand nichts
+  (Objektiv auf MF stellen), Speicherkarte fehlt, ist voll oder gesperrt,
+  Kamera beschäftigt. Ohne erkennbaren Grund startet sie digiCamControl nach
+  zwei Fehlschüssen in Folge selbst neu (höchstens alle drei Minuten) – das
+  Programm bleibt sonst gelegentlich auf „Kamera beschäftigt“ hängen, bis
+  jemand die Box neu startet.
+- **Startbereit-Check prüft das Live-Bild wirklich:** Der Haken „Kamera
+  verbunden, Live-View liefert ein Bild“ wartet jetzt auf ein echtes Bild. Bisher
+  genügte, dass digiCamControl die Kamera kannte – auch wenn sie nichts lieferte.
+- **USB-Energiesparen aus:** Das Setup verbietet Windows, den USB-Anschluss
+  der Kamera im Leerlauf schlafen zu legen.
+- **Bitte einmal an der Kamera einstellen:** automatische Abschaltung aus
+  (Menü → gelber Schraubenschlüssel → „Auto.Abschalt.“ → Aus). Sonst schläft
+  die 600D ein, sobald die Box den Live-View im Leerlauf abschaltet, und lässt
+  sich nicht mehr fernauslösen.
+- **Diashow mit dem Raspberry Pi:** Ein Raspberry Pi am Fernseher oder Beamer
+  verbindet sich von selbst mit dem WLAN „Fotobox“ und zeigt die Diashow im
+  Vollbild. Ist die Box noch nicht erreichbar, wartet er mit einer Hinweisseite.
+  Einrichtung in drei Schritten: `raspberry-pi/ANLEITUNG.md`.
+
 ## 1.1.1
 
 Alle drei neuen Funktionen sind **ab Werk aus** und werden je Veranstaltung

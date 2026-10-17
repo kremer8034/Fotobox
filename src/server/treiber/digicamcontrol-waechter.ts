@@ -89,6 +89,27 @@ export class DigiCamControlWaechter {
     }
     return 'nichts';
   }
+
+  /*
+   * digiCamControl antwortet, aber die Kamera loest nicht mehr aus.
+   *
+   * digiCamControl merkt sich intern, dass die Kamera "beschaeftigt" ist.
+   * Scheitert dabei etwas, bleibt diese Marke mitunter stehen - dann lief das
+   * Live-Bild weiter, jedes Ausloesen verpuffte, und das bis zum Neustart des
+   * Programms. Der Waechter griff nicht ein, weil das Programm ja antwortete.
+   */
+  async erzwingeNeustart(): Promise<boolean> {
+    if (!this.programmDa()) return false;
+    const jetzt = this.steuerung.jetzt();
+    await this.steuerung.beende();
+    this.steuerung.starte();
+    this.letzterStart = jetzt;
+    this.schweigtSeit = jetzt;
+    // Es hat eben noch geantwortet - der Webserver ist also an. Antwortet es
+    // nach dem Neustart nicht, darf der Waechter es wie sonst neu starten.
+    this.gestartetOhneAntwort = false;
+    return true;
+  }
 }
 
 /** Pfad zu CameraControl.exe - eingetragen ist mal der Ordner, mal die Datei. */

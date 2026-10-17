@@ -160,6 +160,10 @@ einzeln, bevor die Fotobox ins Spiel kommt.
 6. USB-Kabel in die Kamera und in einen Anschluss **auf der Rückseite** des PCs
    (nicht vorne, nicht in einen Verteiler).
 7. Kamera einschalten.
+8. **Automatische Abschaltung aus** (einmalig, die Kamera merkt es sich): Menü →
+   gelber Schraubenschlüssel (Einstellung 1) → „Auto.Abschalt.“ → **Aus**.
+   Sonst schläft die Kamera ein, wenn die Box eine Weile nicht benutzt wird,
+   und der nächste Gast kann nicht auslösen.
 
 ## Schritt 10: Prüfen, ob digiCamControl die Kamera sieht
 
@@ -521,6 +525,10 @@ Zwei Windows-Einstellungen, einmal pro Beamer bzw. Fernseher:
 WLAN“): Das Gerät mit dem WLAN der Box verbinden und im Browser die Adresse
 öffnen, die bei **Diashow** in der Verwaltung steht. Mit Captive Portal ist das
 einfach `192.168.254.1/diashow`.
+
+**Zweiter Bildschirm mit Raspberry Pi:** Ein Raspberry Pi am Fernseher oder
+Beamer startet die Diashow beim Einschalten von selbst. Skript und Anleitung
+liegen im Ordner [`raspberry-pi`](../raspberry-pi/ANLEITUNG.md).
 
 ## Das Gästebuch
 

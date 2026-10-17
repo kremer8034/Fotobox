@@ -62,6 +62,13 @@ etwas klemmt, findest du es so in Minuten statt in Stunden.
   stehen. Der Kontrast-Autofokus der 600D ist im Live-View träge.
 - **M-Modus** mit festen Werten für ISO, Blende und Zeit. Mit LED-Dauerlicht
   bleiben die Bilder so den ganzen Abend gleich hell.
+- **Automatische Abschaltung der Kamera aus:** Menü → gelber Schraubenschlüssel
+  (Einstellung 1) → „Auto.Abschalt.“ → **Aus**. Ab Werk schläft die 600D nach
+  einer Minute ohne Bedienung ein. Die Box schaltet den Live-View im Leerlauf
+  ab (Vorgabe: nach zehn Minuten). Danach schläft die Kamera, und der nächste
+  Gast steht vor „Die Kamera macht sich bereit“, oft ohne Fehlermeldung, denn
+  digiCamControl hält sie noch für verbunden. Genau das passiert typisch zu
+  Beginn einer Feier, wenn die Box nach dem Aufbau eine Weile steht.
 - SD-Karte drin lassen — sie ist die zweite Sicherung.
 - USB-Kabel an einen **rückseitigen** Port des PCs, nicht an einen langen
   passiven Hub.
@@ -208,6 +215,8 @@ weiter drucken"** wählen. Die wartenden Aufträge laufen dann durch.
 | Oberfläche winzig oder riesig | Windows-Anzeigeskalierung steht nicht auf 100 % |
 | Kamera „meldet sich nicht" | digiCamControl läuft nicht, oder EOS Utility hat die Kamera belegt |
 | Live-View schwarz | Live-View in digiCamControl nicht gestartet, oder Objektivdeckel drauf |
+| Live-Bild da, aber kein Foto | Grund steht in der Verwaltung unter dem Status und im Protokoll („Die Kamera hat nicht ausgelöst …“). Meist: Objektiv auf AF statt MF, Speicherkarte voll, gesperrt oder nicht drin. Ohne erkennbaren Grund startet die Box digiCamControl nach zwei Fehlschüssen selbst neu |
+| „Die Kamera macht sich bereit" bleibt stehen | Kamera eingeschlafen: an der Kamera die automatische Abschaltung auf **Aus** stellen; Auslöser kurz antippen weckt sie |
 | Druck kommt nicht | Grund unter Gerät → Druckwarteschlange ansehen; meist ist der falsche Drucker gewählt |
 | Ausdruck beschnitten | Kalibrierung fehlt, oder der Treiber skaliert trotz `noscale` |
 | Galerie am Handy nicht erreichbar | Galerie im Event nicht eingeschaltet, oder Handy hängt in einem anderen WLAN |
