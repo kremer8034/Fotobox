@@ -4,7 +4,7 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
-## 1.1.3 (in Arbeit)
+## 1.1.3
 
 - **Herausgenommene Fotos auch nicht im Gästebuch:** Wer im Servicemenü ein
   Foto aus der Galerie nahm, fand es trotzdem im Gästebuch-PDF wieder, wenn
