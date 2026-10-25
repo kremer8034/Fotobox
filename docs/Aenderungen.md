@@ -4,6 +4,14 @@ Was sich von Version zu Version ändert. Der Abschnitt einer Version erscheint
 beim Update in der Verwaltung unter „Software“ – also so schreiben, dass du
 ihn auf der Box verstehst.
 
+## 1.1.3
+
+- **Herausgenommene Fotos auch nicht im Gästebuch:** Wer im Servicemenü ein
+  Foto aus der Galerie nahm, fand es trotzdem im Gästebuch-PDF wieder, wenn
+  ein Gast dazu einen Gruß geschrieben hatte, auch nach einer erneuten
+  Übergabe. Jetzt fehlen Foto und Gruß im Gästebuch. Holt man das Foto
+  zurück in die Galerie, steht auch der Gruß wieder drin.
+
 ## 1.1.2
 
 - **Papiervorrat stimmt jetzt mit PrinterInfo überein:** Der DNP-Drucker zählt

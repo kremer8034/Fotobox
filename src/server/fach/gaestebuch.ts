@@ -97,13 +97,19 @@ export class UngueltigerGruss extends Error {
  * Die Gruesse einer Veranstaltung in der Reihenfolge der Fotos - ohne
  * Probelauf. Nach dem Foto, nicht nach dem Schreiben: Wer seinen Gruss neu
  * schreibt, soll im Gaestebuch nicht ans Ende rutschen.
+ *
+ * Ohne Fotos, die aus der Galerie genommen wurden. Vorher galt das nur fuer
+ * den Anhang und das Deckblatt: Ein herausgenommenes Foto mit Gruss stand
+ * weiter im Gaestebuch - Foto und Gruss gross auf einer Seite -, auch nach
+ * einer erneuten Uebergabe. Wird das Foto zurueckgeholt, ist der Gruss
+ * wieder da; geloescht wird er beim Herausnehmen nicht.
  */
 export function gruesseVon(eventId: string): Gruss[] {
   const zeilen = holeDb()
     .prepare(
       `SELECT g.id, g.ausgabe_id, g.pfad, a.pfad_layout, g.erstellt
          FROM gaestebuch g JOIN ausgaben a ON a.id = g.ausgabe_id
-        WHERE g.event_id = ? AND g.ist_test = 0
+        WHERE g.event_id = ? AND g.ist_test = 0 AND a.verborgen = 0
         ORDER BY a.erstellt ASC`,
     )
     .all(eventId) as Zeile[];
