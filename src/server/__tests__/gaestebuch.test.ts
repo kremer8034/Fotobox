@@ -8,7 +8,14 @@ import { schreibeGeraet } from '../db/geraet.js';
 import { legeEingebauteFilterAn } from '../fach/filter.js';
 import { legeStandardvorlagenAn } from '../fach/vorlagen.js';
 import { aktualisiereEvent, erstelleEvent, setzeStatus } from '../fach/events.js';
-import { holeAusgabe, loescheAusgabeEndgueltig, starteSitzung, stelleFertig, verbucheFoto } from '../fach/sitzungen.js';
+import {
+  holeAusgabe,
+  loescheAusgabeEndgueltig,
+  setzeVerborgen,
+  starteSitzung,
+  stelleFertig,
+  verbucheFoto,
+} from '../fach/sitzungen.js';
 import { warteAufNeueDatei } from '../fach/aufnahme.js';
 import { MockKamera } from '../treiber/kamera-mock.js';
 import { eventpfade, wurzelpfade } from '../fach/pfade.js';
@@ -116,6 +123,28 @@ describe('Gaestebuch', () => {
     await loescheAusgabeEndgueltig(id, event.ordner);
     expect(existsSync(g.pfad)).toBe(false);
     expect(hatGruss(id)).toBe(false);
+  });
+
+  it('laesst ein aus der Galerie genommenes Foto samt Gruss weg - auch bei erneuter Uebergabe', async () => {
+    const id = await fotoMachen();
+    await speichereGruss(event, holeAusgabe(id)!, await gruss());
+    const mitFoto = await erzeugeGaestebuchPdf(event);
+    expect(gruesseVon(event.id).some((g) => g.ausgabeId === id)).toBe(true);
+
+    // Herausgenommen: weder als Eintrag mit Gruss noch im Anhang.
+    setzeVerborgen(id, true);
+    expect(gruesseVon(event.id).some((g) => g.ausgabeId === id)).toBe(false);
+    expect(fotosOhneGruss(event.id).some((f) => f.ausgabeId === id)).toBe(false);
+    const ohneFoto = await erzeugeGaestebuchPdf(event);
+    expect(ohneFoto!.anzahl).toBe(mitFoto!.anzahl - 1);
+    expect(ohneFoto!.fotos).toBe(mitFoto!.fotos);
+
+    // Zurueckgeholt: Der Gruss ist noch da und steht wieder im Gaestebuch.
+    setzeVerborgen(id, false);
+    expect(gruesseVon(event.id).some((g) => g.ausgabeId === id)).toBe(true);
+
+    // Aufraeumen, damit die Zaehlungen der folgenden Tests stimmen.
+    await loescheAusgabeEndgueltig(id, event.ordner);
   });
 
   it('erzeugt das Gaestebuch als PDF: Deckblatt und zwei Eintraege je Seite', async () => {
